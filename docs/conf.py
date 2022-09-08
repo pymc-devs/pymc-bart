@@ -99,7 +99,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/pymc-devs/pymc_bart",
+            "url": "https://github.com/pymc-devs/pymc-bart",
             "icon": "fab fa-github-square",
         },
     ],
