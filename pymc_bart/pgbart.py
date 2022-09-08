@@ -282,7 +282,7 @@ class ParticleTree:
     """Particle tree."""
 
     def __init__(self, tree):
-        self.tree = tree.copy()  # keself.eps the tree that we care at the moment
+        self.tree = tree.copy()  # keeps the tree that we care at the moment
         self.expansion_nodes = [0]
         self.log_weight = 0
         self.old_likelihood_logp = 0
