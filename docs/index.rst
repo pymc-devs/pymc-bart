@@ -32,7 +32,7 @@ Installation
 
 Contributing
 ============
-We welcome contributions from interested individuals or groups! For information about contributing to PyMC experimental check out our instructions, policies, and guidelines `here <https://github.com/pymc-devs/pymc-bart/blob/main/CONTRIBUTING.md>`_.
+We welcome contributions from interested individuals or groups! For information about contributing to PyMC-BART check out our instructions, policies, and guidelines `here <https://github.com/pymc-devs/pymc-bart/blob/main/CONTRIBUTING.md>`_.
 
 Contributors
 ============
