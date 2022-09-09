@@ -46,7 +46,7 @@ jobs:
       - name: Run tests
         shell: bash -l {0}
         run: |
-          python -m pytest -vv --cov=pymc_bart --cov-report=term --cov-report=xml pymc_bart/tests
+          python -m pytest -vv --cov=pymc-bart --cov-report=term --cov-report=xml pymc-bart/tests
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
 
