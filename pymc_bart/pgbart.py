@@ -14,7 +14,8 @@
 
 import logging
 
-from copy import copy
+from copy import copy, deepcopy
+from numba import jit
 
 import aesara
 import numpy as np
@@ -173,11 +174,8 @@ class PGBART(ArrayStepShared):
                 # Normalize weights
                 w_t, normalized_weights = self.normalize(particles[2:])
 
-                # Resample all but first two particles
-                new_indices = np.random.choice(
-                    self.indices, size=self.len_indices, p=normalized_weights
-                )
-                particles[2:] = particles[new_indices]
+                # Resample
+                particles = self.resample(particles, normalized_weights)
 
                 # Set the new weight
                 for p in particles[2:]:
@@ -196,12 +194,14 @@ class PGBART(ArrayStepShared):
             self.sum_trees = self.sum_trees_noi + new_tree._predict()
             self.all_trees[tree_id] = new_tree.trim()
 
+            used_variates = new_tree.get_split_variables()
+
             if self.tune:
                 self.ssv = SampleSplittingVariable(self.alpha_vec)
-                for index in new_particle.used_variates:
+                for index in used_variates:
                     self.alpha_vec[index] += 1
             else:
-                for index in new_particle.used_variates:
+                for index in used_variates:
                     variable_inclusion[index] += 1
 
         stats = {"variable_inclusion": variable_inclusion, "bart_trees": copy(self.all_trees)}
@@ -224,6 +224,21 @@ class PGBART(ArrayStepShared):
         normalized_weights += 1e-12
 
         return w_t, normalized_weights
+
+    def resample(self, particles, normalized_weights):
+        """Use systematic resample for all but first two particles"""
+        seen = []
+        new_particles = []
+        for idx in new_indices:
+            if idx in seen:
+                new_particles.append(deepcopy(particles[idx]))
+            else:
+                seen.append(idx)
+                new_particles.append(particles[idx])
+
+        particles[2:] = new_particles
+
+        return particles
 
     def init_particles(self, tree_id: int) -> np.ndarray:
         """Initialize particles."""
@@ -286,8 +301,8 @@ class ParticleTree:
         self.expansion_nodes = [0]
         self.log_weight = 0
         self.old_likelihood_logp = 0
-        self.used_variates = []
         self.kf = 0.75
+
 
     def sample_tree(
         self,
@@ -326,7 +341,6 @@ class ParticleTree:
                 if index_selected_predictor is not None:
                     new_indexes = self.tree.idx_leaf_nodes[-2:]
                     self.expansion_nodes.extend(new_indexes)
-                    self.used_variates.append(index_selected_predictor)
                     tree_grew = True
 
         return tree_grew
@@ -524,7 +538,7 @@ def fast_mean():
 
     return mean
 
-
+@jit()
 def discrete_uniform_sampler(upper_value):
     """Draw from the uniform distribution with bounds [0, upper_value).
 
@@ -541,13 +555,14 @@ class NormalSampler:
         self.scale = scale
         self.shape = shape
         self.update()
-
+    
     def random(self):
         if self.idx == self.size:
             self.update()
         pop = self.cache[:, self.idx]
         self.idx += 1
         return pop
+
 
     def update(self):
         self.idx = 0
@@ -571,11 +586,46 @@ class UniformSampler:
         self.idx += 1
         return pop
 
+
     def update(self):
         self.idx = 0
         self.cache = np.random.uniform(
             self.lower_bound, self.upper_bound, size=(self.shape, self.size)
         )
+
+@jit()
+def systematic(W):
+    """Systematic resampling.
+    """
+    M = len(W)
+    su = (np.random.rand(1) + np.arange(M)) / M
+    return inverse_cdf(su, W) + 2
+
+
+@jit(nopython=True)
+def inverse_cdf(su, W):
+    """Inverse CDF algorithm for a finite distribution.
+        Parameters
+        ----------
+        su: (M,) ndarray
+            M sorted uniform variates (i.e. M ordered points in [0,1]).
+        W: (N,) ndarray
+            a vector of N normalized weights (>=0 and sum to one)
+        Returns
+        -------
+        A: (M,) ndarray
+            a vector of M indices in range 0, ..., N-1
+    """
+    j = 0
+    s = W[0]
+    M = su.shape[0]
+    A = np.empty(M, dtype=np.int64)
+    for n in range(M):
+        while su[n] > s:
+            j += 1
+            s += W[j]
+        A[n] = j
+    return A
 
 
 def logp(point, out_vars, vars, shared):

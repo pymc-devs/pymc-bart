@@ -83,6 +83,13 @@ class Tree:
                 del current_node.idx_data_points
         return a_tree
 
+    def get_split_variables(self):
+        return [
+            node.idx_split_variable
+            for node in self.tree_structure.values()
+            if isinstance(node, SplitNode)
+        ]
+
     def _predict(self):
         output = self.output
         for node_index in self.idx_leaf_nodes:
