@@ -14,7 +14,8 @@
 
 import logging
 
-from copy import copy
+from copy import deepcopy
+from numba import njit
 
 import aesara
 import numpy as np
@@ -56,7 +57,7 @@ class PGBART(ArrayStepShared):
     def __init__(
         self,
         vars=None,
-        num_particles=40,
+        num_particles=20,
         batch="auto",
         model=None,
     ):
@@ -104,8 +105,6 @@ class PGBART(ArrayStepShared):
             idx_data_points=np.arange(self.num_observations, dtype="int32"),
             shape=self.shape,
         )
-        self.mean = fast_mean()
-
         self.normal = NormalSampler(mu_std, self.shape)
         self.uniform = UniformSampler(0.33, 0.75, self.shape)
         self.prior_prob_leaf_node = compute_prior_probability(self.alpha)
@@ -158,7 +157,6 @@ class PGBART(ArrayStepShared):
                         self.X,
                         self.missing_data,
                         self.sum_trees,
-                        self.mean,
                         self.m,
                         self.normal,
                         self.shape,
@@ -173,11 +171,8 @@ class PGBART(ArrayStepShared):
                 # Normalize weights
                 w_t, normalized_weights = self.normalize(particles[2:])
 
-                # Resample all but first two particles
-                new_indices = np.random.choice(
-                    self.indices, size=self.len_indices, p=normalized_weights
-                )
-                particles[2:] = particles[new_indices]
+                # Resample
+                particles = self.resample(particles, normalized_weights)
 
                 # Set the new weight
                 for p in particles[2:]:
@@ -196,15 +191,17 @@ class PGBART(ArrayStepShared):
             self.sum_trees = self.sum_trees_noi + new_tree._predict()
             self.all_trees[tree_id] = new_tree.trim()
 
+            used_variates = new_tree.get_split_variables()
+
             if self.tune:
                 self.ssv = SampleSplittingVariable(self.alpha_vec)
-                for index in new_particle.used_variates:
+                for index in used_variates:
                     self.alpha_vec[index] += 1
             else:
-                for index in new_particle.used_variates:
+                for index in used_variates:
                     variable_inclusion[index] += 1
 
-        stats = {"variable_inclusion": variable_inclusion, "bart_trees": copy(self.all_trees)}
+        stats = {"variable_inclusion": variable_inclusion, "bart_trees": self.all_trees}
         return self.sum_trees, [stats]
 
     def normalize(self, particles):
@@ -225,18 +222,36 @@ class PGBART(ArrayStepShared):
 
         return w_t, normalized_weights
 
+    def resample(self, particles, normalized_weights):
+        """
+        Use systematic resample for all but first two particles
+
+        Ensure particles are copied only if needed.
+        """
+        new_indices = systematic(normalized_weights)
+        seen = []
+        new_particles = []
+        for idx in new_indices:
+            if idx in seen:
+                new_particles.append(deepcopy(particles[idx]))
+            else:
+                new_particles.append(particles[idx])
+                seen.append(idx)
+
+        particles[2:] = new_particles
+
+        return particles
+
     def init_particles(self, tree_id: int) -> np.ndarray:
         """Initialize particles."""
         p0 = self.all_particles[tree_id]
-        p1 = copy(p0)
+        p1 = deepcopy(p0)
         p1.sample_leafs(
             self.sum_trees,
-            self.mean,
             self.m,
             self.normal,
             self.shape,
         )
-
         # The old tree and the one with new leafs do not grow so we update the weights only once
         self.update_weight(p0, old=True)
         self.update_weight(p1, old=True)
@@ -286,7 +301,6 @@ class ParticleTree:
         self.expansion_nodes = [0]
         self.log_weight = 0
         self.old_likelihood_logp = 0
-        self.used_variates = []
         self.kf = 0.75
 
     def sample_tree(
@@ -297,7 +311,6 @@ class ParticleTree:
         X,
         missing_data,
         sum_trees,
-        mean,
         m,
         normal,
         shape,
@@ -317,7 +330,6 @@ class ParticleTree:
                     X,
                     missing_data,
                     sum_trees,
-                    mean,
                     m,
                     normal,
                     self.kf,
@@ -326,12 +338,11 @@ class ParticleTree:
                 if index_selected_predictor is not None:
                     new_indexes = self.tree.idx_leaf_nodes[-2:]
                     self.expansion_nodes.extend(new_indexes)
-                    self.used_variates.append(index_selected_predictor)
                     tree_grew = True
 
         return tree_grew
 
-    def sample_leafs(self, sum_trees, mean, m, normal, shape):
+    def sample_leafs(self, sum_trees, m, normal, shape):
 
         for idx in self.tree.idx_leaf_nodes:
             if idx > 0:
@@ -339,7 +350,6 @@ class ParticleTree:
                 idx_data_points = leaf.idx_data_points
                 node_value = draw_leaf_value(
                     sum_trees[:, idx_data_points],
-                    mean,
                     m,
                     normal,
                     self.kf,
@@ -400,7 +410,6 @@ def grow_tree(
     X,
     missing_data,
     sum_trees,
-    mean,
     m,
     normal,
     kf,
@@ -429,7 +438,6 @@ def grow_tree(
             idx_data_point = new_idx_data_points[idx]
             node_value = draw_leaf_value(
                 sum_trees[:, idx_data_point],
-                mean,
                 m,
                 normal,
                 kf,
@@ -482,7 +490,7 @@ def get_split_value(available_splitting_values, idx_data_points, missing_data):
         return split_value
 
 
-def draw_leaf_value(Y_mu_pred, mean, m, normal, kf, shape):
+def draw_leaf_value(Y_mu_pred, m, normal, kf, shape):
     """Draw Gaussian distributed leaf values."""
     if Y_mu_pred.size == 0:
         return np.zeros(shape)
@@ -491,38 +499,29 @@ def draw_leaf_value(Y_mu_pred, mean, m, normal, kf, shape):
         if Y_mu_pred.size == 1:
             mu_mean = np.full(shape, Y_mu_pred.item() / m)
         else:
-            mu_mean = mean(Y_mu_pred) / m
+            mu_mean = fast_mean(Y_mu_pred) / m
 
         draw = norm + mu_mean
         return draw
 
 
-def fast_mean():
-    """If available use Numba to speed up the computation of the mean."""
-    try:
-        from numba import jit
-    except ImportError:
-        from functools import partial
+@njit
+def fast_mean(a):
+    """Use Numba to speed up the computation of the mean."""
 
-        return partial(np.mean, axis=1)
-
-    @jit
-    def mean(a):
-        if a.ndim == 1:
-            count = a.shape[0]
-            suma = 0
+    if a.ndim == 1:
+        count = a.shape[0]
+        suma = 0
+        for i in range(count):
+            suma += a[i]
+        return suma / count
+    elif a.ndim == 2:
+        res = np.zeros(a.shape[0])
+        count = a.shape[1]
+        for j in range(a.shape[0]):
             for i in range(count):
-                suma += a[i]
-            return suma / count
-        elif a.ndim == 2:
-            res = np.zeros(a.shape[0])
-            count = a.shape[1]
-            for j in range(a.shape[0]):
-                for i in range(count):
-                    res[j] += a[j, i]
-            return res / count
-
-    return mean
+                res[j] += a[j, i]
+        return res / count
 
 
 def discrete_uniform_sampler(upper_value):
@@ -576,6 +575,51 @@ class UniformSampler:
         self.cache = np.random.uniform(
             self.lower_bound, self.upper_bound, size=(self.shape, self.size)
         )
+
+
+def systematic(normalized_weights):
+    """
+    Systematic resampling.
+
+    Return indices in the range 2, ..., len(normalized_weights)+2
+
+    Note: adapted from https://github.com/nchopin/particles
+    """
+    lnw = len(normalized_weights)
+    single_uniform = (np.random.rand(1) + np.arange(lnw)) / lnw
+    return inverse_cdf(single_uniform, normalized_weights) + 2
+
+
+@njit
+def inverse_cdf(single_uniform, normalized_weights):
+    """
+    Inverse CDF algorithm for a finite distribution.
+
+    Parameters
+    ----------
+    single_uniform: ndarray
+        ordered points in [0,1]
+
+    normalized_weights: ndarray
+        normalized weights
+
+    Returns
+    -------
+    A: ndarray
+        a vector of indices in range 2, ..., len(normalized_weights)+2
+
+    Note: adapted from https://github.com/nchopin/particles
+    """
+    j = 0
+    s = normalized_weights[0]
+    M = single_uniform.shape[0]
+    A = np.empty(M, dtype=np.int64)
+    for n in range(M):
+        while single_uniform[n] > s:
+            j += 1
+            s += normalized_weights[j]
+        A[n] = j
+    return A
 
 
 def logp(point, out_vars, vars, shared):
