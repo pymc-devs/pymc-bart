@@ -49,7 +49,7 @@ extensions = [
     "nbsphinx",
 ]
 
-intersphinx_mapping = {'pymc_examples': ('https://www.pymc.io/projects/examples', None)}
+intersphinx_mapping = {'pymc_examples': ('https://www.pymc.io/projects/examples/en/latest', None)}
 
 nbsphinx_execute = "never"
 
