@@ -67,10 +67,10 @@ Contents
 ========
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
+   examples/BART_introduction
    api_reference
-   :external:ref:`BART introduction <BART_introduction>
 
 Indices
 =======
