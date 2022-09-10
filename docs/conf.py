@@ -48,7 +48,18 @@ extensions = [
     "nbsphinx",
 ]
 
+external_docs = ["examples/BART_introduction.ipynb", "examples/references.bib"]
+for doc in external_docs:
+    if os.path.exists(doc):
+        os.remove(doc)
+
 os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/case_studies/BART_introduction.ipynb -P examples")
+os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/references.bib -P examples")
+
+# bibtex config
+bibtex_bibfiles = ["references.bib"]
+bibtex_default_style = "unsrt"
+bibtex_reference_style = "author_year"
 
 nbsphinx_execute = "never"
 
