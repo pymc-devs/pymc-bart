@@ -45,8 +45,11 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
+    "sphinx.ext.intersphinx",
     "nbsphinx",
 ]
+
+intersphinx_mapping = {'pymc_examples': ('https://www.pymc.io/projects/examples', None)}
 
 nbsphinx_execute = "never"
 

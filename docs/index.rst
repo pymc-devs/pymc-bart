@@ -70,6 +70,7 @@ Contents
    :maxdepth: 4
 
    api_reference
+   :external:ref:`BART introduction <BART_introduction>
 
 Indices
 =======
