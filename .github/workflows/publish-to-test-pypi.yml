@@ -3,14 +3,15 @@ name: Publish tagged releases to PyPI and TestPyPI
 on: push
 
 jobs:
-  deploy:
+  build-n-publish:
+    name: Build and publish Python distributions to PyPI and TestPyPI
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - name: Set up Python
-        uses: actions/setup-python@v1
-        with:
-          python-version: "3.9"
+    - uses: actions/checkout@v1
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: "3.9"
 
     - name: Install pypa/build
       run: >-
