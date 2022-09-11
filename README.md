@@ -18,12 +18,12 @@ Here is the citation in BibTeX format
 
 ```
 @misc{quiroga2022bart,
-      title={Bayesian additive regression trees for probabilistic programming},
-      author={Quiroga, Miriana and Garay, Pablo G and Alonso, Juan M. and Loyola, Juan Martin and Martin, Osvaldo A},
-      year={2022},
-      doi={10.48550/ARXIV.2206.03619},
-      archivePrefix={arXiv},
-      primaryClass={stat.CO}
+title={Bayesian additive regression trees for probabilistic programming},
+author={Quiroga, Miriana and Garay, Pablo G and Alonso, Juan M. and Loyola, Juan Martin and Martin, Osvaldo A},
+year={2022},
+doi={10.48550/ARXIV.2206.03619},
+archivePrefix={arXiv},
+primaryClass={stat.CO}
 }
 ```
 
