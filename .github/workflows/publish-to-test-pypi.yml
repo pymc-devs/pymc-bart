@@ -1,6 +1,9 @@
 name: Publish tagged releases to PyPI and TestPyPI
 
-on: push
+on:
+  release:
+    types:
+      - created
 
 jobs:
   build-n-publish:
