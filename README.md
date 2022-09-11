@@ -16,6 +16,7 @@ If you use PyMC-BART and want to cite it please use [![arXiv](https://img.shield
 
 Here is the citation in BibTeX format
 
+```
 @misc{quiroga2022bart,
   doi = {10.48550/ARXIV.2206.03619},
   url = {https://arxiv.org/abs/2206.03619},
@@ -26,6 +27,7 @@ Here is the citation in BibTeX format
   year = {2022},
   copyright = {Creative Commons Attribution Share Alike 4.0 International},
 }
+```
 
 ## Donations
 pymc_bart, as other pymc-devs projects, is a non-profit project under the NumFOCUS umbrella. If you want to support pymc_bart financially, you can donate [here](https://numfocus.org/donate-to-pymc).
