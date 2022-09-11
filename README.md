@@ -24,7 +24,7 @@ Here is the citation in BibTeX format
   title = {Bayesian additive regression trees for probabilistic programming},
   publisher = {arXiv},
   year = {2022},
-  copyright = {Creative Commons Attribution Share Alike 4.0 International}
+  copyright = {Creative Commons Attribution Share Alike 4.0 International},
 }
 
 ## Donations
