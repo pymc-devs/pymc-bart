@@ -1,4 +1,4 @@
-# pymc_bart
+
 Bayesian Additive Regression Trees for Probabilistic programming with PyMC
 
 
@@ -16,16 +16,16 @@ If you use PyMC-BART and want to cite it please use [![arXiv](https://img.shield
 
 Here is the citation in BibTeX format
 
+```
 @misc{quiroga2022bart,
-  doi = {10.48550/ARXIV.2206.03619},
-  url = {https://arxiv.org/abs/2206.03619},
-  author = {Quiroga, Miriana and Garay, Pablo G and Alonso, Juan M. and Loyola, Juan Martin and Martin, Osvaldo A},
-  keywords = {Computation (stat.CO), FOS: Computer and information sciences, FOS: Computer and information sciences},
-  title = {Bayesian additive regression trees for probabilistic programming},
-  publisher = {arXiv},
-  year = {2022},
-  copyright = {Creative Commons Attribution Share Alike 4.0 International}
+title={Bayesian additive regression trees for probabilistic programming},
+author={Quiroga, Miriana and Garay, Pablo G and Alonso, Juan M. and Loyola, Juan Martin and Martin, Osvaldo A},
+year={2022},
+doi={10.48550/ARXIV.2206.03619},
+archivePrefix={arXiv},
+primaryClass={stat.CO}
 }
+```
 
 ## Donations
 pymc_bart, as other pymc-devs projects, is a non-profit project under the NumFOCUS umbrella. If you want to support pymc_bart financially, you can donate [here](https://numfocus.org/donate-to-pymc).

@@ -73,7 +73,7 @@ if __name__ == "__main__":
         license=LICENSE,
         url=URL,
         long_description=LONG_DESCRIPTION,
-        long_description_content_type="text/x-rst",
+        long_description_content_type="text/markdown",
         packages=find_packages(),
         # because of an upload-size limit by PyPI, we're temporarily removing docs from the tarball.
         # Also see MANIFEST.in
