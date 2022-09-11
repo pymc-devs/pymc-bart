@@ -18,7 +18,7 @@ from pymc_bart.pgbart import PGBART
 from pymc_bart.utils import plot_dependence, plot_variable_importance, predict
 
 __all__ = ["BART", "PGBART"]
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 import pymc as pm
 
