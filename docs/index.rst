@@ -19,12 +19,31 @@ PyMC-BART
 Bayesian Additive Regression Trees for Probabilistic programming with PyMC
 
 
+Overview
+============
+PyMC-BART extends `PyMC <https://github.com/pymc-devs/pymc>`_. probabilistic programming framework to be able to define
+and solve models including a BART random variable. PyMC-BART also includes a few helpers function to help interpret
+those models and perform variable selection. 
+
+
 Dependencies
 ============
 PyMC-BART is tested on Python 3.8+ and depends on PyMC V4.
 
+
 Installation
 ============
+
+
+PyMC-BART requires a working Python interpreter (3.8+). We recommend installing Python and key numerical libraries using the `Anaconda distribution <https://www.anaconda.com/products/individual#Downloads>`_, which has one-click installers available on all major platforms.
+
+Assuming a standard Python environment is installed on your machine (including pip), PyMC-BART itself can be installed in one line using pip:
+
+.. code-block:: bash
+
+    pip install pymc-bart
+
+Alternatively, if you want the bleeding edge version of the package you can install from GitHub:
 
 .. code-block:: bash
 
