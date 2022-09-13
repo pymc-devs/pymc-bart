@@ -2,13 +2,28 @@
 Bayesian Additive Regression Trees for Probabilistic programming with PyMC
 
 
+PyMC-BART extends [PyMC](https://github.com/pymc-devs/pymc) probabilistic programming framework to be able to define and solve models including a BART random variable. PyMC-BART also includes a few helpers function to aid with the interpretation of those models and perform variable selection. 
+
+
+## Installation
+
+PyMC-BART requires a working Python interpreter (3.8+). We recommend installing Python and key numerical libraries using the [Anaconda Distribution](https://www.anaconda.com/products/individual#Downloads), which has one-click installers available on all major platforms.
+
+Assuming a standard Python environment is installed on your machine (including pip), PyMC-BART itself can be installed in one line using pip:
+
+    pip install pymc-bart
+
+Alternatively, if you want the bleeding edge version of the package you can install from GitHub:
+
+    pip install git+https://github.com/pymc-devs/pymc-bart.git
+
+
 ## Contributions
-pymc_bart is a community project and welcomes contributions.
+PyMC-BART is a community project and welcomes contributions.
 Additional information can be found in the [Contributing Readme](https://github.com/pymc-devs/pymc_bart/blob/main/CONTRIBUTING.md)
 
-
 ## Code of Conduct
-pymc_bart wishes to maintain a positive community. Additional details
+PyMC-BART wishes to maintain a positive community. Additional details
 can be found in the [Code of Conduct](https://github.com/pymc-devs/pymc_bart/blob/main/CODE_OF_CONDUCT.md)
 
 ## Citation
@@ -28,7 +43,7 @@ primaryClass={stat.CO}
 ```
 
 ## Donations
-pymc_bart, as other pymc-devs projects, is a non-profit project under the NumFOCUS umbrella. If you want to support pymc_bart financially, you can donate [here](https://numfocus.org/donate-to-pymc).
+PyMC-BART , as other pymc-devs projects, is a non-profit project under the NumFOCUS umbrella. If you want to support PyMC-BART financially, you can donate [here](https://numfocus.org/donate-to-pymc).
 
 ## Sponsors
 [![NumFOCUS](https://www.numfocus.org/wp-content/uploads/2017/07/NumFocus_LRG.png)](https://numfocus.org)
