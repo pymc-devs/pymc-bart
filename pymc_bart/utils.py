@@ -150,15 +150,15 @@ def plot_dependence(
     rng = RandomState(seed=random_seed)
 
     if hasattr(X, "columns") and hasattr(X, "values"):
-        X_names = list(X.columns)
+        x_names = list(X.columns)
         X = X.values
     else:
-        X_names = []
+        x_names = []
 
     if hasattr(Y, "name"):
-        Y_label = f"Predicted {Y.name}"
+        y_label = f"Predicted {Y.name}"
     else:
-        Y_label = "Predicted Y"
+        y_label = "Predicted Y"
 
     num_covariates = X.shape[1]
 
@@ -169,10 +169,10 @@ def plot_dependence(
     if var_discrete is None:
         var_discrete = []
 
-    if X_names:
-        X_labels = [X_names[idx] for idx in var_idx]
+    if x_names:
+        x_labels = [x_names[idx] for idx in var_idx]
     else:
-        X_labels = [f"X_{idx}" for idx in var_idx]
+        x_labels = [f"X_{idx}" for idx in var_idx]
 
     if xs_interval == "linear" and xs_values is None:
         xs_values = 10
@@ -183,8 +183,8 @@ def plot_dependence(
     if kind == "ice":
         instances = np.random.choice(range(X.shape[0]), replace=False, size=instances)
 
-    new_Y = []
-    new_X_target = []
+    new_y = []
+    new_x_target = []
     y_mins = []
 
     new_X = np.zeros_like(X)
@@ -195,32 +195,32 @@ def plot_dependence(
         y_pred = []
         if kind == "pdp":
             if i in var_discrete:
-                new_X_i = np.unique(X[:, i])
+                new_x_i = np.unique(X[:, i])
             else:
                 if xs_interval == "linear":
-                    new_X_i = np.linspace(np.nanmin(X[:, i]), np.nanmax(X[:, i]), xs_values)
+                    new_x_i = np.linspace(np.nanmin(X[:, i]), np.nanmax(X[:, i]), xs_values)
                 elif xs_interval == "quantiles":
-                    new_X_i = np.quantile(X[:, i], q=xs_values)
+                    new_x_i = np.quantile(X[:, i], q=xs_values)
                 elif xs_interval == "insample":
-                    new_X_i = X[:, i]
+                    new_x_i = X[:, i]
 
-            for x_i in new_X_i:
+            for x_i in new_x_i:
                 new_X[:, indices_mi] = X[:, indices_mi]
                 new_X[:, i] = x_i
                 y_pred.append(np.mean(predict(idata, rng, X=new_X, size=samples), 1))
-            new_X_target.append(new_X_i)
+            new_x_target.append(new_x_i)
         else:
             for instance in instances:
                 new_X = X[idx_s]
                 new_X[:, indices_mi] = X[:, indices_mi][instance]
                 y_pred.append(np.mean(predict(idata, rng, X=new_X, size=samples), 0))
-            new_X_target.append(new_X[:, i])
+            new_x_target.append(new_X[:, i])
         y_mins.append(np.min(y_pred))
-        new_Y.append(np.array(y_pred).T)
+        new_y.append(np.array(y_pred).T)
 
     shape = 1
-    if new_Y[0].ndim == 3:
-        shape = new_Y[0].shape[0]
+    if new_y[0].ndim == 3:
+        shape = new_y[0].shape[0]
     if ax is None:
         if grid == "long":
             fig, axes = plt.subplots(len(var_idx) * shape, sharey=sharey, figsize=figsize)
@@ -235,16 +235,16 @@ def plot_dependence(
 
     x_idx = 0
     y_idx = 0
-    for ax in axes:
+    for ax in axes:  # pylint: disable=redefined-argument-from-local
         if x_idx >= len(var_idx):
             ax.set_axis_off()
             fig.delaxes(ax)
 
-        nyi = new_Y[x_idx][y_idx]
-        nxi = new_X_target[x_idx]
+        nyi = new_y[x_idx][y_idx]
+        nxi = new_x_target[x_idx]
         var = var_idx[x_idx]
 
-        ax.set_xlabel(X_labels[x_idx])
+        ax.set_xlabel(x_labels[x_idx])
         x_idx += 1
         if x_idx == len(var_idx):
             x_idx = 0
@@ -302,10 +302,10 @@ def plot_dependence(
                 ax.plot(nxi[idx], nyi[idx].mean(1), color=color_mean)
 
         if rug:
-            lb = np.min(y_mins)
-            ax.plot(X[:, var], np.full_like(X[:, var], lb), "k|")
+            lower = np.min(y_mins)
+            ax.plot(X[:, var], np.full_like(X[:, var], lower), "k|")
 
-    fig.text(-0.05, 0.5, Y_label, va="center", rotation="vertical", fontsize=15)
+    fig.text(-0.05, 0.5, y_label, va="center", rotation="vertical", fontsize=15)
     return axes
 
 
@@ -344,22 +344,22 @@ def plot_variable_importance(
         labels = X.columns
         X = X.values
 
-    VI = idata.sample_stats["variable_inclusion"].mean(("chain", "draw")).values
+    var_imp = idata.sample_stats["variable_inclusion"].mean(("chain", "draw")).values
     if labels is None:
-        labels = np.arange(len(VI))
+        labels = np.arange(len(var_imp))
     else:
         labels = np.array(labels)
 
-    ticks = np.arange(len(VI), dtype=int)
-    idxs = np.argsort(VI)
+    ticks = np.arange(len(var_imp), dtype=int)
+    idxs = np.argsort(var_imp)
     subsets = [idxs[:-i] for i in range(1, len(idxs))]
     subsets.append(None)
 
     if sort_vars:
         indices = idxs[::-1]
     else:
-        indices = np.arange(len(VI))
-    axes[0].plot((VI / VI.sum())[indices], "o-")
+        indices = np.arange(len(var_imp))
+    axes[0].plot((var_imp / var_imp.sum())[indices], "o-")
     axes[0].set_xticks(ticks)
     axes[0].set_xticklabels(labels[indices])
     axes[0].set_xlabel("covariables")
@@ -367,8 +367,8 @@ def plot_variable_importance(
 
     predicted_all = predict(idata, rng, X=X, size=samples, excluded=None)
 
-    EV_mean = np.zeros(len(VI))
-    EV_hdi = np.zeros((len(VI), 2))
+    ev_mean = np.zeros(len(var_imp))
+    ev_hdi = np.zeros((len(var_imp), 2))
     for idx, subset in enumerate(subsets):
         predicted_subset = predict(idata, rng, X=X, size=samples, excluded=subset)
         pearson = np.zeros(samples)
@@ -376,10 +376,10 @@ def plot_variable_importance(
             pearson[j] = (
                 pearsonr(predicted_all[j].flatten(), predicted_subset[j].flatten())[0]
             ) ** 2
-        EV_mean[idx] = np.mean(pearson)
-        EV_hdi[idx] = az.hdi(pearson)
+        ev_mean[idx] = np.mean(pearson)
+        ev_hdi[idx] = az.hdi(pearson)
 
-    axes[1].errorbar(ticks, EV_mean, np.array((EV_mean - EV_hdi[:, 0], EV_hdi[:, 1] - EV_mean)))
+    axes[1].errorbar(ticks, ev_mean, np.array((ev_mean - ev_hdi[:, 0], ev_hdi[:, 1] - ev_mean)))
 
     axes[1].set_xticks(ticks)
     axes[1].set_xticklabels(ticks + 1)
@@ -387,7 +387,7 @@ def plot_variable_importance(
     axes[1].set_ylabel("R²", rotation=0, labelpad=12)
     axes[1].set_ylim(0, 1)
 
-    axes[0].set_xlim(-0.5, len(VI) - 0.5)
-    axes[1].set_xlim(-0.5, len(VI) - 0.5)
+    axes[0].set_xlim(-0.5, len(var_imp) - 0.5)
+    axes[1].set_xlim(-0.5, len(var_imp) - 0.5)
 
     return idxs[::-1], axes
