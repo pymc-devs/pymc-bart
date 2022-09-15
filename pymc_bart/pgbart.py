@@ -21,12 +21,13 @@ import aesara
 import numpy as np
 
 from aesara import function as aesara_function
-
-from pymc.aesaraf import inputvars, join_nonshared_inputs, make_shared_replacements
-from pymc_bart.bart import BARTRV
-from pymc_bart.tree import LeafNode, SplitNode, Tree
 from pymc.model import modelcontext
 from pymc.step_methods.arraystep import ArrayStepShared, Competence
+from pymc.aesaraf import inputvars, join_nonshared_inputs, make_shared_replacements
+
+from pymc_bart.bart import BARTRV
+from pymc_bart.tree import LeafNode, SplitNode, Tree
+
 
 _log = logging.getLogger("pymc")
 
@@ -56,7 +57,7 @@ class PGBART(ArrayStepShared):
 
     def __init__(
         self,
-        vars=None,
+        vars=None,  # pylint: disable=redefined-builtin
         num_particles=20,
         batch="auto",
         model=None,
@@ -85,8 +86,8 @@ class PGBART(ArrayStepShared):
         self.alpha_vec = self.bart.split_prior
         self.init_mean = self.Y.mean()
         # if data is binary
-        Y_unique = np.unique(self.Y)
-        if Y_unique.size == 2 and np.all(Y_unique == [0, 1]):
+        y_unique = np.unique(self.Y)
+        if y_unique.size == 2 and np.all(y_unique == [0, 1]):
             mu_std = 3 / self.m**0.5
         # maybe we need to check for count data
         else:
@@ -99,7 +100,7 @@ class PGBART(ArrayStepShared):
         self.sum_trees = np.full((self.shape, self.Y.shape[0]), self.init_mean).astype(
             aesara.config.floatX
         )
-
+        self.sum_trees_noi = self.sum_trees - (self.init_mean / self.m)
         self.a_tree = Tree.init_tree(
             leaf_node_value=self.init_mean / self.m,
             idx_data_points=np.arange(self.num_observations, dtype="int32"),
@@ -213,10 +214,10 @@ class PGBART(ArrayStepShared):
         log_w = np.array([p.log_weight for p in particles])
         log_w_max = log_w.max()
         log_w_ = log_w - log_w_max
-        w_ = np.exp(log_w_)
-        w_sum = w_.sum()
+        wei = np.exp(log_w_)
+        w_sum = wei.sum()
         w_t = log_w_max + np.log(w_sum) - self.log_num_particles
-        normalized_weights = w_ / w_sum
+        normalized_weights = wei / w_sum
         # stabilize weights to avoid assigning exactly zero probability to a particle
         normalized_weights += 1e-12
 
@@ -260,9 +261,9 @@ class PGBART(ArrayStepShared):
         for _ in self.indices:
             pt = ParticleTree(self.a_tree)
             if self.tune:
-                pt.kf = self.uniform.random()
+                pt.kfactor = self.uniform.random()
             else:
-                pt.kf = p0.kf
+                pt.kfactor = p0.kfactor
             particles.append(pt)
 
         return np.array(particles)
@@ -301,7 +302,7 @@ class ParticleTree:
         self.expansion_nodes = [0]
         self.log_weight = 0
         self.old_likelihood_logp = 0
-        self.kf = 0.75
+        self.kfactor = 0.75
 
     def sample_tree(
         self,
@@ -332,7 +333,7 @@ class ParticleTree:
                     sum_trees,
                     m,
                     normal,
-                    self.kf,
+                    self.kfactor,
                     shape,
                 )
                 if index_selected_predictor is not None:
@@ -352,7 +353,7 @@ class ParticleTree:
                     sum_trees[:, idx_data_points],
                     m,
                     normal,
-                    self.kf,
+                    self.kfactor,
                     shape,
                 )
                 leaf.value = node_value
@@ -369,10 +370,11 @@ class SampleSplittingVariable:
         self.enu = list(enumerate(np.cumsum(alpha_vec / alpha_vec.sum())))
 
     def rvs(self):
-        r = np.random.random()
-        for i, v in self.enu:
-            if r <= v:
+        rnd = np.random.random()
+        for i, val in self.enu:
+            if rnd <= val:
                 return i
+        return self.enu[-1]
 
 
 def compute_prior_probability(alpha):
@@ -412,7 +414,7 @@ def grow_tree(
     sum_trees,
     m,
     normal,
-    kf,
+    kfactor,
     shape,
 ):
     current_node = tree.get_node(index_leaf_node)
@@ -423,8 +425,9 @@ def grow_tree(
     available_splitting_values = X[idx_data_points, selected_predictor]
     split_value = get_split_value(available_splitting_values, idx_data_points, missing_data)
 
-    if split_value is not None:
-
+    if split_value is None:
+        index_selected_predictor = None
+    else:
         new_idx_data_points = get_new_idx_data_points(
             split_value, idx_data_points, selected_predictor, X
         )
@@ -440,7 +443,7 @@ def grow_tree(
                 sum_trees[:, idx_data_point],
                 m,
                 normal,
-                kf,
+                kfactor,
                 shape,
             )
 
@@ -463,7 +466,7 @@ def grow_tree(
         tree.set_node(new_nodes[0].index, new_nodes[0])
         tree.set_node(new_nodes[1].index, new_nodes[1])
 
-        return index_selected_predictor
+    return index_selected_predictor
 
 
 def get_new_idx_data_points(split_value, idx_data_points, selected_predictor, X):
@@ -483,44 +486,45 @@ def get_split_value(available_splitting_values, idx_data_points, missing_data):
             ~np.isnan(available_splitting_values)
         ]
 
+    split_value = None
     if available_splitting_values.size > 0:
         idx_selected_splitting_values = discrete_uniform_sampler(len(available_splitting_values))
         split_value = available_splitting_values[idx_selected_splitting_values]
 
-        return split_value
+    return split_value
 
 
-def draw_leaf_value(Y_mu_pred, m, normal, kf, shape):
+def draw_leaf_value(y_mu_pred, m, normal, kfactor, shape):
     """Draw Gaussian distributed leaf values."""
-    if Y_mu_pred.size == 0:
+    if y_mu_pred.size == 0:
         return np.zeros(shape)
     else:
-        norm = normal.random() * kf
-        if Y_mu_pred.size == 1:
-            mu_mean = np.full(shape, Y_mu_pred.item() / m)
+        norm = normal.random() * kfactor
+        if y_mu_pred.size == 1:
+            mu_mean = np.full(shape, y_mu_pred.item() / m)
         else:
-            mu_mean = fast_mean(Y_mu_pred) / m
+            mu_mean = fast_mean(y_mu_pred) / m
 
         draw = norm + mu_mean
         return draw
 
 
 @njit
-def fast_mean(a):
+def fast_mean(ari):
     """Use Numba to speed up the computation of the mean."""
 
-    if a.ndim == 1:
-        count = a.shape[0]
+    if ari.ndim == 1:
+        count = ari.shape[0]
         suma = 0
         for i in range(count):
-            suma += a[i]
+            suma += ari[i]
         return suma / count
-    elif a.ndim == 2:
-        res = np.zeros(a.shape[0])
-        count = a.shape[1]
-        for j in range(a.shape[0]):
+    else:
+        res = np.zeros(ari.shape[0])
+        count = ari.shape[1]
+        for j in range(ari.shape[0]):
             for i in range(count):
-                res[j] += a[j, i]
+                res[j] += ari[j, i]
         return res / count
 
 
@@ -605,24 +609,24 @@ def inverse_cdf(single_uniform, normalized_weights):
 
     Returns
     -------
-    A: ndarray
+    new_indices: ndarray
         a vector of indices in range 2, ..., len(normalized_weights)+2
 
     Note: adapted from https://github.com/nchopin/particles
     """
-    j = 0
-    s = normalized_weights[0]
-    M = single_uniform.shape[0]
-    A = np.empty(M, dtype=np.int64)
-    for n in range(M):
-        while single_uniform[n] > s:
-            j += 1
-            s += normalized_weights[j]
-        A[n] = j
-    return A
+    idx = 0
+    a_weight = normalized_weights[0]
+    sul = len(single_uniform)
+    new_indices = np.empty(sul, dtype=np.int64)
+    for i in range(sul):
+        while single_uniform[i] > a_weight:
+            idx += 1
+            a_weight += normalized_weights[idx]
+        new_indices[i] = idx
+    return new_indices
 
 
-def logp(point, out_vars, vars, shared):
+def logp(point, out_vars, vars, shared):  # pylint: disable=redefined-builtin
     """Compile Aesara function of the model and the input and output variables.
 
     Parameters
@@ -635,6 +639,6 @@ def logp(point, out_vars, vars, shared):
         containing :class:`aesara.tensor.Tensor` for depended shared data
     """
     out_list, inarray0 = join_nonshared_inputs(point, out_vars, vars, shared)
-    f = aesara_function([inarray0], out_list[0])
-    f.trust_input = True
-    return f
+    function = aesara_function([inarray0], out_list[0])
+    function.trust_input = True
+    return function

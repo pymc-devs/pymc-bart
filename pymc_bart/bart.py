@@ -1,3 +1,5 @@
+# pylint: disable=unused-argument
+# pylint: disable=arguments-differ
 #   Copyright 2022 The PyMC Developers
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +84,7 @@ class BART(NoDistribution):
         **kwargs,
     ):
 
-        X, Y = preprocess_XY(X, Y)
+        X, Y = preprocess_xy(X, Y)
 
         if split_prior is None:
             split_prior = np.ones(X.shape[1])
@@ -116,7 +118,7 @@ class BART(NoDistribution):
     def dist(cls, *params, **kwargs):
         return super().dist(params, **kwargs)
 
-    def logp(x, *inputs):
+    def logp(self, x, *inputs):
         """Calculate log probability.
 
         Parameters
@@ -136,7 +138,7 @@ class BART(NoDistribution):
         return mean
 
 
-def preprocess_XY(X, Y):
+def preprocess_xy(X, Y):
     if isinstance(Y, (Series, DataFrame)):
         Y = Y.to_numpy()
     if isinstance(X, (Series, DataFrame)):
@@ -150,4 +152,4 @@ def preprocess_XY(X, Y):
 def logp(op, value_var, *dist_params, **kwargs):
     _dist_params = dist_params[3:]
     value_var = value_var[0]
-    return BART.logp(value_var, *_dist_params)
+    return BART.logp(value_var, *_dist_params)  # pylint: disable=no-value-for-parameter

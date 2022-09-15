@@ -11,7 +11,7 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-
+import pymc as pm
 
 from pymc_bart.bart import BART
 from pymc_bart.pgbart import PGBART
@@ -20,6 +20,5 @@ from pymc_bart.utils import plot_dependence, plot_variable_importance, predict
 __all__ = ["BART", "PGBART"]
 __version__ = "0.0.3"
 
-import pymc as pm
 
 pm.STEP_METHODS = list(pm.STEP_METHODS) + [PGBART]
