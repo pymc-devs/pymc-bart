@@ -57,7 +57,7 @@ class PGBART(ArrayStepShared):
 
     def __init__(
         self,
-        vars=None,  #pylint: disable=redefined-builtin
+        vars=None,  # pylint: disable=redefined-builtin
         num_particles=20,
         batch="auto",
         model=None,
@@ -425,7 +425,6 @@ def grow_tree(
     available_splitting_values = X[idx_data_points, selected_predictor]
     split_value = get_split_value(available_splitting_values, idx_data_points, missing_data)
 
-
     if split_value is None:
         index_selected_predictor = None
     else:
@@ -627,7 +626,7 @@ def inverse_cdf(single_uniform, normalized_weights):
     return new_indices
 
 
-def logp(point, out_vars, vars, shared):  #pylint: disable=redefined-builtin
+def logp(point, out_vars, vars, shared):  # pylint: disable=redefined-builtin
     """Compile Aesara function of the model and the input and output variables.
 
     Parameters
