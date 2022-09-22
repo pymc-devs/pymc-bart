@@ -48,6 +48,19 @@ extensions = [
     "nbsphinx",
 ]
 
+external_docs = ["examples/BART_introduction.ipynb", "examples/references.bib"]
+for doc in external_docs:
+    if os.path.exists(doc):
+        os.remove(doc)
+
+os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/case_studies/BART_introduction.ipynb -P examples")
+os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/references.bib -P examples")
+
+# bibtex config
+bibtex_bibfiles = ["references.bib"]
+bibtex_default_style = "unsrt"
+bibtex_reference_style = "author_year"
+
 nbsphinx_execute = "never"
 
 # Add any paths that contain templates here, relative to this directory.
@@ -56,8 +69,7 @@ nbsphinx_execute = "never"
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
-source_suffix = ".rst"
+source_suffix = ['.rst', '.md']
 
 # The master toctree document.
 master_doc = "index"
