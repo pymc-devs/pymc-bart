@@ -3,9 +3,10 @@ import pymc as pm
 import pytest
 from numpy.random import RandomState
 from numpy.testing import assert_almost_equal, assert_array_equal
-from pymc.tests.test_distributions_moments import assert_moment_is_expected
+from pymc.tests.distributions.util import assert_moment_is_expected
 
 import pymc_bart as pmb
+
 
 def test_split_node():
     split_node = pmb.tree.SplitNode(index=5, idx_split_variable=2, split_value=3.0)
