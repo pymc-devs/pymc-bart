@@ -21,7 +21,7 @@ from aeppl.logprob import _logprob
 from aesara.tensor.random.op import RandomVariable
 from pandas import DataFrame, Series
 
-from pymc.distributions.distribution import NoDistribution, _moment
+from pymc.distributions.distribution import Distribution, _moment
 
 __all__ = ["BART"]
 
@@ -50,7 +50,7 @@ class BARTRV(RandomVariable):
 bart = BARTRV()
 
 
-class BART(NoDistribution):
+class BART(Distribution):
     """
     Bayesian Additive Regression Tree distribution.
 
@@ -104,7 +104,7 @@ class BART(NoDistribution):
             ),
         )()
 
-        NoDistribution.register(BARTRV)
+        Distribution.register(BARTRV)
 
         @_moment.register(BARTRV)
         def get_moment(rv, size, *rv_inputs):
