@@ -36,19 +36,31 @@ class Tree:
         of the tree itself.
     idx_leaf_nodes : list
         List with the index of the leaf nodes of the tree.
-    num_observations : int
-        Number of observations used to fit BART.
-    m : int
-        Number of trees
+    output: array
+        Array of shape number of observations, shape
 
     Parameters
     ----------
-    num_observations : int, optional
+    leaf_node_value : int or float
+    idx_data_points : array of integers
+    num_observations : integer
+    shape : int
     """
 
-    def __init__(self, num_observations=0, shape=1):
-        self.tree_structure = {}
-        self.idx_leaf_nodes = []
+    __slots__ = (
+        "tree_structure",
+        "idx_leaf_nodes",
+        "output",
+        "leaf_node_value",
+        "idx_data_points",
+        "shape",
+    )
+
+    def __init__(self, leaf_node_value, idx_data_points, num_observations, shape):
+        self.tree_structure = {
+            0: LeafNode(index=0, value=leaf_node_value, idx_data_points=idx_data_points)
+        }
+        self.idx_leaf_nodes = [0]
         self.output = np.zeros((num_observations, shape)).astype(aesara.config.floatX).squeeze()
 
     def __getitem__(self, index):
@@ -169,26 +181,10 @@ class Tree:
         else:
             leaf_values.append(current_node.value)
 
-    @staticmethod
-    def init_tree(leaf_node_value, idx_data_points, shape):
-        """
-        Initialize tree.
-
-        Parameters
-        ----------
-        leaf_node_value
-        idx_data_points
-
-        Returns
-        -------
-        tree
-        """
-        new_tree = Tree(len(idx_data_points), shape)
-        new_tree[0] = LeafNode(index=0, value=leaf_node_value, idx_data_points=idx_data_points)
-        return new_tree
-
 
 class BaseNode:
+    __slots__ = "index", "depth"
+
     def __init__(self, index):
         self.index = index
         self.depth = int(math.floor(math.log(index + 1, 2)))
@@ -204,6 +200,8 @@ class BaseNode:
 
 
 class SplitNode(BaseNode):
+    __slots__ = "index", "idx_split_variable", "split_value"
+
     def __init__(self, index, idx_split_variable, split_value):
         super().__init__(index)
 
@@ -212,6 +210,8 @@ class SplitNode(BaseNode):
 
 
 class LeafNode(BaseNode):
+    __slots__ = "index", "value", "idx_data_points"
+
     def __init__(self, index, value, idx_data_points):
         super().__init__(index)
         self.value = value

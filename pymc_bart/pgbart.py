@@ -101,9 +101,10 @@ class PGBART(ArrayStepShared):
             aesara.config.floatX
         )
         self.sum_trees_noi = self.sum_trees - (self.init_mean / self.m)
-        self.a_tree = Tree.init_tree(
+        self.a_tree = Tree(
             leaf_node_value=self.init_mean / self.m,
             idx_data_points=np.arange(self.num_observations, dtype="int32"),
+            num_observations=self.num_observations,
             shape=self.shape,
         )
         self.normal = NormalSampler(mu_std, self.shape)
@@ -296,6 +297,8 @@ class PGBART(ArrayStepShared):
 
 class ParticleTree:
     """Particle tree."""
+
+    __slots__ = "tree", "expansion_nodes", "log_weight", "old_likelihood_logp", "kfactor"
 
     def __init__(self, tree):
         self.tree = tree.copy()  # keeps the tree that we care at the moment
