@@ -34,7 +34,6 @@ class BARTRV(RandomVariable):
     ndims_params = [2, 1, 0, 0, 1]
     dtype = "floatX"
     _print_name = ("BART", "\\operatorname{BART}")
-    all_trees = None
 
     def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):
         return (self.X.shape[0],)
