@@ -52,8 +52,6 @@ class Tree:
         "idx_leaf_nodes",
         "output",
         "leaf_node_value",
-        "idx_data_points",
-        "shape",
     )
 
     def __init__(self, leaf_node_value, idx_data_points, num_observations, shape):
@@ -200,7 +198,7 @@ class BaseNode:
 
 
 class SplitNode(BaseNode):
-    __slots__ = "index", "idx_split_variable", "split_value"
+    __slots__ = "idx_split_variable", "split_value"
 
     def __init__(self, index, idx_split_variable, split_value):
         super().__init__(index)
@@ -210,7 +208,7 @@ class SplitNode(BaseNode):
 
 
 class LeafNode(BaseNode):
-    __slots__ = "index", "value", "idx_data_points"
+    __slots__ = "value", "idx_data_points"
 
     def __init__(self, index, value, idx_data_points):
         super().__init__(index)

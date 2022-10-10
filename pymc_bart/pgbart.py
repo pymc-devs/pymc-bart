@@ -123,6 +123,7 @@ class PGBART(ArrayStepShared):
             else:
                 self.batch = (batch, batch)
 
+        self.num_particles = num_particles
         self.log_num_particles = np.log(num_particles)
         self.indices = list(range(2, num_particles))
         self.len_indices = len(self.indices)
@@ -185,14 +186,10 @@ class PGBART(ArrayStepShared):
 
             _, normalized_weights = self.normalize(particles)
             # Get the new tree and update
-            new_particle = np.random.choice(particles, p=normalized_weights)
-            new_tree = new_particle.tree
-
-            new_particle.log_weight = new_particle.old_likelihood_logp - self.log_num_particles
+            new_particle, new_tree = self.get_particle_tree(particles, normalized_weights)
             self.all_particles[tree_id] = new_particle
             self.sum_trees = self.sum_trees_noi + new_tree._predict()
             self.all_trees[tree_id] = new_tree.trim()
-
             used_variates = new_tree.get_split_variables()
 
             if self.tune:
@@ -230,7 +227,7 @@ class PGBART(ArrayStepShared):
 
         Ensure particles are copied only if needed.
         """
-        new_indices = systematic(normalized_weights)
+        new_indices = self.systematic(normalized_weights)
         seen = []
         new_particles = []
         for idx in new_indices:
@@ -243,6 +240,29 @@ class PGBART(ArrayStepShared):
         particles[2:] = new_particles
 
         return particles
+
+    def get_particle_tree(self, particles, normalized_weights):
+        """
+        Sample a new particle, new tree and update log_weight
+        """
+        new_index = self.systematic(normalized_weights)[
+            discrete_uniform_sampler(self.num_particles)
+        ]
+        new_particle = particles[new_index - 2]
+        new_particle.log_weight = new_particle.old_likelihood_logp - self.log_num_particles
+        return new_particle, new_particle.tree
+
+    def systematic(self, normalized_weights):
+        """
+        Systematic resampling.
+
+        Return indices in the range 2, ..., len(normalized_weights)+2
+
+        Note: adapted from https://github.com/nchopin/particles
+        """
+        lnw = len(normalized_weights)
+        single_uniform = (self.uniform.random() + np.arange(lnw)) / lnw
+        return inverse_cdf(single_uniform, normalized_weights) + 2
 
     def init_particles(self, tree_id: int) -> np.ndarray:
         """Initialize particles."""
@@ -582,19 +602,6 @@ class UniformSampler:
         self.cache = np.random.uniform(
             self.lower_bound, self.upper_bound, size=(self.shape, self.size)
         )
-
-
-def systematic(normalized_weights):
-    """
-    Systematic resampling.
-
-    Return indices in the range 2, ..., len(normalized_weights)+2
-
-    Note: adapted from https://github.com/nchopin/particles
-    """
-    lnw = len(normalized_weights)
-    single_uniform = (np.random.rand(1) + np.arange(lnw)) / lnw
-    return inverse_cdf(single_uniform, normalized_weights) + 2
 
 
 @njit
