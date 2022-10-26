@@ -197,6 +197,7 @@ class PGBART(ArrayStepShared):
                 for index in used_variates:
                     self.alpha_vec[index] += 1
             else:
+                self.bart.all_trees.append(new_tree)
                 for index in used_variates:
                     variable_inclusion[index] += 1
 

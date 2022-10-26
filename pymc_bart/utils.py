@@ -50,6 +50,33 @@ def predict(idata, rng, X, size=None, excluded=None):
     return pred
 
 
+def predict_list(stacked_trees, X):
+    """
+    Generate samples from the BART-posterior.
+
+    Parameters
+    ----------
+    idata : InferenceData
+        InferenceData containing a collection of BART_trees in sample_stats group
+    X : array-like
+        A covariate matrix. Use the same used to fit BART for in-sample predictions or a new one for
+        out-of-sample predictions.
+    """
+    idx = np.random.randint(len(stacked_trees))
+    try:
+        X = X.eval()
+    except:
+        pass
+    shape = stacked_trees[0, 0].predict(X[0]).size
+
+    pred = np.zeros((1, X.shape[0], shape))
+
+    for p in pred:
+        for tree in stacked_trees[idx]:
+            p += np.array([tree.predict(x) for x in X])
+    return pred.squeeze()
+
+
 def plot_dependence(
     idata,
     X,

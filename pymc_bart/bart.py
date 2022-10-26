@@ -19,9 +19,13 @@ import numpy as np
 
 from aeppl.logprob import _logprob
 from aesara.tensor.random.op import RandomVariable
+from aesara.tensor.sharedvar import TensorSharedVariable
 from pandas import DataFrame, Series
 
 from pymc.distributions.distribution import Distribution, _moment
+
+from multiprocessing import Manager
+from .utils import predict_list
 
 __all__ = ["BART"]
 
@@ -34,16 +38,20 @@ class BARTRV(RandomVariable):
     ndims_params = [2, 1, 0, 0, 1]
     dtype = "floatX"
     _print_name = ("BART", "\\operatorname{BART}")
+    all_trees = None
 
     def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):
         return (self.X.shape[0],)
 
     @classmethod
-    def rng_fn(cls, rng, X, Y, m, alpha, split_prior, size):
-        if size is not None:
-            return np.full((size[0], cls.Y.shape[0]), cls.Y.mean())
+    def rng_fn(cls, rng=None, X=None, Y=None, m=None, alpha=None, split_prior=None, size=None):
+        if not cls.all_trees:
+            if size is not None:
+                return np.full((size[0], cls.Y[0]), cls.Y.mean())
+            else:
+                return np.full(cls.Y.shape[0], cls.Y.mean())
         else:
-            return np.full(cls.Y.shape[0], cls.Y.mean())
+            return predict_list(np.array(cls.all_trees).reshape(-1, cls.m), cls.X_shared)
 
 
 bart = BARTRV()
@@ -82,6 +90,9 @@ class BART(Distribution):
         split_prior=None,
         **kwargs,
     ):
+        manager = Manager()
+        cls.all_trees = manager.list()
+        cls.X_shared = X
 
         X, Y = preprocess_xy(X, Y)
 
@@ -93,6 +104,8 @@ class BART(Distribution):
             (BARTRV,),
             dict(
                 name="BART",
+                all_trees=cls.all_trees,
+                X_shared=cls.X_shared,
                 inplace=False,
                 initval=Y.mean(),
                 X=X,
@@ -142,6 +155,8 @@ def preprocess_xy(X, Y):
         Y = Y.to_numpy()
     if isinstance(X, (Series, DataFrame)):
         X = X.to_numpy()
+    if isinstance(X, TensorSharedVariable):
+        X = X.eval()
     Y = Y.astype(float)
     X = X.astype(float)
     return X, Y
