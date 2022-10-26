@@ -41,7 +41,7 @@ class PGBART(ArrayStepShared):
     vars: list
         List of value variables for sampler
     num_particles : int
-        Number of particles for the conditional SMC sampler. Defaults to 40
+        Number of particles for the conditional SMC sampler. Defaults to 20
     batch : int or tuple
         Number of trees fitted per step. Defaults to  "auto", which is the 10% of the `m` trees
         during tuning and after tuning. If a tuple is passed the first element is the batch size
