@@ -17,13 +17,16 @@ import logging
 from copy import deepcopy
 from numba import njit
 
-import aesara
 import numpy as np
 
 from aesara import function as aesara_function
+from aesara import config
+from aesara.tensor.sharedvar import TensorSharedVariable
+
 from pymc.model import modelcontext
 from pymc.step_methods.arraystep import ArrayStepShared, Competence
 from pymc.aesaraf import inputvars, join_nonshared_inputs, make_shared_replacements
+
 
 from pymc_bart.bart import BARTRV
 from pymc_bart.tree import LeafNode, SplitNode, Tree
@@ -72,7 +75,11 @@ class PGBART(ArrayStepShared):
         value_bart = vars[0]
         self.bart = model.values_to_rvs[value_bart].owner.op
 
-        self.X = self.bart.X
+        if isinstance(self.bart.X, TensorSharedVariable):
+            self.X = self.bart.X.eval()
+        else:
+            self.X = self.bart.X
+
         self.Y = self.bart.Y
         self.missing_data = np.any(np.isnan(self.X))
         self.m = self.bart.m
@@ -83,7 +90,11 @@ class PGBART(ArrayStepShared):
         else:
             self.shape = shape[0]
 
-        self.alpha_vec = self.bart.split_prior
+        # self.alpha_vec = self.bart.split_prior
+        if self.bart.split_prior:
+            self.alpha_vec = self.bart.split_prior
+        else:
+            self.alpha_vec = np.ones(self.X.shape[1])
         self.init_mean = self.Y.mean()
         # if data is binary
         y_unique = np.unique(self.Y)
@@ -98,7 +109,7 @@ class PGBART(ArrayStepShared):
         self.available_predictors = list(range(self.num_variates))
 
         self.sum_trees = np.full((self.shape, self.Y.shape[0]), self.init_mean).astype(
-            aesara.config.floatX
+            config.floatX
         )
         self.sum_trees_noi = self.sum_trees - (self.init_mean / self.m)
         self.a_tree = Tree(

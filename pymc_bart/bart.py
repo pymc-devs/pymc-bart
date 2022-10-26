@@ -41,7 +41,11 @@ class BARTRV(RandomVariable):
     all_trees = None
 
     def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):
-        return (self.X.shape[0],)
+        if isinstance(self.X, TensorSharedVariable):
+            shape = self.X.shape[0].eval()
+        else:
+            shape = self.X.shape[0]
+        return (shape,)
 
     @classmethod
     def rng_fn(cls, rng=None, X=None, Y=None, m=None, alpha=None, split_prior=None, size=None):
@@ -51,7 +55,7 @@ class BARTRV(RandomVariable):
             else:
                 return np.full(cls.Y.shape[0], cls.Y.mean())
         else:
-            return predict_list(np.array(cls.all_trees).reshape(-1, cls.m), cls.X_shared)
+            return predict_list(cls.all_trees, cls.X, cls.m)
 
 
 bart = BARTRV()
@@ -77,7 +81,7 @@ class BART(Distribution):
     split_prior : array-like
         Each element of split_prior should be in the [0, 1] interval and the elements should sum to
         1. Otherwise they will be normalized.
-        Defaults to None, i.e. all covariates have the same prior probability to be selected.
+        Defaults to 0, i.e. all covariates have the same prior probability to be selected.
     """
 
     def __new__(
@@ -92,12 +96,12 @@ class BART(Distribution):
     ):
         manager = Manager()
         cls.all_trees = manager.list()
-        cls.X_shared = X
 
+        # X, Y, cls.X_shared = preprocess_xy(X, Y)
         X, Y = preprocess_xy(X, Y)
 
         if split_prior is None:
-            split_prior = np.ones(X.shape[1])
+            split_prior = []
 
         bart_op = type(
             f"BART_{name}",
@@ -105,7 +109,7 @@ class BART(Distribution):
             dict(
                 name="BART",
                 all_trees=cls.all_trees,
-                X_shared=cls.X_shared,
+                # X_shared=cls.X_shared,
                 inplace=False,
                 initval=Y.mean(),
                 X=X,
@@ -155,10 +159,10 @@ def preprocess_xy(X, Y):
         Y = Y.to_numpy()
     if isinstance(X, (Series, DataFrame)):
         X = X.to_numpy()
-    if isinstance(X, TensorSharedVariable):
-        X = X.eval()
+
     Y = Y.astype(float)
     X = X.astype(float)
+
     return X, Y
 
 

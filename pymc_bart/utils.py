@@ -4,6 +4,7 @@ import arviz as az
 import matplotlib.pyplot as plt
 import numpy as np
 
+from aesara.tensor.sharedvar import TensorSharedVariable
 from numpy.random import RandomState
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
@@ -50,7 +51,7 @@ def predict(idata, rng, X, size=None, excluded=None):
     return pred
 
 
-def predict_list(stacked_trees, X):
+def predict_list(all_trees, X, m):
     """
     Generate samples from the BART-posterior.
 
@@ -62,11 +63,11 @@ def predict_list(stacked_trees, X):
         A covariate matrix. Use the same used to fit BART for in-sample predictions or a new one for
         out-of-sample predictions.
     """
+    stacked_trees = np.array(all_trees).reshape(-1, m)
     idx = np.random.randint(len(stacked_trees))
-    try:
+    if isinstance(X, TensorSharedVariable):
         X = X.eval()
-    except:
-        pass
+
     shape = stacked_trees[0, 0].predict(X[0]).size
 
     pred = np.zeros((1, X.shape[0], shape))
