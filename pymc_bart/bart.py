@@ -52,7 +52,7 @@ class BARTRV(RandomVariable):
     def rng_fn(cls, rng=None, X=None, Y=None, m=None, alpha=None, split_prior=None, size=None):
         if not cls.all_trees:
             if size is not None:
-                return np.full((size[0], cls.Y[0]), cls.Y.mean())
+                return np.full((size[0], cls.Y.shape[0]), cls.Y.mean())
             else:
                 return np.full(cls.Y.shape[0], cls.Y.mean())
         else:
@@ -98,7 +98,6 @@ class BART(Distribution):
         manager = Manager()
         cls.all_trees = manager.list()
 
-        # X, Y, cls.X_shared = preprocess_xy(X, Y)
         X, Y = preprocess_xy(X, Y)
 
         if split_prior is None:
@@ -110,7 +109,6 @@ class BART(Distribution):
             dict(
                 name="BART",
                 all_trees=cls.all_trees,
-                # X_shared=cls.X_shared,
                 inplace=False,
                 initval=Y.mean(),
                 X=X,

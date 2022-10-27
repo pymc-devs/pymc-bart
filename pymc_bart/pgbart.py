@@ -275,7 +275,7 @@ class PGBART(ArrayStepShared):
         Note: adapted from https://github.com/nchopin/particles
         """
         lnw = len(normalized_weights)
-        single_uniform = (self.uniform.random() + np.arange(lnw)) / lnw
+        single_uniform = (self.uniform.random()[0] + np.arange(lnw)) / lnw
         return inverse_cdf(single_uniform, normalized_weights) + 2
 
     def init_particles(self, tree_id: int) -> np.ndarray:
