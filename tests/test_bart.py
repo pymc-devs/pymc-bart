@@ -70,13 +70,13 @@ def test_shared_variable():
         mu = pmb.BART("mu", data_X, Y, m=2)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y, shape=mu.shape)
-        idata = pm.sample(tune=100, draws=100, random_seed=3415)
+        idata = pm.sample(tune=100, draws=100, chains=2, random_seed=3415)
         ppc = pm.sample_posterior_predictive(idata)
         new_X = pm.set_data({"data_X": X[:3]})
         ppc2 = pm.sample_posterior_predictive(idata)
 
-    assert ppc.posterior_predictive["y"].shape == (4, 100, 348)
-    assert ppc2.posterior_predictive["y"].shape == (4, 100, 33)
+    assert ppc.posterior_predictive["y"].shape == (2, 100, 50)
+    assert ppc2.posterior_predictive["y"].shape == (2, 100, 3)
 
 
 class TestUtils:
