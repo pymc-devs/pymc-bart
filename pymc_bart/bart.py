@@ -26,7 +26,7 @@ from pandas import DataFrame, Series
 
 from pymc.distributions.distribution import Distribution, _moment
 
-from .utils import predict_list
+from .utils import sample_posterior
 
 __all__ = ["BART"]
 
@@ -56,7 +56,7 @@ class BARTRV(RandomVariable):
             else:
                 return np.full(cls.Y.shape[0], cls.Y.mean())
         else:
-            return predict_list(cls.all_trees, cls.X, cls.m)
+            return sample_posterior(cls.all_trees, cls.X)
 
 
 bart = BARTRV()

@@ -146,6 +146,7 @@ class PGBART(ArrayStepShared):
             self.a_tree.leaf_node_value = self.init_mean / self.m
             p = ParticleTree(self.a_tree)
             self.all_particles.append(p)
+        self.all_trees = np.array([p.tree for p in self.all_particles])
         super().__init__(vars, shared)
 
     def astep(self, _):
@@ -199,6 +200,7 @@ class PGBART(ArrayStepShared):
             new_particle, new_tree = self.get_particle_tree(particles, normalized_weights)
             self.all_particles[tree_id] = new_particle
             self.sum_trees = self.sum_trees_noi + new_tree._predict()
+            self.all_trees[tree_id] = new_tree.trim()
             used_variates = new_tree.get_split_variables()
 
             if self.tune:
@@ -206,9 +208,11 @@ class PGBART(ArrayStepShared):
                 for index in used_variates:
                     self.alpha_vec[index] += 1
             else:
-                self.bart.all_trees.append(new_tree.trim())
                 for index in used_variates:
                     variable_inclusion[index] += 1
+
+        if not self.tune:
+            self.bart.all_trees.append(self.all_trees)
 
         stats = {"variable_inclusion": variable_inclusion}
         return self.sum_trees, [stats]

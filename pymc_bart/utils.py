@@ -28,7 +28,7 @@ def predict(bartrv, rng, X, size=None, excluded=None):
     excluded : list
         indexes of the variables to exclude when computing predictions
     """
-    stacked_trees = np.array(bartrv.owner.op.all_trees).reshape(-1, bartrv.owner.op.m)
+    stacked_trees = bartrv.owner.op.all_trees
     if isinstance(X, Variable):
         X = X.eval()
 
@@ -42,7 +42,7 @@ def predict(bartrv, rng, X, size=None, excluded=None):
         flatten_size *= s
 
     idx = rng.randint(len(stacked_trees), size=flatten_size)
-    shape = stacked_trees[0, 0].predict(X[0]).size
+    shape = stacked_trees[0][0].predict(X[0]).size
 
     pred = np.zeros((flatten_size, X.shape[0], shape))
 
@@ -50,10 +50,10 @@ def predict(bartrv, rng, X, size=None, excluded=None):
         for tree in stacked_trees[idx[ind]]:
             p += np.array([tree.predict(x, excluded) for x in X])
     pred.reshape((*size, shape, -1))
-    return pred.squeeze()
+    return pred
 
 
-def predict_list(all_trees, X, m):
+def sample_posterior(all_trees, X):
     """
     Generate samples from the BART-posterior.
 
@@ -67,12 +67,12 @@ def predict_list(all_trees, X, m):
     m : int
         Number of trees
     """
-    stacked_trees = np.array(all_trees).reshape(-1, m)
+    stacked_trees = all_trees
     idx = np.random.randint(len(stacked_trees))
     if isinstance(X, Variable):
         X = X.eval()
 
-    shape = stacked_trees[0, 0].predict(X[0]).size
+    shape = stacked_trees[0][0].predict(X[0]).size
 
     pred = np.zeros((1, X.shape[0], shape))
 
