@@ -21,7 +21,7 @@ import numpy as np
 
 from aesara import function as aesara_function
 from aesara import config
-from aesara.tensor.sharedvar import TensorSharedVariable
+from aesara.tensor.var import Variable
 
 from pymc.model import modelcontext
 from pymc.step_methods.arraystep import ArrayStepShared, Competence
@@ -75,8 +75,8 @@ class PGBART(ArrayStepShared):
         value_bart = vars[0]
         self.bart = model.values_to_rvs[value_bart].owner.op
 
-        if isinstance(self.bart.X, TensorSharedVariable):
-            self.X = self.bart.X.get_value(borrow=False)
+        if isinstance(self.bart.X, Variable):
+            self.X = self.bart.X.eval()
         else:
             self.X = self.bart.X
 

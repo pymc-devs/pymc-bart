@@ -16,7 +16,7 @@ import math
 
 from copy import deepcopy
 
-import aesara
+from aesara import config
 import numpy as np
 
 
@@ -59,7 +59,7 @@ class Tree:
             0: LeafNode(index=0, value=leaf_node_value, idx_data_points=idx_data_points)
         }
         self.idx_leaf_nodes = [0]
-        self.output = np.zeros((num_observations, shape)).astype(aesara.config.floatX).squeeze()
+        self.output = np.zeros((num_observations, shape)).astype(config.floatX).squeeze()
 
     def __getitem__(self, index):
         return self.get_node(index)

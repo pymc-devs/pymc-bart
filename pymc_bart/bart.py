@@ -20,7 +20,8 @@ import numpy as np
 
 from aeppl.logprob import _logprob
 from aesara.tensor.random.op import RandomVariable
-from aesara.tensor.sharedvar import TensorSharedVariable
+from aesara.tensor.var import Variable
+
 from pandas import DataFrame, Series
 
 from pymc.distributions.distribution import Distribution, _moment
@@ -41,7 +42,7 @@ class BARTRV(RandomVariable):
     all_trees = None
 
     def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):
-        if isinstance(self.X, TensorSharedVariable):
+        if isinstance(self.X, Variable):
             shape = self.X.shape[0].eval()
         else:
             shape = self.X.shape[0]

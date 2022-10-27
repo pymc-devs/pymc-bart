@@ -4,7 +4,7 @@ import arviz as az
 import matplotlib.pyplot as plt
 import numpy as np
 
-from aesara.tensor.sharedvar import TensorSharedVariable
+from aesara.tensor.var import Variable
 from numpy.random import RandomState
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
@@ -29,8 +29,8 @@ def predict(bartrv, rng, X, size=None, excluded=None):
         indexes of the variables to exclude when computing predictions
     """
     stacked_trees = np.array(bartrv.owner.op.all_trees).reshape(-1, bartrv.owner.op.m)
-    if isinstance(X, TensorSharedVariable):
-        X = X.get_value(borrow=False)
+    if isinstance(X, Variable):
+        X = X.eval()
 
     if size is None:
         size = ()
@@ -50,7 +50,7 @@ def predict(bartrv, rng, X, size=None, excluded=None):
         for tree in stacked_trees[idx[ind]]:
             p += np.array([tree.predict(x, excluded) for x in X])
     pred.reshape((*size, shape, -1))
-    return pred
+    return pred.squeeze()
 
 
 def predict_list(all_trees, X, m):
@@ -69,8 +69,8 @@ def predict_list(all_trees, X, m):
     """
     stacked_trees = np.array(all_trees).reshape(-1, m)
     idx = np.random.randint(len(stacked_trees))
-    if isinstance(X, TensorSharedVariable):
-        X = X.get_value(borrow=False)
+    if isinstance(X, Variable):
+        X = X.eval()
 
     shape = stacked_trees[0, 0].predict(X[0]).size
 
@@ -181,8 +181,8 @@ def plot_dependence(
 
     rng = RandomState(seed=random_seed)
 
-    if isinstance(X, TensorSharedVariable):
-        X = X.get_value(borrow=False)
+    if isinstance(X, Variable):
+        X = X.eval()
 
     if hasattr(X, "columns") and hasattr(X, "values"):
         x_names = list(X.columns)
