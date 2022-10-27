@@ -56,7 +56,7 @@ class PGBART(ArrayStepShared):
     name = "pgbart"
     default_blocked = False
     generates_stats = True
-    stats_dtypes = [{"variable_inclusion": object, "bart_trees": object}]
+    stats_dtypes = [{"variable_inclusion": object}]
 
     def __init__(
         self,
@@ -76,7 +76,7 @@ class PGBART(ArrayStepShared):
         self.bart = model.values_to_rvs[value_bart].owner.op
 
         if isinstance(self.bart.X, TensorSharedVariable):
-            self.X = self.bart.X.eval()
+            self.X = self.bart.X.get_value(borrow=False)
         else:
             self.X = self.bart.X
 
@@ -146,7 +146,6 @@ class PGBART(ArrayStepShared):
             self.a_tree.leaf_node_value = self.init_mean / self.m
             p = ParticleTree(self.a_tree)
             self.all_particles.append(p)
-        self.all_trees = np.array([p.tree for p in self.all_particles])
         super().__init__(vars, shared)
 
     def astep(self, _):
@@ -200,7 +199,6 @@ class PGBART(ArrayStepShared):
             new_particle, new_tree = self.get_particle_tree(particles, normalized_weights)
             self.all_particles[tree_id] = new_particle
             self.sum_trees = self.sum_trees_noi + new_tree._predict()
-            self.all_trees[tree_id] = new_tree.trim()
             used_variates = new_tree.get_split_variables()
 
             if self.tune:
@@ -208,11 +206,11 @@ class PGBART(ArrayStepShared):
                 for index in used_variates:
                     self.alpha_vec[index] += 1
             else:
-                self.bart.all_trees.append(new_tree)
+                self.bart.all_trees.append(new_tree.trim())
                 for index in used_variates:
                     variable_inclusion[index] += 1
 
-        stats = {"variable_inclusion": variable_inclusion, "bart_trees": self.all_trees}
+        stats = {"variable_inclusion": variable_inclusion}
         return self.sum_trees, [stats]
 
     def normalize(self, particles):

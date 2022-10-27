@@ -57,16 +57,18 @@ def predict_list(all_trees, X, m):
 
     Parameters
     ----------
-    idata : InferenceData
-        InferenceData containing a collection of BART_trees in sample_stats group
+    all_trees : list
+        List of all trees sampled from a posterior
     X : array-like
         A covariate matrix. Use the same used to fit BART for in-sample predictions or a new one for
         out-of-sample predictions.
+    m : int
+        Number of trees
     """
     stacked_trees = np.array(all_trees).reshape(-1, m)
     idx = np.random.randint(len(stacked_trees))
     if isinstance(X, TensorSharedVariable):
-        X = X.eval()
+        X = X.get_value(borrow=False)
 
     shape = stacked_trees[0, 0].predict(X[0]).size
 

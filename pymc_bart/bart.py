@@ -14,6 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from multiprocessing import Manager
 import aesara.tensor as at
 import numpy as np
 
@@ -24,7 +25,6 @@ from pandas import DataFrame, Series
 
 from pymc.distributions.distribution import Distribution, _moment
 
-from multiprocessing import Manager
 from .utils import predict_list
 
 __all__ = ["BART"]
