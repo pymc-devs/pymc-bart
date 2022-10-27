@@ -11,14 +11,14 @@ from scipy.signal import savgol_filter
 from scipy.stats import pearsonr
 
 
-def predict(idata, rng, X, size=None, excluded=None):
+def predict(bartrv, rng, X, size=None, excluded=None):
     """
     Generate samples from the BART-posterior.
 
     Parameters
     ----------
-    idata : InferenceData
-        InferenceData containing a collection of BART_trees in sample_stats group
+    bartrv : BART Random Variable
+        BART variable once the model that include it has been fitted.
     rng: NumPy random generator
     X : array-like
         A covariate matrix. Use the same used to fit BART for in-sample predictions or a new one for
@@ -28,8 +28,10 @@ def predict(idata, rng, X, size=None, excluded=None):
     excluded : list
         indexes of the variables to exclude when computing predictions
     """
-    bart_trees = idata.sample_stats.bart_trees
-    stacked_trees = bart_trees.stack(trees=["chain", "draw"])
+    stacked_trees = np.array(bartrv.owner.op.all_trees).reshape(-1, bartrv.owner.op.m)
+    if isinstance(X, TensorSharedVariable):
+        X = X.get_value(borrow=False)
+
     if size is None:
         size = ()
     elif isinstance(size, int):
@@ -39,13 +41,13 @@ def predict(idata, rng, X, size=None, excluded=None):
     for s in size:
         flatten_size *= s
 
-    idx = rng.randint(len(stacked_trees.trees), size=flatten_size)
-    shape = stacked_trees.isel(trees=0).values[0].predict(X[0]).size
+    idx = rng.randint(len(stacked_trees), size=flatten_size)
+    shape = stacked_trees[0, 0].predict(X[0]).size
 
     pred = np.zeros((flatten_size, X.shape[0], shape))
 
     for ind, p in enumerate(pred):
-        for tree in stacked_trees.isel(trees=idx[ind]).values:
+        for tree in stacked_trees[idx[ind]]:
             p += np.array([tree.predict(x, excluded) for x in X])
     pred.reshape((*size, shape, -1))
     return pred
@@ -81,7 +83,7 @@ def predict_list(all_trees, X, m):
 
 
 def plot_dependence(
-    idata,
+    bartrv,
     X,
     Y=None,
     kind="pdp",
@@ -109,8 +111,8 @@ def plot_dependence(
 
     Parameters
     ----------
-    idata: InferenceData
-        InferenceData containing a collection of BART_trees in sample_stats group
+    bartrv : BART Random Variable
+        BART variable once the model that include it has been fitted.
     X : array-like
         The covariate matrix.
     Y : array-like
@@ -179,6 +181,9 @@ def plot_dependence(
 
     rng = RandomState(seed=random_seed)
 
+    if isinstance(X, TensorSharedVariable):
+        X = X.get_value(borrow=False)
+
     if hasattr(X, "columns") and hasattr(X, "values"):
         x_names = list(X.columns)
         X = X.values
@@ -237,13 +242,13 @@ def plot_dependence(
             for x_i in new_x_i:
                 new_X[:, indices_mi] = X[:, indices_mi]
                 new_X[:, i] = x_i
-                y_pred.append(np.mean(predict(idata, rng, X=new_X, size=samples), 1))
+                y_pred.append(np.mean(predict(bartrv, rng, X=new_X, size=samples), 1))
             new_x_target.append(new_x_i)
         else:
             for instance in instances:
                 new_X = X[idx_s]
                 new_X[:, indices_mi] = X[:, indices_mi][instance]
-                y_pred.append(np.mean(predict(idata, rng, X=new_X, size=samples), 0))
+                y_pred.append(np.mean(predict(bartrv, rng, X=new_X, size=samples), 0))
             new_x_target.append(new_X[:, i])
         y_mins.append(np.min(y_pred))
         new_y.append(np.array(y_pred).T)
@@ -340,7 +345,7 @@ def plot_dependence(
 
 
 def plot_variable_importance(
-    idata, X, labels=None, sort_vars=True, figsize=None, samples=100, random_seed=None
+    idata, bartrv, X, labels=None, sort_vars=True, figsize=None, samples=100, random_seed=None
 ):
     """
     Estimates variable importance from the BART-posterior.
@@ -349,6 +354,8 @@ def plot_variable_importance(
     ----------
     idata: InferenceData
         InferenceData containing a collection of BART_trees in sample_stats group
+    bartrv : BART Random Variable
+        BART variable once the model that include it has been fitted.
     X : array-like
         The covariate matrix.
     labels : list
@@ -395,12 +402,12 @@ def plot_variable_importance(
     axes[0].set_xlabel("covariables")
     axes[0].set_ylabel("importance")
 
-    predicted_all = predict(idata, rng, X=X, size=samples, excluded=None)
+    predicted_all = predict(bartrv, rng, X=X, size=samples, excluded=None)
 
     ev_mean = np.zeros(len(var_imp))
     ev_hdi = np.zeros((len(var_imp), 2))
     for idx, subset in enumerate(subsets):
-        predicted_subset = predict(idata, rng, X=X, size=samples, excluded=subset)
+        predicted_subset = predict(bartrv, rng, X=X, size=samples, excluded=subset)
         pearson = np.zeros(samples)
         for j in range(samples):
             pearson[j] = (
