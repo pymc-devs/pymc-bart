@@ -50,36 +50,7 @@ def _sample_posterior(all_trees, X, rng, size=None, excluded=None):
         for tree in stacked_trees[idx[ind]]:
             p += np.array([tree.predict(x, excluded) for x in X])
     pred.reshape((*size, shape, -1))
-    return pred  # .squeeze()
-
-
-# def sample_posterior(all_trees, X):
-#     """
-#     Generate samples from the BART-posterior.
-
-#     Parameters
-#     ----------
-#     all_trees : list
-#         List of all trees sampled from a posterior
-#     X : array-like
-#         A covariate matrix. Use the same used to fit BART for in-sample predictions or a new one for
-#         out-of-sample predictions.
-#     m : int
-#         Number of trees
-#     """
-#     stacked_trees = all_trees
-#     idx = np.random.randint(len(stacked_trees))
-#     if isinstance(X, Variable):
-#         X = X.eval()
-
-#     shape = stacked_trees[0][0].predict(X[0]).size
-
-#     pred = np.zeros((1, X.shape[0], shape))
-
-#     for p in pred:
-#         for tree in stacked_trees[idx]:
-#             p += np.array([tree.predict(x) for x in X])
-#     return pred.squeeze()
+    return pred
 
 
 def plot_dependence(
