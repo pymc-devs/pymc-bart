@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from aesara.tensor.var import Variable
-from numpy.random import RandomState
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
 from scipy.stats import pearsonr
