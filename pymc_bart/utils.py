@@ -5,30 +5,29 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from aesara.tensor.var import Variable
-from numpy.random import RandomState
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
 from scipy.stats import pearsonr
 
 
-def predict(bartrv, rng, X, size=None, excluded=None):
+def _sample_posterior(all_trees, X, rng, size=None, excluded=None):
     """
     Generate samples from the BART-posterior.
 
     Parameters
     ----------
-    bartrv : BART Random Variable
-        BART variable once the model that include it has been fitted.
-    rng: NumPy random generator
+    all_trees : list
+        List of all trees sampled from a posterior
     X : array-like
         A covariate matrix. Use the same used to fit BART for in-sample predictions or a new one for
         out-of-sample predictions.
+    rng : NumPy RandomGenerator
     size : int or tuple
         Number of samples.
     excluded : list
-        indexes of the variables to exclude when computing predictions
+        Indexes of the variables to exclude when computing predictions
     """
-    stacked_trees = bartrv.owner.op.all_trees
+    stacked_trees = all_trees
     if isinstance(X, Variable):
         X = X.eval()
 
@@ -41,7 +40,7 @@ def predict(bartrv, rng, X, size=None, excluded=None):
     for s in size:
         flatten_size *= s
 
-    idx = rng.randint(len(stacked_trees), size=flatten_size)
+    idx = rng.integers(0, len(stacked_trees), size=flatten_size)
     shape = stacked_trees[0][0].predict(X[0]).size
 
     pred = np.zeros((flatten_size, X.shape[0], shape))
@@ -51,35 +50,6 @@ def predict(bartrv, rng, X, size=None, excluded=None):
             p += np.array([tree.predict(x, excluded) for x in X])
     pred.reshape((*size, shape, -1))
     return pred
-
-
-def sample_posterior(all_trees, X):
-    """
-    Generate samples from the BART-posterior.
-
-    Parameters
-    ----------
-    all_trees : list
-        List of all trees sampled from a posterior
-    X : array-like
-        A covariate matrix. Use the same used to fit BART for in-sample predictions or a new one for
-        out-of-sample predictions.
-    m : int
-        Number of trees
-    """
-    stacked_trees = all_trees
-    idx = np.random.randint(len(stacked_trees))
-    if isinstance(X, Variable):
-        X = X.eval()
-
-    shape = stacked_trees[0][0].predict(X[0]).size
-
-    pred = np.zeros((1, X.shape[0], shape))
-
-    for p in pred:
-        for tree in stacked_trees[idx]:
-            p += np.array([tree.predict(x) for x in X])
-    return pred.squeeze()
 
 
 def plot_dependence(
@@ -179,8 +149,6 @@ def plot_dependence(
                           Available option are 'insample', 'linear' or 'quantiles'"""
         )
 
-    rng = RandomState(seed=random_seed)
-
     if isinstance(X, Variable):
         X = X.eval()
 
@@ -194,6 +162,8 @@ def plot_dependence(
         y_label = f"Predicted {Y.name}"
     else:
         y_label = "Predicted Y"
+
+    rng = np.random.default_rng(random_seed)
 
     num_covariates = X.shape[1]
 
@@ -216,7 +186,7 @@ def plot_dependence(
         xs_values = [0.05, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.95]
 
     if kind == "ice":
-        instances = np.random.choice(range(X.shape[0]), replace=False, size=instances)
+        instances = rng.choice(range(X.shape[0]), replace=False, size=instances)
 
     new_y = []
     new_x_target = []
@@ -224,6 +194,7 @@ def plot_dependence(
 
     new_X = np.zeros_like(X)
     idx_s = list(range(X.shape[0]))
+    all_trees = bartrv.owner.op.all_trees
     for i in var_idx:
         indices_mi = indices[:]
         indices_mi.pop(i)
@@ -242,13 +213,17 @@ def plot_dependence(
             for x_i in new_x_i:
                 new_X[:, indices_mi] = X[:, indices_mi]
                 new_X[:, i] = x_i
-                y_pred.append(np.mean(predict(bartrv, rng, X=new_X, size=samples), 1))
+                y_pred.append(
+                    np.mean(_sample_posterior(all_trees, X=new_X, rng=rng, size=samples), 1)
+                )
             new_x_target.append(new_x_i)
         else:
             for instance in instances:
                 new_X = X[idx_s]
                 new_X[:, indices_mi] = X[:, indices_mi][instance]
-                y_pred.append(np.mean(predict(bartrv, rng, X=new_X, size=samples), 0))
+                y_pred.append(
+                    np.mean(_sample_posterior(all_trees, X=new_X, rng=rng, size=samples), 0)
+                )
             new_x_target.append(new_X[:, i])
         y_mins.append(np.min(y_pred))
         new_y.append(np.array(y_pred).T)
@@ -328,7 +303,7 @@ def plot_dependence(
                     nxi,
                     nyi,
                     smooth=smooth,
-                    fill_kwargs={"alpha": alpha},
+                    fill_kwargs={"alpha": alpha, "color": color},
                     ax=ax,
                 )
                 ax.plot(nxi[idx], nyi[idx].mean(0), color=color)
@@ -374,7 +349,6 @@ def plot_variable_importance(
     idxs: indexes of the covariates from higher to lower relative importance
     axes: matplotlib axes
     """
-    rng = RandomState(seed=random_seed)
     _, axes = plt.subplots(2, 1, figsize=figsize)
 
     if hasattr(X, "columns") and hasattr(X, "values"):
@@ -386,6 +360,8 @@ def plot_variable_importance(
         labels = np.arange(len(var_imp))
     else:
         labels = np.array(labels)
+
+    rng = np.random.default_rng(random_seed)
 
     ticks = np.arange(len(var_imp), dtype=int)
     idxs = np.argsort(var_imp)
@@ -402,12 +378,14 @@ def plot_variable_importance(
     axes[0].set_xlabel("covariables")
     axes[0].set_ylabel("importance")
 
-    predicted_all = predict(bartrv, rng, X=X, size=samples, excluded=None)
+    all_trees = bartrv.owner.op.all_trees
+
+    predicted_all = _sample_posterior(all_trees, X=X, rng=rng, size=samples, excluded=None)
 
     ev_mean = np.zeros(len(var_imp))
     ev_hdi = np.zeros((len(var_imp), 2))
     for idx, subset in enumerate(subsets):
-        predicted_subset = predict(bartrv, rng, X=X, size=samples, excluded=subset)
+        predicted_subset = _sample_posterior(all_trees, X=X, rng=rng, size=samples, excluded=subset)
         pearson = np.zeros(samples)
         for j in range(samples):
             pearson[j] = (
