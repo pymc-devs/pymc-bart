@@ -17,13 +17,16 @@ import logging
 from copy import deepcopy
 from numba import njit
 
-import aesara
 import numpy as np
 
 from aesara import function as aesara_function
+from aesara import config
+from aesara.tensor.var import Variable
+
 from pymc.model import modelcontext
 from pymc.step_methods.arraystep import ArrayStepShared, Competence
 from pymc.aesaraf import inputvars, join_nonshared_inputs, make_shared_replacements
+
 
 from pymc_bart.bart import BARTRV
 from pymc_bart.tree import LeafNode, SplitNode, Tree
@@ -53,7 +56,7 @@ class PGBART(ArrayStepShared):
     name = "pgbart"
     default_blocked = False
     generates_stats = True
-    stats_dtypes = [{"variable_inclusion": object, "bart_trees": object}]
+    stats_dtypes = [{"variable_inclusion": object}]
 
     def __init__(
         self,
@@ -72,7 +75,11 @@ class PGBART(ArrayStepShared):
         value_bart = vars[0]
         self.bart = model.values_to_rvs[value_bart].owner.op
 
-        self.X = self.bart.X
+        if isinstance(self.bart.X, Variable):
+            self.X = self.bart.X.eval()
+        else:
+            self.X = self.bart.X
+
         self.Y = self.bart.Y
         self.missing_data = np.any(np.isnan(self.X))
         self.m = self.bart.m
@@ -83,7 +90,11 @@ class PGBART(ArrayStepShared):
         else:
             self.shape = shape[0]
 
-        self.alpha_vec = self.bart.split_prior
+        # self.alpha_vec = self.bart.split_prior
+        if self.bart.split_prior:
+            self.alpha_vec = self.bart.split_prior
+        else:
+            self.alpha_vec = np.ones(self.X.shape[1])
         self.init_mean = self.Y.mean()
         # if data is binary
         y_unique = np.unique(self.Y)
@@ -98,7 +109,7 @@ class PGBART(ArrayStepShared):
         self.available_predictors = list(range(self.num_variates))
 
         self.sum_trees = np.full((self.shape, self.Y.shape[0]), self.init_mean).astype(
-            aesara.config.floatX
+            config.floatX
         )
         self.sum_trees_noi = self.sum_trees - (self.init_mean / self.m)
         self.a_tree = Tree(
@@ -200,7 +211,10 @@ class PGBART(ArrayStepShared):
                 for index in used_variates:
                     variable_inclusion[index] += 1
 
-        stats = {"variable_inclusion": variable_inclusion, "bart_trees": self.all_trees}
+        if not self.tune:
+            self.bart.all_trees.append(self.all_trees)
+
+        stats = {"variable_inclusion": variable_inclusion}
         return self.sum_trees, [stats]
 
     def normalize(self, particles):
@@ -261,7 +275,7 @@ class PGBART(ArrayStepShared):
         Note: adapted from https://github.com/nchopin/particles
         """
         lnw = len(normalized_weights)
-        single_uniform = (self.uniform.random() + np.arange(lnw)) / lnw
+        single_uniform = (self.uniform.random()[0] + np.arange(lnw)) / lnw
         return inverse_cdf(single_uniform, normalized_weights) + 2
 
     def init_particles(self, tree_id: int) -> np.ndarray:

@@ -14,14 +14,19 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from multiprocessing import Manager
 import aesara.tensor as at
 import numpy as np
 
 from aeppl.logprob import _logprob
 from aesara.tensor.random.op import RandomVariable
+from aesara.tensor.var import Variable
+
 from pandas import DataFrame, Series
 
 from pymc.distributions.distribution import Distribution, _moment
+
+from .utils import sample_posterior
 
 __all__ = ["BART"]
 
@@ -34,16 +39,24 @@ class BARTRV(RandomVariable):
     ndims_params = [2, 1, 0, 0, 1]
     dtype = "floatX"
     _print_name = ("BART", "\\operatorname{BART}")
+    all_trees = None
 
     def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):
-        return (self.X.shape[0],)
+        if isinstance(self.X, Variable):
+            shape = self.X.shape[0].eval()
+        else:
+            shape = self.X.shape[0]
+        return (shape,)
 
     @classmethod
-    def rng_fn(cls, rng, X, Y, m, alpha, split_prior, size):
-        if size is not None:
-            return np.full((size[0], cls.Y.shape[0]), cls.Y.mean())
+    def rng_fn(cls, rng=None, X=None, Y=None, m=None, alpha=None, split_prior=None, size=None):
+        if not cls.all_trees:
+            if size is not None:
+                return np.full((size[0], cls.Y.shape[0]), cls.Y.mean())
+            else:
+                return np.full(cls.Y.shape[0], cls.Y.mean())
         else:
-            return np.full(cls.Y.shape[0], cls.Y.mean())
+            return sample_posterior(cls.all_trees, cls.X)
 
 
 bart = BARTRV()
@@ -69,7 +82,7 @@ class BART(Distribution):
     split_prior : array-like
         Each element of split_prior should be in the [0, 1] interval and the elements should sum to
         1. Otherwise they will be normalized.
-        Defaults to None, i.e. all covariates have the same prior probability to be selected.
+        Defaults to 0, i.e. all covariates have the same prior probability to be selected.
     """
 
     def __new__(
@@ -82,17 +95,20 @@ class BART(Distribution):
         split_prior=None,
         **kwargs,
     ):
+        manager = Manager()
+        cls.all_trees = manager.list()
 
         X, Y = preprocess_xy(X, Y)
 
         if split_prior is None:
-            split_prior = np.ones(X.shape[1])
+            split_prior = []
 
         bart_op = type(
             f"BART_{name}",
             (BARTRV,),
             dict(
                 name="BART",
+                all_trees=cls.all_trees,
                 inplace=False,
                 initval=Y.mean(),
                 X=X,
@@ -142,8 +158,10 @@ def preprocess_xy(X, Y):
         Y = Y.to_numpy()
     if isinstance(X, (Series, DataFrame)):
         X = X.to_numpy()
+
     Y = Y.astype(float)
     X = X.astype(float)
+
     return X, Y
 
 

@@ -58,7 +58,25 @@ def test_missing_data():
         mu = pmb.BART("mu", X, Y, m=10)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y)
-        idata = pm.sample(tune=10, draws=10, chains=1, random_seed=3415)
+        idata = pm.sample(tune=100, draws=100, chains=1, random_seed=3415)
+
+
+def test_shared_variable():
+    X = np.random.normal(0, 1, size=(50, 2))
+    Y = np.random.normal(0, 1, size=50)
+
+    with pm.Model() as model:
+        data_X = pm.MutableData("data_X", X)
+        mu = pmb.BART("mu", data_X, Y, m=2)
+        sigma = pm.HalfNormal("sigma", 1)
+        y = pm.Normal("y", mu, sigma, observed=Y, shape=mu.shape)
+        idata = pm.sample(tune=100, draws=100, chains=2, random_seed=3415)
+        ppc = pm.sample_posterior_predictive(idata)
+        new_X = pm.set_data({"data_X": X[:3]})
+        ppc2 = pm.sample_posterior_predictive(idata)
+
+    assert ppc.posterior_predictive["y"].shape == (2, 100, 50)
+    assert ppc2.posterior_predictive["y"].shape == (2, 100, 3)
 
 
 class TestUtils:
@@ -75,9 +93,9 @@ class TestUtils:
 
     def test_predict(self):
         rng = RandomState(12345)
-        pred_all = pmb.predict(self.idata, rng, X=self.X, size=2)
+        pred_all = pmb.predict(self.mu, rng, X=self.X, size=2)
         rng = RandomState(12345)
-        pred_first = pmb.predict(self.idata, rng, X=self.X[:10])
+        pred_first = pmb.predict(self.mu, rng, X=self.X[:10])
 
         assert_almost_equal(pred_first[0], pred_all[0, :10], decimal=4)
         assert pred_all.shape == (2, 50, 1)
@@ -100,7 +118,7 @@ class TestUtils:
         ],
     )
     def test_pdp(self, kwargs):
-        pmb.plot_dependence(self.idata, X=self.X, Y=self.Y, **kwargs)
+        pmb.plot_dependence(self.mu, X=self.X, Y=self.Y, **kwargs)
 
     @pytest.mark.parametrize(
         "kwargs",
@@ -110,7 +128,7 @@ class TestUtils:
         ],
     )
     def test_vi(self, kwargs):
-        pmb.plot_variable_importance(self.idata, X=self.X, **kwargs)
+        pmb.plot_variable_importance(self.idata, X=self.X, bartrv=self.mu, **kwargs)
 
     def test_pdp_pandas_labels(self):
         pd = pytest.importorskip("pandas")
@@ -118,7 +136,7 @@ class TestUtils:
         X_names = ["norm1", "norm2", "binom"]
         X_pd = pd.DataFrame(self.X, columns=X_names)
         Y_pd = pd.Series(self.Y, name="response")
-        axes = pmb.plot_dependence(self.idata, X=X_pd, Y=Y_pd)
+        axes = pmb.plot_dependence(self.mu, X=X_pd, Y=Y_pd)
 
         figure = axes[0].figure
         assert figure.texts[0].get_text() == "Predicted response"
