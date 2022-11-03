@@ -75,9 +75,6 @@ if __name__ == "__main__":
         long_description=LONG_DESCRIPTION,
         long_description_content_type="text/markdown",
         packages=find_packages(),
-        # because of an upload-size limit by PyPI, we're temporarily removing docs from the tarball.
-        # Also see MANIFEST.in
-        # package_data={'docs': ['*']},
         include_package_data=True,
         classifiers=classifiers,
         python_requires=">=3.8",

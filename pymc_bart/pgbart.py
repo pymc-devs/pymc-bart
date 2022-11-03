@@ -80,47 +80,43 @@ class PGBART(ArrayStepShared):
         else:
             self.X = self.bart.X
 
-        self.Y = self.bart.Y
         self.missing_data = np.any(np.isnan(self.X))
         self.m = self.bart.m
-        self.alpha = self.bart.alpha
         shape = initial_values[value_bart.name].shape
         if len(shape) == 1:
             self.shape = 1
         else:
             self.shape = shape[0]
 
-        # self.alpha_vec = self.bart.split_prior
         if self.bart.split_prior:
             self.alpha_vec = self.bart.split_prior
         else:
             self.alpha_vec = np.ones(self.X.shape[1])
-        self.init_mean = self.Y.mean()
+        init_mean = self.bart.Y.mean()
         # if data is binary
-        y_unique = np.unique(self.Y)
+        y_unique = np.unique(self.bart.Y)
         if y_unique.size == 2 and np.all(y_unique == [0, 1]):
             mu_std = 3 / self.m**0.5
-        # maybe we need to check for count data
         else:
-            mu_std = self.Y.std() / self.m**0.5
+            mu_std = self.bart.Y.std() / self.m**0.5
 
         self.num_observations = self.X.shape[0]
         self.num_variates = self.X.shape[1]
         self.available_predictors = list(range(self.num_variates))
 
-        self.sum_trees = np.full((self.shape, self.Y.shape[0]), self.init_mean).astype(
+        self.sum_trees = np.full((self.shape, self.bart.Y.shape[0]), init_mean).astype(
             config.floatX
         )
-        self.sum_trees_noi = self.sum_trees - (self.init_mean / self.m)
+        self.sum_trees_noi = self.sum_trees - (init_mean / self.m)
         self.a_tree = Tree(
-            leaf_node_value=self.init_mean / self.m,
+            leaf_node_value=init_mean / self.m,
             idx_data_points=np.arange(self.num_observations, dtype="int32"),
             num_observations=self.num_observations,
             shape=self.shape,
         )
         self.normal = NormalSampler(mu_std, self.shape)
         self.uniform = UniformSampler(0.33, 0.75, self.shape)
-        self.prior_prob_leaf_node = compute_prior_probability(self.alpha)
+        self.prior_prob_leaf_node = compute_prior_probability(self.bart.alpha)
         self.ssv = SampleSplittingVariable(self.alpha_vec)
 
         self.tune = True
@@ -143,7 +139,7 @@ class PGBART(ArrayStepShared):
         self.likelihood_logp = logp(initial_values, [model.datalogp], vars, shared)
         self.all_particles = []
         for _ in range(self.m):
-            self.a_tree.leaf_node_value = self.init_mean / self.m
+            self.a_tree.leaf_node_value = init_mean / self.m
             p = ParticleTree(self.a_tree)
             self.all_particles.append(p)
         self.all_trees = np.array([p.tree for p in self.all_particles])
