@@ -14,10 +14,17 @@ conda create --name=pymc-bart --channel=conda-forge pymc-bart
 conda activate pymc-bart
 ```
 
+Alternatively, it can be installed with
+
+```bash
+pip install pymc-bart
+```
+
 In case you want to upgrade to the bleeding edge version of the package you can install from GitHub:
 
-    pip install git+https://github.com/pymc-devs/pymc-bart.git
-
+```bash
+pip install git+https://github.com/pymc-devs/pymc-bart.git
+```
 
 ## Contributions
 PyMC-BART is a community project and welcomes contributions.
