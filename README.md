@@ -7,16 +7,24 @@ PyMC-BART extends [PyMC](https://github.com/pymc-devs/pymc) probabilistic progra
 
 ## Installation
 
-PyMC-BART requires a working Python interpreter (3.8+). We recommend installing Python and key numerical libraries using the [Anaconda Distribution](https://www.anaconda.com/products/individual#Downloads), which has one-click installers available on all major platforms.
+PyMC-BART is available on Conda-Forge. To set up a suitable Conda environment, run
 
-Assuming a standard Python environment is installed on your machine (including pip), PyMC-BART itself can be installed in one line using pip:
+```bash
+conda create --name=pymc-bart --channel=conda-forge pymc-bart
+conda activate pymc-bart
+```
 
-    pip install pymc-bart
+Alternatively, it can be installed with
 
-Alternatively, if you want the bleeding edge version of the package you can install from GitHub:
+```bash
+pip install pymc-bart
+```
 
-    pip install git+https://github.com/pymc-devs/pymc-bart.git
+In case you want to upgrade to the bleeding edge version of the package you can install from GitHub:
 
+```bash
+pip install git+https://github.com/pymc-devs/pymc-bart.git
+```
 
 ## Contributions
 PyMC-BART is a community project and welcomes contributions.
