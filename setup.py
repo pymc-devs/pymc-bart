@@ -23,7 +23,7 @@ DISTNAME = "pymc_bart"
 DESCRIPTION = "Bayesian Additive Regression Trees for Probabilistic programming with PyMC"
 AUTHOR = "PyMC Developers"
 AUTHOR_EMAIL = "pymc.devs@gmail.com"
-URL = "http://github.com/pymc-devs/pymc_bart"
+URL = "http://github.com/pymc-devs/pymc-bart"
 LICENSE = "Apache License, Version 2.0"
 
 classifiers = [
