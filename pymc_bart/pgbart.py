@@ -69,7 +69,7 @@ class PGBART(ArrayStepShared):
             vars = inputvars(vars)
         value_bart = vars[0]
         self.bart = model.values_to_rvs[value_bart].owner.op
-        self.rng = np.random.default_rng(12345)
+        self.rng = np.random.default_rng()
 
         if isinstance(self.bart.X, Variable):
             self.X = self.bart.X.eval()
