@@ -15,16 +15,16 @@
 #   limitations under the License.
 
 from multiprocessing import Manager
-import pytensor.tensor as pt
 import numpy as np
-
-from pymc.logprob.abstract import _logprob
-from pytensor.tensor.random.op import RandomVariable
-from pytensor.tensor.var import Variable
-
 from pandas import DataFrame, Series
 
 from pymc.distributions.distribution import Distribution, _moment
+from pymc.logprob.abstract import _logprob
+import pytensor.tensor as pt
+from pytensor.tensor.random.op import RandomVariable
+from pytensor.tensor.var import Variable
+
+
 
 from .utils import _sample_posterior
 
