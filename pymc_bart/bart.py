@@ -25,7 +25,6 @@ from pytensor.tensor.random.op import RandomVariable
 from pytensor.tensor.var import Variable
 
 
-
 from .utils import _sample_posterior
 
 __all__ = ["BART"]
