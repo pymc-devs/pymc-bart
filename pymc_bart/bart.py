@@ -15,12 +15,12 @@
 #   limitations under the License.
 
 from multiprocessing import Manager
-import aesara.tensor as at
+import pytensor.tensor as pt
 import numpy as np
 
-from aeppl.logprob import _logprob
-from aesara.tensor.random.op import RandomVariable
-from aesara.tensor.var import Variable
+from pymc.logprob.abstract import _logprob
+from pytensor.tensor.random.op import RandomVariable
+from pytensor.tensor.var import Variable
 
 from pandas import DataFrame, Series
 
@@ -145,11 +145,11 @@ class BART(Distribution):
         -------
         TensorVariable
         """
-        return at.zeros_like(x)
+        return pt.zeros_like(x)
 
     @classmethod
     def get_moment(cls, rv, size, *rv_inputs):
-        mean = at.fill(size, rv.Y.mean())
+        mean = pt.fill(size, rv.Y.mean())
         return mean
 
 

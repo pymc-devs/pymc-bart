@@ -4,7 +4,7 @@ import arviz as az
 import matplotlib.pyplot as plt
 import numpy as np
 
-from aesara.tensor.var import Variable
+from pytensor.tensor.var import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
 from scipy.stats import pearsonr

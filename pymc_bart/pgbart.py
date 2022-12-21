@@ -19,13 +19,13 @@ from numba import njit
 
 import numpy as np
 
-from aesara import function as aesara_function
-from aesara import config
-from aesara.tensor.var import Variable
+from pytensor import function as pytensor_function
+from pytensor import config
+from pytensor.tensor.var import Variable
 
 from pymc.model import modelcontext
 from pymc.step_methods.arraystep import ArrayStepShared, Competence
-from pymc.aesaraf import inputvars, join_nonshared_inputs, make_shared_replacements
+from pymc.pytensorf import inputvars, join_nonshared_inputs, make_shared_replacements
 
 
 from pymc_bart.bart import BARTRV
@@ -656,9 +656,9 @@ def logp(point, out_vars, vars, shared):  # pylint: disable=redefined-builtin
     vars: List
         containing :class:`pymc.Distribution` for the input variables
     shared: List
-        containing :class:`aesara.tensor.Tensor` for depended shared data
+        containing :class:`pytensor.tensor.Tensor` for depended shared data
     """
     out_list, inarray0 = join_nonshared_inputs(point, out_vars, vars, shared)
-    function = aesara_function([inarray0], out_list[0])
+    function = pytensor_function([inarray0], out_list[0])
     function.trust_input = True
     return function
