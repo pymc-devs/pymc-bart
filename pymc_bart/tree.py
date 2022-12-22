@@ -16,7 +16,7 @@ import math
 
 from copy import deepcopy
 
-from aesara import config
+from pytensor import config
 import numpy as np
 
 

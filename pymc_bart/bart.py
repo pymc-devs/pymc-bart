@@ -15,16 +15,14 @@
 #   limitations under the License.
 
 from multiprocessing import Manager
-import aesara.tensor as at
 import numpy as np
-
-from aeppl.logprob import _logprob
-from aesara.tensor.random.op import RandomVariable
-from aesara.tensor.var import Variable
-
 from pandas import DataFrame, Series
 
 from pymc.distributions.distribution import Distribution, _moment
+from pymc.logprob.abstract import _logprob
+import pytensor.tensor as pt
+from pytensor.tensor.random.op import RandomVariable
+
 
 from .utils import _sample_posterior
 
@@ -42,11 +40,7 @@ class BARTRV(RandomVariable):
     all_trees = None
 
     def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):
-        if isinstance(self.X, Variable):
-            shape = self.X.shape[0].eval()
-        else:
-            shape = self.X.shape[0]
-        return (shape,)
+        return dist_params[0].shape[:1]
 
     @classmethod
     def rng_fn(cls, rng=None, X=None, Y=None, m=None, alpha=None, split_prior=None, size=None):
@@ -145,11 +139,11 @@ class BART(Distribution):
         -------
         TensorVariable
         """
-        return at.zeros_like(x)
+        return pt.zeros_like(x)
 
     @classmethod
     def get_moment(cls, rv, size, *rv_inputs):
-        mean = at.fill(size, rv.Y.mean())
+        mean = pt.fill(size, rv.Y.mean())
         return mean
 
 
