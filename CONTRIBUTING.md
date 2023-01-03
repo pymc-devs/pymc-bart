@@ -4,7 +4,7 @@ We welcome a wide range of contributions, not only code!
 
 ## Reporting issues
 If you encounter any bug or incorrect behaviour while using pymc_bart,
-please report an issue to our [issue tracker](https://github.com/pymc-devs/pymc_bart/issues).
+please report an issue to our [issue tracker](https://github.com/pymc-devs/pymc-bart/issues).
 Please include any supporting information, in particular the version of
 pymc_bart that you are using.
 The issue tracker has several templates available to help in writing the issue
