@@ -28,11 +28,11 @@ pip install git+https://github.com/pymc-devs/pymc-bart.git
 
 ## Contributions
 PyMC-BART is a community project and welcomes contributions.
-Additional information can be found in the [Contributing Readme](https://github.com/pymc-devs/pymc_bart/blob/main/CONTRIBUTING.md)
+Additional information can be found in the [Contributing Readme](https://github.com/pymc-devs/pymc-bart/blob/main/CONTRIBUTING.md)
 
 ## Code of Conduct
 PyMC-BART wishes to maintain a positive community. Additional details
-can be found in the [Code of Conduct](https://github.com/pymc-devs/pymc_bart/blob/main/CODE_OF_CONDUCT.md)
+can be found in the [Code of Conduct](https://github.com/pymc-devs/pymc-bart/blob/main/CODE_OF_CONDUCT.md)
 
 ## Citation
 If you use PyMC-BART and want to cite it please use [![arXiv](https://img.shields.io/badge/arXiv-2206.03619-b31b1b.svg)](https://arxiv.org/abs/2206.03619)
