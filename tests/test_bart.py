@@ -8,27 +8,6 @@ from pymc.tests.distributions.util import assert_moment_is_expected
 import pymc_bart as pmb
 
 
-def test_split_node():
-    split_node = pmb.tree.SplitNode(index=5, idx_split_variable=2, split_value=3.0)
-    assert split_node.index == 5
-    assert split_node.idx_split_variable == 2
-    assert split_node.split_value == 3.0
-    assert split_node.depth == 2
-    assert split_node.get_idx_parent_node() == 2
-    assert split_node.get_idx_left_child() == 11
-    assert split_node.get_idx_right_child() == 12
-
-
-def test_leaf_node():
-    leaf_node = pmb.tree.LeafNode(index=5, value=3.14, idx_data_points=[1, 2, 3])
-    assert leaf_node.index == 5
-    assert np.array_equal(leaf_node.idx_data_points, [1, 2, 3])
-    assert leaf_node.value == 3.14
-    assert leaf_node.get_idx_parent_node() == 2
-    assert leaf_node.get_idx_left_child() == 11
-    assert leaf_node.get_idx_right_child() == 12
-
-
 def test_bart_vi():
     X = np.random.normal(0, 1, size=(250, 3))
     Y = np.random.normal(0, 1, size=250)

@@ -29,8 +29,7 @@ from pymc.pytensorf import inputvars, join_nonshared_inputs, make_shared_replace
 
 
 from pymc_bart.bart import BARTRV
-from pymc_bart.tree import LeafNode, SplitNode, Tree
-
+from pymc_bart.tree import Tree, Node
 
 _log = logging.getLogger("pymc")
 
@@ -412,7 +411,7 @@ class SampleSplittingVariable:
 
 def compute_prior_probability(alpha):
     """
-    Calculate the probability of the node being a LeafNode (1 - p(being SplitNode)).
+    Calculate the probability of the node being a leaf node (1 - p(being split node)).
 
     Taken from equation 19 in [Rockova2018].
 
@@ -480,17 +479,17 @@ def grow_tree(
                 shape,
             )
 
-            new_node = LeafNode(
+            new_node = Node.new_leaf_node(
                 index=current_node_children[idx],
                 value=node_value,
                 idx_data_points=idx_data_point,
             )
             new_nodes.append(new_node)
 
-        new_split_node = SplitNode(
+        new_split_node = Node.new_split_node(
             index=index_leaf_node,
-            idx_split_variable=selected_predictor,
             split_value=split_value,
+            idx_split_variable=selected_predictor,
         )
 
         # update tree nodes and indexes
