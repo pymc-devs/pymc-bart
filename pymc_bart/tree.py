@@ -32,7 +32,7 @@ class Tree:
         A dictionary that represents the nodes stored in breadth-first order, based in the array
         method for storing binary trees (https://en.wikipedia.org/wiki/Binary_tree#Arrays).
         The dictionary's keys are integers that represent the nodes position.
-        The dictionary's values are objects of type SplitNode or LeafNode that represent the nodes
+        The dictionary's values are objects of type Node that represent the split and leaf nodes
         of the tree itself.
     idx_leaf_nodes : list
         List with the index of the leaf nodes of the tree.
@@ -56,7 +56,7 @@ class Tree:
 
     def __init__(self, leaf_node_value, idx_data_points, num_observations, shape):
         self.tree_structure = {
-            0: LeafNode(index=0, value=leaf_node_value, idx_data_points=idx_data_points)
+            0: Node.new_leaf_node(0, value=leaf_node_value, idx_data_points=idx_data_points)
         }
         self.idx_leaf_nodes = [0]
         self.output = np.zeros((num_observations, shape)).astype(config.floatX).squeeze()
@@ -70,12 +70,12 @@ class Tree:
     def copy(self):
         return deepcopy(self)
 
-    def get_node(self, index):
+    def get_node(self, index) -> "Node":
         return self.tree_structure[index]
 
     def set_node(self, index, node):
         self.tree_structure[index] = node
-        if isinstance(node, LeafNode):
+        if node.is_leaf_node():
             self.idx_leaf_nodes.append(index)
 
     def delete_leaf_node(self, index):
@@ -89,15 +89,13 @@ class Tree:
         for k in a_tree.tree_structure.keys():
             current_node = a_tree[k]
             del current_node.depth
-            if isinstance(current_node, LeafNode):
+            if current_node.is_leaf_node():
                 del current_node.idx_data_points
         return a_tree
 
     def get_split_variables(self):
         return [
-            node.idx_split_variable
-            for node in self.tree_structure.values()
-            if isinstance(node, SplitNode)
+            node.idx_split_variable for node in self.tree_structure.values() if node.is_split_node()
         ]
 
     def _predict(self):
@@ -115,6 +113,8 @@ class Tree:
         ----------
         x : numpy array
             Unobserved point
+        excluded: list
+                Indexes of the variables to exclude when computing predictions
 
         Returns
         -------
@@ -123,12 +123,7 @@ class Tree:
         """
         if excluded is None:
             excluded = []
-        node = self._traverse_tree(x, 0, excluded)
-        if isinstance(node, LeafNode):
-            leaf_value = node.value
-        else:
-            leaf_value = node
-        return leaf_value
+        return self._traverse_tree(x, 0, excluded)
 
     def _traverse_tree(self, x, node_index, excluded):
         """
@@ -141,22 +136,22 @@ class Tree:
 
         Returns
         -------
-        LeafNode or mean of leaf node values
+        Leaf node value or mean of leaf node values
         """
         current_node = self.get_node(node_index)
-        if isinstance(current_node, SplitNode):
-            if current_node.idx_split_variable in excluded:
-                leaf_values = []
-                self._traverse_leaf_values(leaf_values, node_index)
-                return np.mean(leaf_values, 0)
+        if current_node.is_leaf_node():
+            return current_node.value
+        if current_node.idx_split_variable in excluded:
+            leaf_values = []
+            self._traverse_leaf_values(leaf_values, node_index)
+            return np.mean(leaf_values, 0)
 
-            if x[current_node.idx_split_variable] <= current_node.split_value:
-                left_child = current_node.get_idx_left_child()
-                current_node = self._traverse_tree(x, left_child, excluded)
-            else:
-                right_child = current_node.get_idx_right_child()
-                current_node = self._traverse_tree(x, right_child, excluded)
-        return current_node
+        if x[current_node.idx_split_variable] <= current_node.value:
+            left_child = current_node.get_idx_left_child()
+            return self._traverse_tree(x, left_child, excluded)
+        else:
+            right_child = current_node.get_idx_right_child()
+            return self._traverse_tree(x, right_child, excluded)
 
     def _traverse_leaf_values(self, leaf_values, node_index):
         """
@@ -170,47 +165,43 @@ class Tree:
         -------
         List of leaf node values
         """
-        current_node = self.get_node(node_index)
-        if isinstance(current_node, SplitNode):
-            left_child = current_node.get_idx_left_child()
-            self._traverse_leaf_values(leaf_values, left_child)
-            right_child = current_node.get_idx_right_child()
-            self._traverse_leaf_values(leaf_values, right_child)
+        node = self.get_node(node_index)
+        if node.is_leaf_node():
+            leaf_values.append(node.value)
         else:
-            leaf_values.append(current_node.value)
+            self._traverse_leaf_values(leaf_values, node.get_idx_left_child())
+            self._traverse_leaf_values(leaf_values, node.get_idx_right_child())
 
 
-class BaseNode:
-    __slots__ = "index", "depth"
+class Node:
+    __slots__ = "index", "depth", "value", "idx_split_variable", "idx_data_points"
 
-    def __init__(self, index):
+    def __init__(self, index: int, value=-1, idx_data_points=None, idx_split_variable=-1):
         self.index = index
         self.depth = int(math.floor(math.log(index + 1, 2)))
-
-    def get_idx_parent_node(self):
-        return (self.index - 1) // 2
-
-    def get_idx_left_child(self):
-        return self.index * 2 + 1
-
-    def get_idx_right_child(self):
-        return self.get_idx_left_child() + 1
-
-
-class SplitNode(BaseNode):
-    __slots__ = "idx_split_variable", "split_value"
-
-    def __init__(self, index, idx_split_variable, split_value):
-        super().__init__(index)
-
-        self.idx_split_variable = idx_split_variable
-        self.split_value = split_value
-
-
-class LeafNode(BaseNode):
-    __slots__ = "value", "idx_data_points"
-
-    def __init__(self, index, value, idx_data_points):
-        super().__init__(index)
         self.value = value
         self.idx_data_points = idx_data_points
+        self.idx_split_variable = idx_split_variable
+
+    @classmethod
+    def new_leaf_node(cls, index: int, value, idx_data_points) -> "Node":
+        return cls(index, value=value, idx_data_points=idx_data_points)
+
+    @classmethod
+    def new_split_node(cls, index: int, split_value, idx_split_variable) -> "Node":
+        return cls(index, value=split_value, idx_split_variable=idx_split_variable)
+
+    def get_idx_parent_node(self) -> int:
+        return (self.index - 1) // 2
+
+    def get_idx_left_child(self) -> int:
+        return self.index * 2 + 1
+
+    def get_idx_right_child(self) -> int:
+        return self.get_idx_left_child() + 1
+
+    def is_split_node(self) -> bool:
+        return self.idx_split_variable >= 0
+
+    def is_leaf_node(self) -> bool:
+        return not self.is_split_node()
