@@ -15,6 +15,7 @@
 import math
 
 from copy import deepcopy
+from functools import lru_cache
 
 from pytensor import config
 import numpy as np
@@ -41,7 +42,6 @@ class Tree:
 
     Parameters
     ----------
-    leaf_node_value : int or float
     idx_data_points : array of integers
     num_observations : integer
     shape : int
@@ -51,7 +51,6 @@ class Tree:
         "tree_structure",
         "idx_leaf_nodes",
         "output",
-        "leaf_node_value",
     )
 
     def __init__(self, leaf_node_value, idx_data_points, num_observations, shape):
@@ -88,7 +87,6 @@ class Tree:
         del a_tree.idx_leaf_nodes
         for k in a_tree.tree_structure.keys():
             current_node = a_tree[k]
-            del current_node.depth
             if current_node.is_leaf_node():
                 del current_node.idx_data_points
         return a_tree
@@ -174,11 +172,10 @@ class Tree:
 
 
 class Node:
-    __slots__ = "index", "depth", "value", "idx_split_variable", "idx_data_points"
+    __slots__ = "index", "value", "idx_split_variable", "idx_data_points"
 
     def __init__(self, index: int, value=-1, idx_data_points=None, idx_split_variable=-1):
         self.index = index
-        self.depth = int(math.floor(math.log(index + 1, 2)))
         self.value = value
         self.idx_data_points = idx_data_points
         self.idx_split_variable = idx_split_variable
@@ -205,3 +202,8 @@ class Node:
 
     def is_leaf_node(self) -> bool:
         return not self.is_split_node()
+
+
+@lru_cache
+def get_depth(index: int) -> int:
+    return int(math.floor(math.log(index + 1, 2)))

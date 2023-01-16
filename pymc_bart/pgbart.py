@@ -27,9 +27,8 @@ from pymc.model import modelcontext
 from pymc.step_methods.arraystep import ArrayStepShared, Competence
 from pymc.pytensorf import inputvars, join_nonshared_inputs, make_shared_replacements
 
-
 from pymc_bart.bart import BARTRV
-from pymc_bart.tree import Tree, Node
+from pymc_bart.tree import Tree, Node, get_depth
 
 _log = logging.getLogger("pymc")
 
@@ -138,9 +137,7 @@ class PGBART(ArrayStepShared):
         self.likelihood_logp = logp(initial_values, [model.datalogp], vars, shared)
         self.all_particles = []
         for _ in range(self.m):
-            self.a_tree.leaf_node_value = init_mean / self.m
-            p = ParticleTree(self.a_tree)
-            self.all_particles.append(p)
+            self.all_particles.append(ParticleTree(self.a_tree))
         self.all_trees = np.array([p.tree for p in self.all_particles])
         super().__init__(vars, shared)
 
@@ -352,7 +349,7 @@ class ParticleTree:
         if self.expansion_nodes:
             index_leaf_node = self.expansion_nodes.pop(0)
             # Probability that this node will remain a leaf node
-            prob_leaf = prior_prob_leaf_node[self.tree[index_leaf_node].depth]
+            prob_leaf = prior_prob_leaf_node[get_depth(index_leaf_node)]
 
             if prob_leaf < np.random.random():
                 index_selected_predictor = grow_tree(

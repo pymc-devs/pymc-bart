@@ -1,12 +1,12 @@
 import numpy as np
 
-from pymc_bart.tree import Node
+from pymc_bart.tree import Node, get_depth
 
 
 def test_split_node():
     split_node = Node.new_split_node(index=5, idx_split_variable=2, split_value=3.0)
     assert split_node.index == 5
-    assert split_node.depth == 2
+    assert get_depth(split_node.index) == 2
     assert split_node.value == 3.0
     assert split_node.idx_split_variable == 2
     assert split_node.idx_data_points is None
@@ -20,7 +20,7 @@ def test_split_node():
 def test_leaf_node():
     leaf_node = Node.new_leaf_node(index=5, value=3.14, idx_data_points=[1, 2, 3])
     assert leaf_node.index == 5
-    assert leaf_node.depth == 2
+    assert get_depth(leaf_node.index) == 2
     assert leaf_node.value == 3.14
     assert leaf_node.idx_split_variable == -1
     assert np.array_equal(leaf_node.idx_data_points, [1, 2, 3])
