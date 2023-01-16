@@ -52,8 +52,7 @@ primaryClass={stat.CO}
 
 ## License
 
-`Apache License, Version
-2.0 <https://github.com/pymc-devs/pymc-bart/blob/main/LICENSE>`__
+[Apache License, Version 2.0](https://github.com/pymc-devs/pymc-bart/blob/main/LICENSE)
 
 ## Donations
 PyMC-BART , as other pymc-devs projects, is a non-profit project under the NumFOCUS umbrella. If you want to support PyMC-BART financially, you can donate [here](https://numfocus.org/donate-to-pymc).
