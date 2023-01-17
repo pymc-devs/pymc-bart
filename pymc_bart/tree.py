@@ -206,4 +206,4 @@ class Node:
 
 @lru_cache
 def get_depth(index: int) -> int:
-    return int(math.floor(math.log(index + 1, 2)))
+    return math.floor(math.log2(index + 1))
