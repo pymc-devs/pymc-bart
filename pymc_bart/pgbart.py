@@ -24,7 +24,8 @@ from pytensor import config
 from pytensor.tensor.var import Variable
 
 from pymc.model import modelcontext
-from pymc.step_methods.arraystep import ArrayStepShared, Competence
+from pymc.step_methods.arraystep import ArrayStepShared
+from pymc.step_methods.compound import Competence
 from pymc.pytensorf import inputvars, join_nonshared_inputs, make_shared_replacements
 
 from pymc_bart.bart import BARTRV
