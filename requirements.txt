@@ -1,4 +1,4 @@
-pymc>=4.0.1
+pymc>=5.0.0
 arviz
 numba
 matplotlib<=3.5.2
