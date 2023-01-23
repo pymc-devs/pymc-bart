@@ -13,7 +13,6 @@
 #   limitations under the License.
 
 import math
-from copy import deepcopy
 
 from functools import lru_cache
 
@@ -54,11 +53,9 @@ class Tree:
     )
 
     def __init__(self, tree_structure, idx_leaf_nodes, output):
-        self.tree_structure, self.idx_leaf_nodes, self.output = (
-            tree_structure,
-            idx_leaf_nodes,
-            output,
-        )
+        self.tree_structure = tree_structure
+        self.idx_leaf_nodes = idx_leaf_nodes
+        self.output = output
 
     @classmethod
     def new_tree(cls, leaf_node_value, idx_data_points, num_observations, shape):
@@ -81,7 +78,7 @@ class Tree:
             k: Node(v.index, v.value, v.idx_data_points, v.idx_split_variable)
             for k, v in self.tree_structure.items()
         }
-        return Tree(tree, self.idx_leaf_nodes.copy(), deepcopy(self.output))
+        return Tree(tree, self.idx_leaf_nodes.copy(), self.output.copy())
 
     def get_node(self, index) -> "Node":
         return self.tree_structure[index]
@@ -186,12 +183,10 @@ class Node:
     __slots__ = "index", "value", "idx_split_variable", "idx_data_points"
 
     def __init__(self, index: int, value=-1, idx_data_points=None, idx_split_variable=-1):
-        self.index, self.value, self.idx_data_points, self.idx_split_variable = (
-            index,
-            value,
-            idx_data_points,
-            idx_split_variable,
-        )
+        self.index = index
+        self.value = value
+        self.idx_data_points = idx_data_points
+        self.idx_split_variable = idx_split_variable
 
     @classmethod
     def new_leaf_node(cls, index: int, value, idx_data_points) -> "Node":

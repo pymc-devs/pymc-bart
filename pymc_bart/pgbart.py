@@ -325,13 +325,11 @@ class ParticleTree:
     __slots__ = "tree", "expansion_nodes", "log_weight", "old_likelihood_logp", "kfactor"
 
     def __init__(self, tree):
-        self.tree, self.expansion_nodes, self.log_weight, self.old_likelihood_logp, self.kfactor = (
-            tree.copy(),
-            [0],
-            0,
-            0,
-            0.75,
-        )
+        self.tree = tree.copy()
+        self.expansion_nodes = [0]
+        self.log_weight = 0
+        self.old_likelihood_logp = 0
+        self.kfactor = 0.75
 
     def copy(self):
         p = ParticleTree(self.tree)
