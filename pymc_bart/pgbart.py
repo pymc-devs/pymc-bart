@@ -14,7 +14,6 @@
 
 import logging
 
-from copy import deepcopy
 from numba import njit
 
 import numpy as np
@@ -107,7 +106,7 @@ class PGBART(ArrayStepShared):
             config.floatX
         )
         self.sum_trees_noi = self.sum_trees - (init_mean / self.m)
-        self.a_tree = Tree(
+        self.a_tree = Tree.new_tree(
             leaf_node_value=init_mean / self.m,
             idx_data_points=np.arange(self.num_observations, dtype="int32"),
             num_observations=self.num_observations,
@@ -136,9 +135,7 @@ class PGBART(ArrayStepShared):
 
         shared = make_shared_replacements(initial_values, vars, model)
         self.likelihood_logp = logp(initial_values, [model.datalogp], vars, shared)
-        self.all_particles = []
-        for _ in range(self.m):
-            self.all_particles.append(ParticleTree(self.a_tree))
+        self.all_particles = list(ParticleTree(self.a_tree) for _ in range(self.m))
         self.all_trees = np.array([p.tree for p in self.all_particles])
         super().__init__(vars, shared)
 
@@ -239,7 +236,7 @@ class PGBART(ArrayStepShared):
         new_particles = []
         for idx in new_indices:
             if idx in seen:
-                new_particles.append(deepcopy(particles[idx]))
+                new_particles.append(particles[idx].copy())
             else:
                 new_particles.append(particles[idx])
                 seen.append(idx)
@@ -274,7 +271,7 @@ class PGBART(ArrayStepShared):
     def init_particles(self, tree_id: int) -> np.ndarray:
         """Initialize particles."""
         p0 = self.all_particles[tree_id]
-        p1 = deepcopy(p0)
+        p1 = p0.copy()
         p1.sample_leafs(
             self.sum_trees,
             self.m,
@@ -328,11 +325,21 @@ class ParticleTree:
     __slots__ = "tree", "expansion_nodes", "log_weight", "old_likelihood_logp", "kfactor"
 
     def __init__(self, tree):
-        self.tree = tree.copy()  # keeps the tree that we care at the moment
+        self.tree = tree.copy()
         self.expansion_nodes = [0]
         self.log_weight = 0
         self.old_likelihood_logp = 0
         self.kfactor = 0.75
+
+    def copy(self):
+        p = ParticleTree(self.tree)
+        p.expansion_nodes, p.log_weight, p.old_likelihood_logp, p.kfactor = (
+            self.expansion_nodes.copy(),
+            self.log_weight,
+            self.old_likelihood_logp,
+            self.kfactor,
+        )
+        return p
 
     def sample_tree(
         self,
@@ -500,7 +507,6 @@ def grow_tree(
 
 
 def get_new_idx_data_points(split_value, idx_data_points, selected_predictor, X):
-
     left_idx = X[idx_data_points, selected_predictor] <= split_value
     left_node_idx_data_points = idx_data_points[left_idx]
     right_node_idx_data_points = idx_data_points[~left_idx]
@@ -509,7 +515,6 @@ def get_new_idx_data_points(split_value, idx_data_points, selected_predictor, X)
 
 
 def get_split_value(available_splitting_values, idx_data_points, missing_data):
-
     if missing_data:
         idx_data_points = idx_data_points[~np.isnan(available_splitting_values)]
         available_splitting_values = available_splitting_values[
