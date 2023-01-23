@@ -13,8 +13,8 @@
 #   limitations under the License.
 
 import math
-
 from copy import deepcopy
+
 from functools import lru_cache
 
 from pytensor import config
@@ -42,9 +42,9 @@ class Tree:
 
     Parameters
     ----------
-    idx_data_points : array of integers
-    num_observations : integer
-    shape : int
+    tree_structure : Dictionary of nodes
+    idx_leaf_nodes :  List with the index of the leaf nodes of the tree.
+    output : Array of shape number of observations, shape
     """
 
     __slots__ = (
@@ -53,12 +53,22 @@ class Tree:
         "output",
     )
 
-    def __init__(self, leaf_node_value, idx_data_points, num_observations, shape):
-        self.tree_structure = {
-            0: Node.new_leaf_node(0, value=leaf_node_value, idx_data_points=idx_data_points)
-        }
-        self.idx_leaf_nodes = [0]
-        self.output = np.zeros((num_observations, shape)).astype(config.floatX).squeeze()
+    def __init__(self, tree_structure, idx_leaf_nodes, output):
+        self.tree_structure, self.idx_leaf_nodes, self.output = (
+            tree_structure,
+            idx_leaf_nodes,
+            output,
+        )
+
+    @classmethod
+    def new_tree(cls, leaf_node_value, idx_data_points, num_observations, shape):
+        return cls(
+            tree_structure={
+                0: Node.new_leaf_node(0, value=leaf_node_value, idx_data_points=idx_data_points)
+            },
+            idx_leaf_nodes=[0],
+            output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
+        )
 
     def __getitem__(self, index):
         return self.get_node(index)
@@ -67,7 +77,11 @@ class Tree:
         self.set_node(index, node)
 
     def copy(self):
-        return deepcopy(self)
+        tree = {
+            k: Node(v.index, v.value, v.idx_data_points, v.idx_split_variable)
+            for k, v in self.tree_structure.items()
+        }
+        return Tree(tree, self.idx_leaf_nodes.copy(), deepcopy(self.output))
 
     def get_node(self, index) -> "Node":
         return self.tree_structure[index]
@@ -82,14 +96,11 @@ class Tree:
         del self.tree_structure[index]
 
     def trim(self):
-        a_tree = self.copy()
-        del a_tree.output
-        del a_tree.idx_leaf_nodes
-        for k in a_tree.tree_structure.keys():
-            current_node = a_tree[k]
-            if current_node.is_leaf_node():
-                del current_node.idx_data_points
-        return a_tree
+        tree = {
+            k: Node(v.index, v.value, None, v.idx_split_variable)
+            for k, v in self.tree_structure.items()
+        }
+        return Tree(tree, None, None)
 
     def get_split_variables(self):
         return [
@@ -175,10 +186,12 @@ class Node:
     __slots__ = "index", "value", "idx_split_variable", "idx_data_points"
 
     def __init__(self, index: int, value=-1, idx_data_points=None, idx_split_variable=-1):
-        self.index = index
-        self.value = value
-        self.idx_data_points = idx_data_points
-        self.idx_split_variable = idx_split_variable
+        self.index, self.value, self.idx_data_points, self.idx_split_variable = (
+            index,
+            value,
+            idx_data_points,
+            idx_split_variable,
+        )
 
     @classmethod
     def new_leaf_node(cls, index: int, value, idx_data_points) -> "Node":
