@@ -64,7 +64,7 @@ class Tree:
                 0: Node.new_leaf_node(0, value=leaf_node_value, idx_data_points=idx_data_points)
             },
             idx_leaf_nodes=[0],
-            output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
+            output=np.zeros((shape, num_observations)).astype(config.floatX).squeeze(),
         )
 
     def __getitem__(self, index):
@@ -109,7 +109,7 @@ class Tree:
         for node_index in self.idx_leaf_nodes:
             leaf_node = self.get_node(node_index)
             output[leaf_node.idx_data_points] = leaf_node.value
-        return output.T
+        return output
 
     def predict(self, x, excluded=None):
         """
