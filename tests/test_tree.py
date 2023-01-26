@@ -10,7 +10,6 @@ def test_split_node():
     assert split_node.value == 3.0
     assert split_node.idx_split_variable == 2
     assert split_node.idx_data_points is None
-    assert split_node.get_idx_parent_node() == 2
     assert split_node.get_idx_left_child() == 11
     assert split_node.get_idx_right_child() == 12
     assert split_node.is_split_node() is True
@@ -24,7 +23,6 @@ def test_leaf_node():
     assert leaf_node.value == 3.14
     assert leaf_node.idx_split_variable == -1
     assert np.array_equal(leaf_node.idx_data_points, [1, 2, 3])
-    assert leaf_node.get_idx_parent_node() == 2
     assert leaf_node.get_idx_left_child() == 11
     assert leaf_node.get_idx_right_child() == 12
     assert leaf_node.is_split_node() is False

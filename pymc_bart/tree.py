@@ -88,9 +88,11 @@ class Tree:
         if node.is_leaf_node():
             self.idx_leaf_nodes.append(index)
 
-    def delete_leaf_node(self, index):
-        self.idx_leaf_nodes.remove(index)
-        del self.tree_structure[index]
+    def grow_leaf_node(self, current_node, selected_predictor, split_value, index_leaf_node):
+        current_node.value = split_value
+        current_node.idx_split_variable = selected_predictor
+        current_node.idx_data_points = None
+        self.idx_leaf_nodes.remove(index_leaf_node)
 
     def trim(self):
         tree = {
@@ -100,9 +102,9 @@ class Tree:
         return Tree(tree, None, None)
 
     def get_split_variables(self):
-        return [
-            node.idx_split_variable for node in self.tree_structure.values() if node.is_split_node()
-        ]
+        for node in self.tree_structure.values():
+            if node.is_split_node():
+                yield node.idx_split_variable
 
     def _predict(self):
         output = self.output
@@ -153,11 +155,10 @@ class Tree:
             return np.mean(leaf_values, 0)
 
         if x[current_node.idx_split_variable] <= current_node.value:
-            left_child = current_node.get_idx_left_child()
-            return self._traverse_tree(x, left_child, excluded)
+            next_node = current_node.get_idx_left_child()
         else:
-            right_child = current_node.get_idx_right_child()
-            return self._traverse_tree(x, right_child, excluded)
+            next_node = current_node.get_idx_right_child()
+        return self._traverse_tree(x, next_node, excluded)
 
     def _traverse_leaf_values(self, leaf_values, node_index):
         """
@@ -196,14 +197,11 @@ class Node:
     def new_split_node(cls, index: int, split_value, idx_split_variable) -> "Node":
         return cls(index, value=split_value, idx_split_variable=idx_split_variable)
 
-    def get_idx_parent_node(self) -> int:
-        return (self.index - 1) // 2
-
     def get_idx_left_child(self) -> int:
         return self.index * 2 + 1
 
     def get_idx_right_child(self) -> int:
-        return self.get_idx_left_child() + 1
+        return self.index * 2 + 2
 
     def is_split_node(self) -> bool:
         return self.idx_split_variable >= 0
