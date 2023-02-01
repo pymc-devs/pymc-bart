@@ -187,18 +187,18 @@ class PGBART(ArrayStepShared):
 
             _, normalized_weights = self.normalize(particles)
             # Get the new tree and update
-            new_particle, new_tree = self.get_particle_tree(particles, normalized_weights)
-            self.all_particles[tree_id] = new_particle
+            self.all_particles[tree_id], new_tree = self.get_particle_tree(
+                particles, normalized_weights
+            )
             self.sum_trees = self.sum_trees_noi + new_tree._predict()
             self.all_trees[tree_id] = new_tree.trim()
-            used_variates = new_tree.get_split_variables()
 
             if self.tune:
                 self.ssv = SampleSplittingVariable(self.alpha_vec)
-                for index in used_variates:
+                for index in new_tree.get_split_variables():
                     self.alpha_vec[index] += 1
             else:
-                for index in used_variates:
+                for index in new_tree.get_split_variables():
                     variable_inclusion[index] += 1
 
         if not self.tune:
@@ -284,12 +284,9 @@ class PGBART(ArrayStepShared):
         particles = [p0, p1]
 
         for _ in self.indices:
-            pt = ParticleTree(self.a_tree)
-            if self.tune:
-                pt.kfactor = self.uniform.random()
-            else:
-                pt.kfactor = p0.kfactor
-            particles.append(pt)
+            particles.append(
+                ParticleTree(self.a_tree, self.uniform.random() if self.tune else p0.kfactor)
+            )
 
         return np.array(particles)
 
@@ -305,10 +302,10 @@ class PGBART(ArrayStepShared):
         )
         if old:
             particle.log_weight = new_likelihood
-            particle.old_likelihood_logp = new_likelihood
         else:
             particle.log_weight += new_likelihood - particle.old_likelihood_logp
-            particle.old_likelihood_logp = new_likelihood
+
+        particle.old_likelihood_logp = new_likelihood
 
     @staticmethod
     def competence(var, has_grad):
@@ -324,21 +321,19 @@ class ParticleTree:
 
     __slots__ = "tree", "expansion_nodes", "log_weight", "old_likelihood_logp", "kfactor"
 
-    def __init__(self, tree):
+    def __init__(self, tree, kfactor=0.75):
         self.tree = tree.copy()
         self.expansion_nodes = [0]
         self.log_weight = 0
         self.old_likelihood_logp = 0
-        self.kfactor = 0.75
+        self.kfactor = kfactor
 
     def copy(self):
         p = ParticleTree(self.tree)
-        p.expansion_nodes, p.log_weight, p.old_likelihood_logp, p.kfactor = (
-            self.expansion_nodes.copy(),
-            self.log_weight,
-            self.old_likelihood_logp,
-            self.kfactor,
-        )
+        p.expansion_nodes = self.expansion_nodes.copy()
+        p.log_weight = self.log_weight
+        p.old_likelihood_logp = self.old_likelihood_logp
+        p.kfactor = self.kfactor
         return p
 
     def sample_tree(
@@ -360,7 +355,7 @@ class ParticleTree:
             prob_leaf = prior_prob_leaf_node[get_depth(index_leaf_node)]
 
             if prob_leaf < np.random.random():
-                index_selected_predictor = grow_tree(
+                idx_new_nodes = grow_tree(
                     self.tree,
                     index_leaf_node,
                     ssv,
@@ -373,9 +368,8 @@ class ParticleTree:
                     self.kfactor,
                     shape,
                 )
-                if index_selected_predictor is not None:
-                    new_indexes = self.tree.idx_leaf_nodes[-2:]
-                    self.expansion_nodes.extend(new_indexes)
+                if idx_new_nodes is not None:
+                    self.expansion_nodes.extend(idx_new_nodes)
                     tree_grew = True
 
         return tree_grew
@@ -389,8 +383,7 @@ class ParticleTree:
                 node_value = draw_leaf_value(
                     sum_trees[:, idx_data_points],
                     m,
-                    normal,
-                    self.kfactor,
+                    normal.random() * self.kfactor,
                     shape,
                 )
                 leaf.value = node_value
@@ -463,55 +456,43 @@ def grow_tree(
     split_value = get_split_value(available_splitting_values, idx_data_points, missing_data)
 
     if split_value is None:
-        index_selected_predictor = None
-    else:
-        new_idx_data_points = get_new_idx_data_points(
-            split_value, idx_data_points, selected_predictor, X
-        )
-        current_node_children = (
-            current_node.get_idx_left_child(),
-            current_node.get_idx_right_child(),
-        )
+        return None
+    new_idx_data_points = get_new_idx_data_points(
+        available_splitting_values, split_value, idx_data_points
+    )
+    current_node_children = (
+        current_node.get_idx_left_child(),
+        current_node.get_idx_right_child(),
+    )
 
-        new_nodes = []
-        for idx in range(2):
-            idx_data_point = new_idx_data_points[idx]
-            node_value = draw_leaf_value(
-                sum_trees[:, idx_data_point],
-                m,
-                normal,
-                kfactor,
-                shape,
-            )
-
-            new_node = Node.new_leaf_node(
-                index=current_node_children[idx],
-                value=node_value,
-                idx_data_points=idx_data_point,
-            )
-            new_nodes.append(new_node)
-
-        new_split_node = Node.new_split_node(
-            index=index_leaf_node,
-            split_value=split_value,
-            idx_split_variable=selected_predictor,
+    new_nodes = []
+    for idx in range(2):
+        idx_data_point = new_idx_data_points[idx]
+        node_value = draw_leaf_value(
+            sum_trees[:, idx_data_point],
+            m,
+            normal.random() * kfactor,
+            shape,
         )
 
-        # update tree nodes and indexes
-        tree.delete_leaf_node(index_leaf_node)
-        tree.set_node(index_leaf_node, new_split_node)
-        tree.set_node(new_nodes[0].index, new_nodes[0])
-        tree.set_node(new_nodes[1].index, new_nodes[1])
+        new_node = Node.new_leaf_node(
+            index=current_node_children[idx],
+            value=node_value,
+            idx_data_points=idx_data_point,
+        )
+        new_nodes.append(new_node)
 
-    return index_selected_predictor
+    tree.grow_leaf_node(current_node, selected_predictor, split_value, index_leaf_node)
+    tree.set_node(new_nodes[0].index, new_nodes[0])
+    tree.set_node(new_nodes[1].index, new_nodes[1])
+
+    return [new_nodes[0].index, new_nodes[1].index]
 
 
-def get_new_idx_data_points(split_value, idx_data_points, selected_predictor, X):
-    left_idx = X[idx_data_points, selected_predictor] <= split_value
-    left_node_idx_data_points = idx_data_points[left_idx]
-    right_node_idx_data_points = idx_data_points[~left_idx]
-
-    return left_node_idx_data_points, right_node_idx_data_points
+@njit
+def get_new_idx_data_points(available_splitting_values, split_value, idx_data_points):
+    split_idx = available_splitting_values <= split_value
+    return idx_data_points[split_idx], idx_data_points[~split_idx]
 
 
 def get_split_value(available_splitting_values, idx_data_points, missing_data):
@@ -529,19 +510,18 @@ def get_split_value(available_splitting_values, idx_data_points, missing_data):
     return split_value
 
 
-def draw_leaf_value(y_mu_pred, m, normal, kfactor, shape):
+@njit
+def draw_leaf_value(y_mu_pred, m, norm, shape):
     """Draw Gaussian distributed leaf values."""
     if y_mu_pred.size == 0:
         return np.zeros(shape)
-    else:
-        norm = normal.random() * kfactor
-        if y_mu_pred.size == 1:
-            mu_mean = np.full(shape, y_mu_pred.item() / m)
-        else:
-            mu_mean = fast_mean(y_mu_pred) / m
 
-        draw = norm + mu_mean
-        return draw
+    if y_mu_pred.size == 1:
+        mu_mean = np.full(shape, y_mu_pred.item() / m)
+    else:
+        mu_mean = fast_mean(y_mu_pred) / m
+
+    return norm + mu_mean
 
 
 @njit
