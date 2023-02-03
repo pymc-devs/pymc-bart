@@ -58,6 +58,19 @@ def test_shared_variable():
     assert ppc2.posterior_predictive["y"].shape == (2, 100, 3)
 
 
+def test_shape():
+    X = np.random.normal(0, 1, size=(250, 3))
+    Y = np.random.normal(0, 1, size=250)
+
+    with pm.Model() as model:
+        w = pmb.BART("w", X, Y, m=2, shape=(2, 250))
+        y = pm.Normal("y", w[0], pm.math.abs(w[1]), observed=Y)
+        idata = pm.sample(random_seed=3415)
+
+    assert model.initial_point()["w"].shape == (2, 250)
+    assert idata.posterior.coords["w_dim_0"].data.size == 2
+    assert idata.posterior.coords["w_dim_1"].data.size == 250
+
 class TestUtils:
     X_norm = np.random.normal(0, 1, size=(50, 2))
     X_binom = np.random.binomial(1, 0.5, size=(50, 1))
