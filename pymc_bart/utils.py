@@ -47,7 +47,7 @@ def _sample_posterior(all_trees, X, rng, size=None, excluded=None):
 
     for ind, p in enumerate(pred):
         for tree in stacked_trees[idx[ind]]:
-            p += np.array([tree.predict(x, excluded) for x in X])
+            p += np.vstack([tree.predict(x, excluded) for x in X])
     pred.reshape((*size, shape, -1))
     return pred
 
@@ -61,6 +61,7 @@ def plot_dependence(
     xs_values=None,
     var_idx=None,
     var_discrete=None,
+    func=None,
     samples=50,
     instances=10,
     random_seed=None,
@@ -104,6 +105,8 @@ def plot_dependence(
         List of the indices of the covariate for which to compute the pdp or ice.
     var_discrete : list
         List of the indices of the covariate treated as discrete.
+    func : function
+        Arbitrary function to apply to the predictions. Defaults to the identity function.
     samples : int
         Number of posterior samples used in the predictions. Defaults to 50
     instances : int
@@ -228,6 +231,8 @@ def plot_dependence(
         y_mins.append(np.min(y_pred))
         new_y.append(np.array(y_pred).T)
 
+    if func is not None:
+        new_y = func(new_y)
     shape = 1
     if new_y[0].ndim == 3:
         shape = new_y[0].shape[0]

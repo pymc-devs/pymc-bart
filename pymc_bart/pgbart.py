@@ -113,7 +113,8 @@ class PGBART(ArrayStepShared):
             shape=self.shape,
         )
         self.normal = NormalSampler(mu_std, self.shape)
-        self.uniform = UniformSampler(0.33, 0.75, self.shape)
+        self.uniform = UniformSampler(0, 1)
+        self.uniform_kf = UniformSampler(0.33, 0.75, self.shape)
         self.prior_prob_leaf_node = compute_prior_probability(self.bart.alpha)
         self.ssv = SampleSplittingVariable(self.alpha_vec)
 
@@ -253,7 +254,6 @@ class PGBART(ArrayStepShared):
             discrete_uniform_sampler(self.num_particles)
         ]
         new_particle = particles[new_index - 2]
-        new_particle.log_weight = new_particle.old_likelihood_logp - self.log_num_particles
         return new_particle, new_particle.tree
 
     def systematic(self, normalized_weights):
@@ -265,7 +265,7 @@ class PGBART(ArrayStepShared):
         Note: adapted from https://github.com/nchopin/particles
         """
         lnw = len(normalized_weights)
-        single_uniform = (self.uniform.random()[0] + np.arange(lnw)) / lnw
+        single_uniform = (self.uniform.random() + np.arange(lnw)) / lnw
         return inverse_cdf(single_uniform, normalized_weights) + 2
 
     def init_particles(self, tree_id: int) -> np.ndarray:
@@ -285,7 +285,7 @@ class PGBART(ArrayStepShared):
 
         for _ in self.indices:
             particles.append(
-                ParticleTree(self.a_tree, self.uniform.random() if self.tune else p0.kfactor)
+                ParticleTree(self.a_tree, self.uniform_kf.random() if self.tune else p0.kfactor)
             )
 
         return np.array(particles)
@@ -575,7 +575,7 @@ class NormalSampler:
 class UniformSampler:
     """Cache samples from a uniform distribution."""
 
-    def __init__(self, lower_bound, upper_bound, shape):
+    def __init__(self, lower_bound, upper_bound, shape=None):
         self.size = 1000
         self.upper_bound = upper_bound
         self.lower_bound = lower_bound
@@ -585,15 +585,21 @@ class UniformSampler:
     def random(self):
         if self.idx == self.size:
             self.update()
-        pop = self.cache[:, self.idx]
+        if self.shape is None:
+            pop = self.cache[self.idx]
+        else:
+            pop = self.cache[:, self.idx]
         self.idx += 1
         return pop
 
     def update(self):
         self.idx = 0
-        self.cache = np.random.uniform(
-            self.lower_bound, self.upper_bound, size=(self.shape, self.size)
-        )
+        if self.shape is None:
+            self.cache = np.random.uniform(self.lower_bound, self.upper_bound, size=self.size)
+        else:
+            self.cache = np.random.uniform(
+                self.lower_bound, self.upper_bound, size=(self.shape, self.size)
+            )
 
 
 @njit
@@ -629,7 +635,7 @@ def inverse_cdf(single_uniform, normalized_weights):
 
 
 def logp(point, out_vars, vars, shared):  # pylint: disable=redefined-builtin
-    """Compile Aesara function of the model and the input and output variables.
+    """Compile PyTensor function of the model and the input and output variables.
 
     Parameters
     ----------
