@@ -17,11 +17,9 @@ class TestSystematic(TestCase):
             y = pm.Normal("y", mu, sigma, observed=Y)
             step = pmb.PGBART([mu])
 
-        # Set up mock data
         normalized_weights = np.array([0.5, 0.3, 0.2])
         indices = step.systematic(normalized_weights)
 
-        # Check output
         self.assertEqual(len(indices), len(normalized_weights))
         self.assertEqual(indices.dtype, np.int)
         self.assertTrue(all(i >= 0 and i < len(normalized_weights) for i in indices))
