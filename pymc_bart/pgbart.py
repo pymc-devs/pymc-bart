@@ -232,7 +232,7 @@ class PGBART(ArrayStepShared):
 
         Ensure particles are copied only if needed.
         """
-        new_indices = self.systematic(normalized_weights)
+        new_indices = self.systematic(normalized_weights) + 2
         seen = []
         new_particles = []
         for idx in new_indices:
@@ -253,20 +253,20 @@ class PGBART(ArrayStepShared):
         new_index = self.systematic(normalized_weights)[
             discrete_uniform_sampler(self.num_particles)
         ]
-        new_particle = particles[new_index - 2]
+        new_particle = particles[new_index]
         return new_particle, new_particle.tree
 
     def systematic(self, normalized_weights):
         """
         Systematic resampling.
 
-        Return indices in the range 2, ..., len(normalized_weights)+2
+        Return indices in the range 0, ..., len(normalized_weights)
 
         Note: adapted from https://github.com/nchopin/particles
         """
         lnw = len(normalized_weights)
         single_uniform = (self.uniform.random() + np.arange(lnw)) / lnw
-        return inverse_cdf(single_uniform, normalized_weights) + 2
+        return inverse_cdf(single_uniform, normalized_weights)
 
     def init_particles(self, tree_id: int) -> np.ndarray:
         """Initialize particles."""
