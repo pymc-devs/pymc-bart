@@ -47,23 +47,23 @@ def test_discrete_uniform():
 
 def test_normal_sampler():
     normal = NormalSampler(2, shape=1)
-    samples = np.array([normal.random() for i in range(100000)])
+    samples = np.array([normal.rvs() for i in range(100000)])
     np.testing.assert_almost_equal(samples.mean(), 0, decimal=2)
     np.testing.assert_almost_equal(samples.std(), 2, decimal=2)
 
     normal = NormalSampler(2, shape=2)
-    samples = np.array([normal.random() for i in range(100000)])
+    samples = np.array([normal.rvs() for i in range(100000)])
     np.testing.assert_almost_equal(samples.mean(0), [0, 0], decimal=2)
     np.testing.assert_almost_equal(samples.std(0), [2, 2], decimal=2)
 
 
 def test_uniform_sampler():
     uniform = UniformSampler(0.5, 2, shape=1)
-    samples = np.array([uniform.random() for i in range(100000)])
+    samples = np.array([uniform.rvs() for i in range(100000)])
     np.testing.assert_almost_equal(samples.mean(), 1.25, decimal=2)
     np.testing.assert_almost_equal(samples.std(), 0.43, decimal=2)
 
     uniform = UniformSampler(0.5, 2, shape=2)
-    samples = np.array([uniform.random() for i in range(100000)])
+    samples = np.array([uniform.rvs() for i in range(100000)])
     np.testing.assert_almost_equal(samples.mean(0), [1.25, 1.25], decimal=2)
     np.testing.assert_almost_equal(samples.std(0), [0.43, 0.43], decimal=2)
