@@ -3,9 +3,42 @@ import pymc as pm
 import pytest
 from numpy.random import RandomState
 from numpy.testing import assert_almost_equal, assert_array_equal
-from pymc.tests.distributions.util import assert_moment_is_expected
 
 import pymc_bart as pmb
+
+from pymc.logprob.joint_logprob import joint_logp
+from pymc.initial_point import make_initial_point_fn
+
+
+def assert_moment_is_expected(model, expected, check_finite_logp=True):
+    fn = make_initial_point_fn(
+        model=model,
+        return_transformed=False,
+        default_strategy="moment",
+    )
+    moment = fn(0)["x"]
+    expected = np.asarray(expected)
+    try:
+        random_draw = model["x"].eval()
+    except NotImplementedError:
+        random_draw = moment
+
+    assert moment.shape == expected.shape
+    assert expected.shape == random_draw.shape
+    assert np.allclose(moment, expected)
+
+    if check_finite_logp:
+        logp_moment = (
+            joint_logp(
+                (model["x"],),
+                rvs_to_values={model["x"]: pm.math.constant(moment)},
+                rvs_to_transforms={},
+                rvs_to_total_sizes={},
+            )[0]
+            .sum()
+            .eval()
+        )
+        assert np.isfinite(logp_moment)
 
 
 def test_bart_vi():
@@ -70,6 +103,7 @@ def test_shape():
     assert model.initial_point()["w"].shape == (2, 250)
     assert idata.posterior.coords["w_dim_0"].data.size == 2
     assert idata.posterior.coords["w_dim_1"].data.size == 250
+
 
 class TestUtils:
     X_norm = np.random.normal(0, 1, size=(50, 2))

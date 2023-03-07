@@ -12,8 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import logging
-
 from numba import njit
 
 import numpy as np
@@ -30,8 +28,6 @@ from pymc.pytensorf import inputvars, join_nonshared_inputs, make_shared_replace
 from pymc_bart.bart import BARTRV
 from pymc_bart.tree import Tree, Node, get_depth
 
-_log = logging.getLogger("pymc")
-
 
 class PGBART(ArrayStepShared):
     """
@@ -41,8 +37,8 @@ class PGBART(ArrayStepShared):
     ----------
     vars: list
         List of value variables for sampler
-    num_particles : int
-        Number of particles for the conditional SMC sampler. Defaults to 20
+    num_particles : tuple
+        Number of particles. Defaults to 20
     batch : int or tuple
         Number of trees fitted per step. Defaults to  "auto", which is the 10% of the `m` trees
         during tuning and after tuning. If a tuple is passed the first element is the batch size
@@ -54,7 +50,7 @@ class PGBART(ArrayStepShared):
     name = "pgbart"
     default_blocked = False
     generates_stats = True
-    stats_dtypes = [{"variable_inclusion": object}]
+    stats_dtypes = [{"variable_inclusion": object, "tune": bool}]
 
     def __init__(
         self,
@@ -89,7 +85,7 @@ class PGBART(ArrayStepShared):
         if self.bart.split_prior:
             self.alpha_vec = self.bart.split_prior
         else:
-            self.alpha_vec = np.ones(self.X.shape[1])
+            self.alpha_vec = np.ones(self.X.shape[1], dtype=np.int32)
         init_mean = self.bart.Y.mean()
         # if data is binary
         y_unique = np.unique(self.bart.Y)
@@ -105,7 +101,7 @@ class PGBART(ArrayStepShared):
         self.sum_trees = np.full((self.shape, self.bart.Y.shape[0]), init_mean).astype(
             config.floatX
         )
-        self.sum_trees_noi = self.sum_trees - (init_mean / self.m)
+        self.sum_trees_noi = self.sum_trees - init_mean
         self.a_tree = Tree.new_tree(
             leaf_node_value=init_mean / self.m,
             idx_data_points=np.arange(self.num_observations, dtype="int32"),
@@ -130,31 +126,34 @@ class PGBART(ArrayStepShared):
                 self.batch = (batch, batch)
 
         self.num_particles = num_particles
-        self.log_num_particles = np.log(num_particles)
-        self.indices = list(range(2, num_particles))
-        self.len_indices = len(self.indices)
-
+        self.indices = list(range(1, num_particles))
         shared = make_shared_replacements(initial_values, vars, model)
         self.likelihood_logp = logp(initial_values, [model.datalogp], vars, shared)
         self.all_particles = list(ParticleTree(self.a_tree) for _ in range(self.m))
         self.all_trees = np.array([p.tree for p in self.all_particles])
+        self.lower = 0
+        self.iter = 0
         super().__init__(vars, shared)
 
     def astep(self, _):
         variable_inclusion = np.zeros(self.num_variates, dtype="int")
 
-        tree_ids = np.random.choice(range(self.m), replace=False, size=self.batch[~self.tune])
+        upper = min(self.lower + self.batch[~self.tune], self.m)
+        tree_ids = range(self.lower, upper)
+        self.lower = upper if upper < self.m else 0
+
         for tree_id in tree_ids:
+            self.iter += 1
             # Compute the sum of trees without the old tree that we are attempting to replace
             self.sum_trees_noi = self.sum_trees - self.all_particles[tree_id].tree._predict()
-            # Generate an initial set of SMC particles
-            # at the end of the algorithm we return one of these particles as the new tree
+            # Generate an initial set of particles
+            # at the end we return one of these particles as the new tree
             particles = self.init_particles(tree_id)
 
             while True:
-                # Sample each particle (try to grow each tree), except for the first two
+                # Sample each particle (try to grow each tree), except for the first one
                 stop_growing = True
-                for p in particles[2:]:
+                for p in particles[1:]:
                     tree_grew = p.sample_tree(
                         self.ssv,
                         self.available_predictors,
@@ -174,65 +173,55 @@ class PGBART(ArrayStepShared):
                     break
 
                 # Normalize weights
-                w_t, normalized_weights = self.normalize(particles[2:])
+                normalized_weights = self.normalize(particles[1:])
 
                 # Resample
                 particles = self.resample(particles, normalized_weights)
 
-                # Set the new weight
-                for p in particles[2:]:
-                    p.log_weight = w_t
-
-            for p in particles[2:]:
-                p.log_weight = p.old_likelihood_logp
-
-            _, normalized_weights = self.normalize(particles)
-            # Get the new tree and update
+            normalized_weights = self.normalize(particles)
+            # Get the new particle and associated tree
             self.all_particles[tree_id], new_tree = self.get_particle_tree(
                 particles, normalized_weights
             )
+            # Update the sum of trees
             self.sum_trees = self.sum_trees_noi + new_tree._predict()
+            # To reduce memory usage, we trim the tree
             self.all_trees[tree_id] = new_tree.trim()
 
             if self.tune:
-                self.ssv = SampleSplittingVariable(self.alpha_vec)
+                # Update the splitting variable and the splitting variable sampler
+                if self.iter > self.m:
+                    self.ssv = SampleSplittingVariable(self.alpha_vec)
                 for index in new_tree.get_split_variables():
                     self.alpha_vec[index] += 1
             else:
+                # update the variable inclusion
                 for index in new_tree.get_split_variables():
                     variable_inclusion[index] += 1
 
         if not self.tune:
             self.bart.all_trees.append(self.all_trees)
 
-        stats = {"variable_inclusion": variable_inclusion}
+        stats = {"variable_inclusion": variable_inclusion, "tune": self.tune}
         return self.sum_trees, [stats]
 
     def normalize(self, particles):
-        """Use logsumexp trick to get w_t and softmax to get normalized_weights.
-
-        w_t is the un-normalized weight per particle, we will assign it to the
-        next round of particles, so they all start with the same weight.
+        """
+        Use softmax to get normalized_weights.
         """
         log_w = np.array([p.log_weight for p in particles])
         log_w_max = log_w.max()
         log_w_ = log_w - log_w_max
-        wei = np.exp(log_w_)
-        w_sum = wei.sum()
-        w_t = log_w_max + np.log(w_sum) - self.log_num_particles
-        normalized_weights = wei / w_sum
-        # stabilize weights to avoid assigning exactly zero probability to a particle
-        normalized_weights += 1e-12
-
-        return w_t, normalized_weights
+        wei = np.exp(log_w_) + 1e-12
+        return wei / wei.sum()
 
     def resample(self, particles, normalized_weights):
         """
-        Use systematic resample for all but first two particles
+        Use systematic resample for all but the first particle
 
         Ensure particles are copied only if needed.
         """
-        new_indices = self.systematic(normalized_weights) + 2
+        new_indices = self.systematic(normalized_weights) + 1
         seen = []
         new_particles = []
         for idx in new_indices:
@@ -242,18 +231,19 @@ class PGBART(ArrayStepShared):
                 new_particles.append(particles[idx])
                 seen.append(idx)
 
-        particles[2:] = new_particles
+        particles[1:] = new_particles
 
         return particles
 
     def get_particle_tree(self, particles, normalized_weights):
         """
-        Sample a new particle, new tree and update log_weight
+        Sample a new particle and associated tree
         """
         new_index = self.systematic(normalized_weights)[
             discrete_uniform_sampler(self.num_particles)
         ]
         new_particle = particles[new_index]
+
         return new_particle, new_particle.tree
 
     def systematic(self, normalized_weights):
@@ -265,47 +255,31 @@ class PGBART(ArrayStepShared):
         Note: adapted from https://github.com/nchopin/particles
         """
         lnw = len(normalized_weights)
-        single_uniform = (self.uniform.random() + np.arange(lnw)) / lnw
+        single_uniform = (self.uniform.rvs() + np.arange(lnw)) / lnw
         return inverse_cdf(single_uniform, normalized_weights)
 
     def init_particles(self, tree_id: int) -> np.ndarray:
         """Initialize particles."""
         p0 = self.all_particles[tree_id]
-        p1 = p0.copy()
-        p1.sample_leafs(
-            self.sum_trees,
-            self.m,
-            self.normal,
-            self.shape,
-        )
-        # The old tree and the one with new leafs do not grow so we update the weights only once
-        self.update_weight(p0, old=True)
-        self.update_weight(p1, old=True)
-        particles = [p0, p1]
+        # The old tree does not grow so we update the weight only once
+        self.update_weight(p0)
+        particles = [p0]
 
         for _ in self.indices:
             particles.append(
-                ParticleTree(self.a_tree, self.uniform_kf.random() if self.tune else p0.kfactor)
+                ParticleTree(self.a_tree, self.uniform_kf.rvs() if self.tune else p0.kfactor)
             )
 
-        return np.array(particles)
+        return particles
 
-    def update_weight(self, particle, old=False):
+    def update_weight(self, particle):
         """
         Update the weight of a particle.
-
-        Since the prior is used as the proposal,the weights are updated additively as the ratio of
-        the new and old log-likelihoods.
         """
         new_likelihood = self.likelihood_logp(
             (self.sum_trees_noi + particle.tree._predict()).flatten()
         )
-        if old:
-            particle.log_weight = new_likelihood
-        else:
-            particle.log_weight += new_likelihood - particle.old_likelihood_logp
-
-        particle.old_likelihood_logp = new_likelihood
+        particle.log_weight = new_likelihood
 
     @staticmethod
     def competence(var, has_grad):
@@ -319,20 +293,17 @@ class PGBART(ArrayStepShared):
 class ParticleTree:
     """Particle tree."""
 
-    __slots__ = "tree", "expansion_nodes", "log_weight", "old_likelihood_logp", "kfactor"
+    __slots__ = "tree", "expansion_nodes", "log_weight", "kfactor"
 
     def __init__(self, tree, kfactor=0.75):
         self.tree = tree.copy()
         self.expansion_nodes = [0]
         self.log_weight = 0
-        self.old_likelihood_logp = 0
         self.kfactor = kfactor
 
     def copy(self):
         p = ParticleTree(self.tree)
         p.expansion_nodes = self.expansion_nodes.copy()
-        p.log_weight = self.log_weight
-        p.old_likelihood_logp = self.old_likelihood_logp
         p.kfactor = self.kfactor
         return p
 
@@ -373,20 +344,6 @@ class ParticleTree:
                     tree_grew = True
 
         return tree_grew
-
-    def sample_leafs(self, sum_trees, m, normal, shape):
-
-        for idx in self.tree.idx_leaf_nodes:
-            if idx > 0:
-                leaf = self.tree[idx]
-                idx_data_points = leaf.idx_data_points
-                node_value = draw_leaf_value(
-                    sum_trees[:, idx_data_points],
-                    m,
-                    normal.random() * self.kfactor,
-                    shape,
-                )
-                leaf.value = node_value
 
 
 class SampleSplittingVariable:
@@ -471,7 +428,7 @@ def grow_tree(
         node_value = draw_leaf_value(
             sum_trees[:, idx_data_point],
             m,
-            normal.random() * kfactor,
+            normal.rvs() * kfactor,
             shape,
         )
 
@@ -560,7 +517,7 @@ class NormalSampler:
         self.shape = shape
         self.update()
 
-    def random(self):
+    def rvs(self):
         if self.idx == self.size:
             self.update()
         pop = self.cache[:, self.idx]
@@ -582,7 +539,7 @@ class UniformSampler:
         self.shape = shape
         self.update()
 
-    def random(self):
+    def rvs(self):
         if self.idx == self.size:
             self.update()
         if self.shape is None:
@@ -618,7 +575,7 @@ def inverse_cdf(single_uniform, normalized_weights):
     Returns
     -------
     new_indices: ndarray
-        a vector of indices in range 2, ..., len(normalized_weights)+2
+        a vector of indices in range 0, ..., len(normalized_weights)
 
     Note: adapted from https://github.com/nchopin/particles
     """

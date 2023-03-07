@@ -401,6 +401,7 @@ def plot_variable_importance(
 
     axes[1].errorbar(ticks, ev_mean, np.array((ev_mean - ev_hdi[:, 0], ev_hdi[:, 1] - ev_mean)))
 
+    axes[1].axhline(ev_mean[-1], ls="--", color="0.5")
     axes[1].set_xticks(ticks)
     axes[1].set_xticklabels(ticks + 1)
     axes[1].set_xlabel("number of covariables")
