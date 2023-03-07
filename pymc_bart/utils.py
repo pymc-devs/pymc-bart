@@ -232,7 +232,7 @@ def plot_dependence(
         new_y.append(np.array(y_pred).T)
 
     if func is not None:
-        new_y = func(new_y)
+        new_y = [func(nyi) for nyi in new_y]
     shape = 1
     if new_y[0].ndim == 3:
         shape = new_y[0].shape[0]
