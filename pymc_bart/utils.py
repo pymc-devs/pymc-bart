@@ -52,6 +52,60 @@ def _sample_posterior(all_trees, X, rng, size=None, excluded=None):
     return pred
 
 
+def plot_convergence(idata, var_name=None, kind="ecdf", figsize=None, ax=None):
+    """
+    Plot convergence diagnostics.
+
+    Parameters
+    ----------
+    idata : InferenceData
+        InferenceData object containing the posterior samples.
+    var_name : str
+        Name of the BART variable to plot. Defaults to None.
+    kind : str
+        Type of plot to display. Options are "ecdf" (default) and "kde".
+    figsize : tuple
+        Figure size. Defaults to None.
+    ax : matplotlib axes
+        Axes on which to plot. Defaults to None.
+
+    Returns
+    -------
+    ax : matplotlib axes
+    """
+    ess_threshold = idata.posterior.chain.size * 100
+    ess = np.atleast_2d(az.ess(idata, method="bulk", var_names=var_name)[var_name].values)
+    rhat = np.atleast_2d(az.rhat(idata, var_names=var_name)[var_name].values)
+
+    if figsize is None:
+        figsize = (10, 3)
+
+    if kind == "ecdf":
+        kind_func = az.plot_ecdf
+        sharey = True
+    elif kind == "kde":
+        kind_func = az.plot_kde
+        sharey = False
+
+    if ax is None:
+        _, ax = plt.subplots(1, 2, figsize=figsize, sharex="col", sharey=sharey)
+
+    for idx, (essi, rhati) in enumerate(zip(ess, rhat)):
+        kind_func(essi, ax=ax[0], plot_kwargs={"color": f"C{idx}"})
+        ax[0].axvline(ess_threshold, color="k", ls="--")
+        kind_func(rhati, ax=ax[1], plot_kwargs={"color": f"C{idx}"})
+        ax[1].axvline(1.01, color="0.6", ls="--")
+        ax[1].axvline(1.05, color="k", ls="--")
+
+    ax[0].set_xlabel("ESS")
+    ax[1].set_xlabel("R-hat")
+    if kind == "kde":
+        ax[0].set_yticks([])
+        ax[1].set_yticks([])
+
+    return ax
+
+
 def plot_dependence(
     bartrv,
     X,
