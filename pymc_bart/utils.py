@@ -94,7 +94,9 @@ def plot_convergence(idata, var_name=None, kind="ecdf", figsize=None, ax=None):
         kind_func(essi, ax=ax[0], plot_kwargs={"color": f"C{idx}"})
         ax[0].axvline(ess_threshold, color="0.7", ls="--")
         kind_func(rhati, ax=ax[1], plot_kwargs={"color": f"C{idx}"})
-        ax[1].axvline(norm(1, 0.005).ppf(0.99**(1/ess.size)), color="0.7", ls="--")
+        # Assume Rhats are N(1, 0.005) iid. Then compute the 0.99 quantile
+        # scaled by the sample size and use it as a threshold.
+        ax[1].axvline(norm(1, 0.005).ppf(0.99 ** (1 / ess.size)), color="0.7", ls="--")
 
     ax[0].set_xlabel("ESS")
     ax[1].set_xlabel("R-hat")
