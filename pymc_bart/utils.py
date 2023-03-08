@@ -7,7 +7,7 @@ import numpy as np
 from pytensor.tensor.var import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, norm
 
 
 def _sample_posterior(all_trees, X, rng, size=None, excluded=None):
@@ -92,10 +92,11 @@ def plot_convergence(idata, var_name=None, kind="ecdf", figsize=None, ax=None):
 
     for idx, (essi, rhati) in enumerate(zip(ess, rhat)):
         kind_func(essi, ax=ax[0], plot_kwargs={"color": f"C{idx}"})
-        ax[0].axvline(ess_threshold, color="k", ls="--")
+        ax[0].axvline(ess_threshold, color="0.7", ls="--")
         kind_func(rhati, ax=ax[1], plot_kwargs={"color": f"C{idx}"})
-        ax[1].axvline(1.01, color="0.6", ls="--")
-        ax[1].axvline(1.05, color="k", ls="--")
+        # Assume Rhats are N(1, 0.005) iid. Then compute the 0.99 quantile
+        # scaled by the sample size and use it as a threshold.
+        ax[1].axvline(norm(1, 0.005).ppf(0.99 ** (1 / ess.size)), color="0.7", ls="--")
 
     ax[0].set_xlabel("ESS")
     ax[1].set_xlabel("R-hat")
