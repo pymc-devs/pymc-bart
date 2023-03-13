@@ -1,5 +1,7 @@
 """Utility function for variable selection and bart interpretability."""
 
+import warnings
+
 import arviz as az
 import matplotlib.pyplot as plt
 import numpy as np
@@ -287,6 +289,7 @@ def plot_dependence(
         y_mins.append(np.min(y_pred))
         new_y.append(np.array(y_pred).T)
 
+    new_y = np.array(new_y)
     if func is not None:
         new_y = [func(nyi) for nyi in new_y]
     shape = 1
@@ -299,6 +302,14 @@ def plot_dependence(
             fig, axes = plt.subplots(1, len(var_idx) * shape, sharey=sharey, figsize=figsize)
         elif isinstance(grid, tuple):
             fig, axes = plt.subplots(grid[0], grid[1], sharey=sharey, figsize=figsize)
+            grid_size = grid[0] * grid[1]
+            n_plots = new_y.squeeze().shape[0]
+            if n_plots > grid_size:
+                warnings.warn("The grid is smaller than the number of available variables to plot")
+            elif n_plots < grid_size:
+                for i in range(n_plots, grid[0] * grid[1]):
+                    fig.delaxes(axes.flatten()[i])
+                axes = axes.flatten()[:n_plots]
         axes = np.ravel(axes)
     else:
         axes = [ax]
@@ -307,10 +318,6 @@ def plot_dependence(
     x_idx = 0
     y_idx = 0
     for ax in axes:  # pylint: disable=redefined-argument-from-local
-        if x_idx >= len(var_idx):
-            ax.set_axis_off()
-            fig.delaxes(ax)
-
         nyi = new_y[x_idx][y_idx]
         nxi = new_x_target[x_idx]
         var = var_idx[x_idx]
