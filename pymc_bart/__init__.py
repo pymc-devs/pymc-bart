@@ -18,7 +18,7 @@ from pymc_bart.pgbart import PGBART
 from pymc_bart.utils import plot_convergence, plot_dependence, plot_variable_importance
 
 __all__ = ["BART", "PGBART"]
-__version__ = "0.3.2"
+__version__ = "0.4.0"
 
 
 pm.STEP_METHODS = list(pm.STEP_METHODS) + [PGBART]
