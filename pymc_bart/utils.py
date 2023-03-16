@@ -289,10 +289,10 @@ def plot_dependence(
         y_mins.append(np.min(y_pred))
         new_y.append(np.array(y_pred).T)
 
-    new_y = np.array(new_y)
     if func is not None:
         new_y = [func(nyi) for nyi in new_y]
     shape = 1
+    new_y = np.array(new_y)
     if new_y[0].ndim == 3:
         shape = new_y[0].shape[0]
     if ax is None:
