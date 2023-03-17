@@ -113,7 +113,7 @@ class Tree:
             output[leaf_node.idx_data_points] = leaf_node.value
         return output.T
 
-    def predict(self, x, excluded=None):
+    def predict(self, x, m, excluded=None):
         """
         Predict output of tree for an (un)observed point x.
 
@@ -121,6 +121,8 @@ class Tree:
         ----------
         x : numpy array
             Unobserved point
+        m : int
+            Number of trees
         excluded: list
                 Indexes of the variables to exclude when computing predictions
 
@@ -131,7 +133,14 @@ class Tree:
         """
         if excluded is None:
             excluded = []
-        return self._traverse_tree(x, 0, excluded)
+
+        leaf_node, split_variable = self._traverse_tree(x, node_index=0, excluded=excluded)
+        if leaf_node.linear_params is None:
+            return self._traverse_tree(x, 0, excluded)
+        else:
+            x = x[split_variable].item()
+            y_x = leaf_node.linear_params[0] + leaf_node.linear_params[1] * x
+            return y_x / m
 
     def _traverse_tree(self, x, node_index, excluded):
         """
@@ -149,15 +158,16 @@ class Tree:
         current_node = self.get_node(node_index)
         if current_node.is_leaf_node():
             return current_node.value
-        if current_node.idx_split_variable in excluded:
+        split_variable = current_node.idx_split_variable
+        if split_variable in excluded:
             leaf_values = []
             self._traverse_leaf_values(leaf_values, node_index)
             return np.mean(leaf_values, 0)
 
-        if x[current_node.idx_split_variable] <= current_node.value:
-            next_node = current_node.get_idx_left_child()
+        if x[split_variable] <= current_node.value:
+            next_node = current_node.get_idx_left_child(), split_variable
         else:
-            next_node = current_node.get_idx_right_child()
+            next_node = current_node.get_idx_right_child(), split_variable
         return self._traverse_tree(x, next_node, excluded)
 
     def _traverse_leaf_values(self, leaf_values, node_index):
@@ -181,13 +191,23 @@ class Tree:
 
 
 class Node:
-    __slots__ = "index", "value", "idx_split_variable", "idx_data_points"
+    __slots__ = (
+        "index",
+        "value",
+        "idx_split_variable",
+        "idx_data_points",
+        "idx_split_variable",
+        "linear_params",
+    )
 
-    def __init__(self, index: int, value=-1, idx_data_points=None, idx_split_variable=-1):
+    def __init__(
+        self, index: int, value=-1, idx_data_points=None, idx_split_variable=-1, linear_params=None
+    ):
         self.index = index
         self.value = value
         self.idx_data_points = idx_data_points
         self.idx_split_variable = idx_split_variable
+        self.linear_params = linear_params
 
     @classmethod
     def new_leaf_node(cls, index: int, value, idx_data_points) -> "Node":

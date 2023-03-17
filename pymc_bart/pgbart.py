@@ -161,9 +161,11 @@ class PGBART(ArrayStepShared):
                         self.X,
                         self.missing_data,
                         self.sum_trees,
+                        self.linear_fit,
                         self.m,
                         self.normal,
                         self.shape,
+                        self.response,
                     )
                     if tree_grew:
                         self.update_weight(p)
@@ -315,9 +317,11 @@ class ParticleTree:
         X,
         missing_data,
         sum_trees,
+        linear_fit,
         m,
         normal,
         shape,
+        response,
     ):
         tree_grew = False
         if self.expansion_nodes:
@@ -334,10 +338,12 @@ class ParticleTree:
                     X,
                     missing_data,
                     sum_trees,
+                    linear_fit,
                     m,
                     normal,
                     self.kfactor,
                     shape,
+                    response,
                 )
                 if idx_new_nodes is not None:
                     self.expansion_nodes.extend(idx_new_nodes)

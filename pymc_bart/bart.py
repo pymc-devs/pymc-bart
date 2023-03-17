@@ -73,6 +73,9 @@ class BART(Distribution):
     alpha : float
         Control the prior probability over the depth of the trees. Even when it can takes values in
         the interval (0, 1), it is recommended to be in the interval (0, 0.5].
+    response : str
+        How the leaf_node values are computed. Available options are ``constant``, ``linear`` or
+        ``mix`` (default).
     split_prior : array-like
         Each element of split_prior should be in the [0, 1] interval and the elements should sum to
         1. Otherwise they will be normalized.
@@ -86,6 +89,7 @@ class BART(Distribution):
         Y,
         m=50,
         alpha=0.25,
+        response="mix",
         split_prior=None,
         **kwargs,
     ):
@@ -109,6 +113,7 @@ class BART(Distribution):
                 Y=Y,
                 m=m,
                 alpha=alpha,
+                response=response,
                 split_prior=split_prior,
             ),
         )()
