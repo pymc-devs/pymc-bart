@@ -23,7 +23,7 @@ Overview
 ============
 PyMC-BART extends `PyMC <https://github.com/pymc-devs/pymc>`_ probabilistic programming framework to be able to define
 and solve models including a BART random variable.  PyMC-BART also includes a few helpers function to aid with the
-interpretation of those models and perform variable selection. 
+interpretation of those models and perform variable selection.
 
 
 Installation
