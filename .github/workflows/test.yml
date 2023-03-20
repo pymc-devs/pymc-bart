@@ -43,6 +43,10 @@ jobs:
           echo "Success!"
           echo "Checking code style with pylint..."
           python -m pylint pymc_bart/
+      - name: Run Mypy
+        shell: bash -l {0}
+        run: |
+          python -m mypy pymc_bart
       - name: Run tests
         shell: bash -l {0}
         run: |

@@ -1,8 +1,11 @@
 from unittest import TestCase
+
 import numpy as np
 import pymc as pm
+
 import pymc_bart as pmb
-from pymc_bart.pgbart import fast_mean, discrete_uniform_sampler, NormalSampler, UniformSampler
+from pymc_bart.pgbart import (NormalSampler, UniformSampler,
+                              discrete_uniform_sampler, fast_mean)
 
 
 class TestSystematic(TestCase):

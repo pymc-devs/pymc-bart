@@ -15,7 +15,8 @@ import pymc as pm
 
 from pymc_bart.bart import BART
 from pymc_bart.pgbart import PGBART
-from pymc_bart.utils import plot_convergence, plot_dependence, plot_variable_importance
+from pymc_bart.utils import (plot_convergence, plot_dependence,
+                             plot_variable_importance)
 
 __all__ = ["BART", "PGBART"]
 __version__ = "0.4.0"

@@ -13,11 +13,55 @@
 #   limitations under the License.
 
 import math
-
 from functools import lru_cache
+from typing import Dict, Generator, List, Optional
 
-from pytensor import config
 import numpy as np
+import numpy.typing as npt
+from pytensor import config
+
+
+class Node:
+    __slots__ = "index", "value", "idx_split_variable", "idx_data_points"
+
+    def __init__(
+        self,
+        index: int,
+        value: float = -1.0,
+        idx_data_points: Optional[List[int]] = None,
+        idx_split_variable: int = -1,
+    ) -> None:
+        self.index = index
+        self.value = value
+        self.idx_data_points = idx_data_points
+        self.idx_split_variable = idx_split_variable
+
+    @classmethod
+    def new_leaf_node(
+        cls, index: int, value: float, idx_data_points: Optional[List[int]]
+    ) -> "Node":
+        return cls(index, value=value, idx_data_points=idx_data_points)
+
+    @classmethod
+    def new_split_node(cls, index: int, split_value: float, idx_split_variable: int) -> "Node":
+        return cls(index=index, value=split_value, idx_split_variable=idx_split_variable)
+
+    def get_idx_left_child(self) -> int:
+        return self.index * 2 + 1
+
+    def get_idx_right_child(self) -> int:
+        return self.index * 2 + 2
+
+    def is_split_node(self) -> bool:
+        return self.idx_split_variable >= 0
+
+    def is_leaf_node(self) -> bool:
+        return not self.is_split_node()
+
+
+@lru_cache
+def get_depth(index: int) -> int:
+    return math.floor(math.log2(index + 1))
 
 
 class Tree:
@@ -52,66 +96,88 @@ class Tree:
         "output",
     )
 
-    def __init__(self, tree_structure, idx_leaf_nodes, output):
+    def __init__(
+        self,
+        tree_structure: Dict[int, Node],
+        idx_leaf_nodes: Optional[List[int]],
+        output: Optional[npt.NDArray],
+    ) -> None:
         self.tree_structure = tree_structure
         self.idx_leaf_nodes = idx_leaf_nodes
         self.output = output
 
     @classmethod
-    def new_tree(cls, leaf_node_value, idx_data_points, num_observations, shape):
+    def new_tree(
+        cls,
+        leaf_node_value: float,
+        idx_data_points: Optional[List[int]],
+        num_observations: int,
+        shape: int,
+    ) -> "Tree":
         return cls(
             tree_structure={
-                0: Node.new_leaf_node(0, value=leaf_node_value, idx_data_points=idx_data_points)
+                0: Node.new_leaf_node(
+                    index=0, value=leaf_node_value, idx_data_points=idx_data_points
+                )
             },
             idx_leaf_nodes=[0],
             output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
         )
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> Node:
         return self.get_node(index)
 
-    def __setitem__(self, index, node):
+    def __setitem__(self, index, node) -> None:
         self.set_node(index, node)
 
-    def copy(self):
-        tree = {
+    def copy(self) -> "Tree":
+        tree: Dict[int, Node] = {
             k: Node(v.index, v.value, v.idx_data_points, v.idx_split_variable)
             for k, v in self.tree_structure.items()
         }
-        return Tree(tree, self.idx_leaf_nodes.copy(), self.output.copy())
+        idx_leaf_nodes = self.idx_leaf_nodes.copy() if self.idx_leaf_nodes else None
+        output = self.output.copy() if self.output is not None else None
+        return Tree(tree_structure=tree, idx_leaf_nodes=idx_leaf_nodes, output=output)
 
-    def get_node(self, index) -> "Node":
+    def get_node(self, index: int) -> Node:
         return self.tree_structure[index]
 
-    def set_node(self, index, node):
+    def set_node(self, index: int, node: Node) -> None:
         self.tree_structure[index] = node
-        if node.is_leaf_node():
+        if node.is_leaf_node() and self.idx_leaf_nodes is not None:
             self.idx_leaf_nodes.append(index)
 
-    def grow_leaf_node(self, current_node, selected_predictor, split_value, index_leaf_node):
+    def grow_leaf_node(self, current_node: Node, selected_predictor, split_value, index_leaf_node):
         current_node.value = split_value
         current_node.idx_split_variable = selected_predictor
         current_node.idx_data_points = None
-        self.idx_leaf_nodes.remove(index_leaf_node)
+        if self.idx_leaf_nodes is not None:
+            self.idx_leaf_nodes.remove(index_leaf_node)
 
-    def trim(self):
-        tree = {
+    def trim(self) -> "Tree":
+        tree: Dict[int, Node] = {
             k: Node(v.index, v.value, None, v.idx_split_variable)
             for k, v in self.tree_structure.items()
         }
         return Tree(tree, None, None)
 
-    def get_split_variables(self):
+    def get_split_variables(self) -> Generator[int, None, None]:
         for node in self.tree_structure.values():
             if node.is_split_node():
                 yield node.idx_split_variable
 
-    def _predict(self):
+    def _predict(self) -> Optional[npt.NDArray]:
         output = self.output
-        for node_index in self.idx_leaf_nodes:
-            leaf_node = self.get_node(node_index)
-            output[leaf_node.idx_data_points] = leaf_node.value
-        return output.T
+
+        if output is None:
+            return None  # ? What do we return here?
+
+        else:
+            if self.idx_leaf_nodes is not None:
+                for node_index in self.idx_leaf_nodes:
+                    leaf_node = self.get_node(node_index)
+                    output[leaf_node.idx_data_points] = leaf_node.value
+            return output.T if output is not None else None
 
     def predict(self, x, excluded=None):
         """
@@ -178,38 +244,3 @@ class Tree:
         else:
             self._traverse_leaf_values(leaf_values, node.get_idx_left_child())
             self._traverse_leaf_values(leaf_values, node.get_idx_right_child())
-
-
-class Node:
-    __slots__ = "index", "value", "idx_split_variable", "idx_data_points"
-
-    def __init__(self, index: int, value=-1, idx_data_points=None, idx_split_variable=-1):
-        self.index = index
-        self.value = value
-        self.idx_data_points = idx_data_points
-        self.idx_split_variable = idx_split_variable
-
-    @classmethod
-    def new_leaf_node(cls, index: int, value, idx_data_points) -> "Node":
-        return cls(index, value=value, idx_data_points=idx_data_points)
-
-    @classmethod
-    def new_split_node(cls, index: int, split_value, idx_split_variable) -> "Node":
-        return cls(index, value=split_value, idx_split_variable=idx_split_variable)
-
-    def get_idx_left_child(self) -> int:
-        return self.index * 2 + 1
-
-    def get_idx_right_child(self) -> int:
-        return self.index * 2 + 2
-
-    def is_split_node(self) -> bool:
-        return self.idx_split_variable >= 0
-
-    def is_leaf_node(self) -> bool:
-        return not self.is_split_node()
-
-
-@lru_cache
-def get_depth(index: int) -> int:
-    return math.floor(math.log2(index + 1))

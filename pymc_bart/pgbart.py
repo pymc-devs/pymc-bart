@@ -12,21 +12,76 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from numba import njit
+from typing import List, Optional, Union
 
 import numpy as np
-
-from pytensor import function as pytensor_function
-from pytensor import config
-from pytensor.tensor.var import Variable
-
-from pymc.model import modelcontext
+from numba import njit
+from pymc.model import Model, modelcontext
+from pymc.pytensorf import inputvars, join_nonshared_inputs, make_shared_replacements
 from pymc.step_methods.arraystep import ArrayStepShared
 from pymc.step_methods.compound import Competence
-from pymc.pytensorf import inputvars, join_nonshared_inputs, make_shared_replacements
+from pytensor import config
+from pytensor import function as pytensor_function
+from pytensor.tensor.var import Variable
 
 from pymc_bart.bart import BARTRV
-from pymc_bart.tree import Tree, Node, get_depth
+from pymc_bart.tree import Node, Tree, get_depth
+
+
+class ParticleTree:
+    """Particle tree."""
+
+    __slots__ = "tree", "expansion_nodes", "log_weight", "kfactor"
+
+    def __init__(self, tree: Tree, kfactor: float = 0.75):
+        self.tree: Tree = tree.copy()
+        self.expansion_nodes: List[int] = [0]
+        self.log_weight: float = 0
+        self.kfactor: float = kfactor
+
+    def copy(self) -> "ParticleTree":
+        p = ParticleTree(self.tree)
+        p.expansion_nodes = self.expansion_nodes.copy()
+        p.kfactor = self.kfactor
+        return p
+
+    def sample_tree(
+        self,
+        ssv,
+        available_predictors,
+        prior_prob_leaf_node,
+        X,
+        missing_data,
+        sum_trees,
+        m,
+        normal,
+        shape,
+    ) -> bool:
+        tree_grew = False
+        if self.expansion_nodes:
+            index_leaf_node = self.expansion_nodes.pop(0)
+            # Probability that this node will remain a leaf node
+            prob_leaf = prior_prob_leaf_node[get_depth(index_leaf_node)]
+
+            if prob_leaf < np.random.random():
+                idx_new_nodes = grow_tree(
+                    self.tree,
+                    index_leaf_node,
+                    ssv,
+                    available_predictors,
+                    X,
+                    missing_data,
+                    sum_trees,
+                    m,
+                    normal,
+                    self.kfactor,
+                    shape,
+                )
+                if idx_new_nodes is not None:
+                    self.expansion_nodes.extend(idx_new_nodes)
+                    tree_grew = True
+
+        return tree_grew
 
 
 class PGBART(ArrayStepShared):
@@ -55,9 +110,9 @@ class PGBART(ArrayStepShared):
     def __init__(
         self,
         vars=None,  # pylint: disable=redefined-builtin
-        num_particles=20,
-        batch="auto",
-        model=None,
+        num_particles: int = 20,
+        batch: Union[str, int] = "auto",
+        model: Optional[Model] = None,
     ):
         model = modelcontext(model)
         initial_values = model.initial_point()
@@ -205,7 +260,7 @@ class PGBART(ArrayStepShared):
         stats = {"variable_inclusion": variable_inclusion, "tune": self.tune}
         return self.sum_trees, [stats]
 
-    def normalize(self, particles):
+    def normalize(self, particles) -> float:
         """
         Use softmax to get normalized_weights.
         """
@@ -215,7 +270,7 @@ class PGBART(ArrayStepShared):
         wei = np.exp(log_w_) + 1e-12
         return wei / wei.sum()
 
-    def resample(self, particles, normalized_weights):
+    def resample(self, particles: List[ParticleTree], normalized_weights) -> List[ParticleTree]:
         """
         Use systematic resample for all but the first particle
 
@@ -258,18 +313,17 @@ class PGBART(ArrayStepShared):
         single_uniform = (self.uniform.rvs() + np.arange(lnw)) / lnw
         return inverse_cdf(single_uniform, normalized_weights)
 
-    def init_particles(self, tree_id: int) -> np.ndarray:
+    def init_particles(self, tree_id: int) -> List[ParticleTree]:
         """Initialize particles."""
-        p0 = self.all_particles[tree_id]
+        p0: ParticleTree = self.all_particles[tree_id]
         # The old tree does not grow so we update the weight only once
         self.update_weight(p0)
-        particles = [p0]
+        particles: List[ParticleTree] = [p0]
 
-        for _ in self.indices:
-            particles.append(
-                ParticleTree(self.a_tree, self.uniform_kf.rvs() if self.tune else p0.kfactor)
-            )
-
+        particles.extend(
+            ParticleTree(self.a_tree, self.uniform_kf.rvs() if self.tune else p0.kfactor)
+            for _ in self.indices
+        )
         return particles
 
     def update_weight(self, particle):
@@ -288,62 +342,6 @@ class PGBART(ArrayStepShared):
         if isinstance(dist, BARTRV):
             return Competence.IDEAL
         return Competence.INCOMPATIBLE
-
-
-class ParticleTree:
-    """Particle tree."""
-
-    __slots__ = "tree", "expansion_nodes", "log_weight", "kfactor"
-
-    def __init__(self, tree, kfactor=0.75):
-        self.tree = tree.copy()
-        self.expansion_nodes = [0]
-        self.log_weight = 0
-        self.kfactor = kfactor
-
-    def copy(self):
-        p = ParticleTree(self.tree)
-        p.expansion_nodes = self.expansion_nodes.copy()
-        p.kfactor = self.kfactor
-        return p
-
-    def sample_tree(
-        self,
-        ssv,
-        available_predictors,
-        prior_prob_leaf_node,
-        X,
-        missing_data,
-        sum_trees,
-        m,
-        normal,
-        shape,
-    ):
-        tree_grew = False
-        if self.expansion_nodes:
-            index_leaf_node = self.expansion_nodes.pop(0)
-            # Probability that this node will remain a leaf node
-            prob_leaf = prior_prob_leaf_node[get_depth(index_leaf_node)]
-
-            if prob_leaf < np.random.random():
-                idx_new_nodes = grow_tree(
-                    self.tree,
-                    index_leaf_node,
-                    ssv,
-                    available_predictors,
-                    X,
-                    missing_data,
-                    sum_trees,
-                    m,
-                    normal,
-                    self.kfactor,
-                    shape,
-                )
-                if idx_new_nodes is not None:
-                    self.expansion_nodes.extend(idx_new_nodes)
-                    tree_grew = True
-
-        return tree_grew
 
 
 class SampleSplittingVariable:

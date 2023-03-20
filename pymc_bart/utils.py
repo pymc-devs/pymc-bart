@@ -5,11 +5,10 @@ import warnings
 import arviz as az
 import matplotlib.pyplot as plt
 import numpy as np
-
 from pytensor.tensor.var import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
-from scipy.stats import pearsonr, norm
+from scipy.stats import norm, pearsonr
 
 
 def _sample_posterior(all_trees, X, rng, size=None, excluded=None):
