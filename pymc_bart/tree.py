@@ -28,7 +28,7 @@ class Node:
         self,
         index: int,
         value: float = -1.0,
-        idx_data_points: Optional[List[int]] = None,
+        idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
     ) -> None:
         self.index = index
@@ -38,7 +38,7 @@ class Node:
 
     @classmethod
     def new_leaf_node(
-        cls, index: int, value: float, idx_data_points: Optional[List[int]]
+        cls, index: int, value: float, idx_data_points: Optional[npt.NDArray[np.int_]]
     ) -> "Node":
         return cls(index, value=value, idx_data_points=idx_data_points)
 
@@ -99,8 +99,8 @@ class Tree:
     def __init__(
         self,
         tree_structure: Dict[int, Node],
-        idx_leaf_nodes: Optional[List[int]],
-        output: Optional[npt.NDArray],
+        idx_leaf_nodes: Optional[npt.NDArray[np.int_]],
+        output: Optional[npt.NDArray[np.float_]],
     ) -> None:
         self.tree_structure = tree_structure
         self.idx_leaf_nodes = idx_leaf_nodes
@@ -110,7 +110,7 @@ class Tree:
     def new_tree(
         cls,
         leaf_node_value: float,
-        idx_data_points: Optional[List[int]],
+        idx_data_points: Optional[npt.NDArray[np.int_]],
         num_observations: int,
         shape: int,
     ) -> "Tree":
@@ -120,7 +120,7 @@ class Tree:
                     index=0, value=leaf_node_value, idx_data_points=idx_data_points
                 )
             },
-            idx_leaf_nodes=[0],
+            idx_leaf_nodes=np.array([0]),
             output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
         )
 
@@ -135,7 +135,7 @@ class Tree:
             k: Node(v.index, v.value, v.idx_data_points, v.idx_split_variable)
             for k, v in self.tree_structure.items()
         }
-        idx_leaf_nodes = self.idx_leaf_nodes.copy() if self.idx_leaf_nodes else None
+        idx_leaf_nodes = self.idx_leaf_nodes.copy() if self.idx_leaf_nodes is not None else None
         output = self.output.copy() if self.output is not None else None
         return Tree(tree_structure=tree, idx_leaf_nodes=idx_leaf_nodes, output=output)
 
@@ -145,14 +145,18 @@ class Tree:
     def set_node(self, index: int, node: Node) -> None:
         self.tree_structure[index] = node
         if node.is_leaf_node() and self.idx_leaf_nodes is not None:
-            self.idx_leaf_nodes.append(index)
+            # self.idx_leaf_nodes.append(index)
+            self.idx_leaf_nodes = np.append(self.idx_leaf_nodes, index)
 
-    def grow_leaf_node(self, current_node: Node, selected_predictor, split_value, index_leaf_node):
+    def grow_leaf_node(
+        self, current_node: Node, selected_predictor: int, split_value: float, index_leaf_node: int
+    ) -> None:
         current_node.value = split_value
         current_node.idx_split_variable = selected_predictor
         current_node.idx_data_points = None
         if self.idx_leaf_nodes is not None:
-            self.idx_leaf_nodes.remove(index_leaf_node)
+            # self.idx_leaf_nodes.remove(index_leaf_node)
+            self.idx_leaf_nodes = np.setdiff1d(self.idx_leaf_nodes, index_leaf_node)
 
     def trim(self) -> "Tree":
         tree: Dict[int, Node] = {
@@ -166,7 +170,7 @@ class Tree:
             if node.is_split_node():
                 yield node.idx_split_variable
 
-    def _predict(self) -> Optional[npt.NDArray]:
+    def _predict(self) -> Optional[npt.NDArray[np.float_]]:
         output = self.output
 
         if output is None:
@@ -179,7 +183,7 @@ class Tree:
                     output[leaf_node.idx_data_points] = leaf_node.value
             return output.T if output is not None else None
 
-    def predict(self, x, excluded=None):
+    def predict(self, x: npt.NDArray[np.float_], excluded: Optional[List[int]] = None) -> float:
         """
         Predict output of tree for an (un)observed point x.
 
@@ -199,7 +203,7 @@ class Tree:
             excluded = []
         return self._traverse_tree(x, 0, excluded)
 
-    def _traverse_tree(self, x, node_index, excluded):
+    def _traverse_tree(self, x, node_index: int, excluded: Optional[List[int]] = None) -> float:
         """
         Traverse the tree starting from a particular node given an unobserved point.
 
@@ -207,16 +211,18 @@ class Tree:
         ----------
         x : np.ndarray
         node_index : int
+        excluded: list
 
         Returns
         -------
         Leaf node value or mean of leaf node values
         """
-        current_node = self.get_node(node_index)
+        current_node: Node = self.get_node(node_index)
         if current_node.is_leaf_node():
             return current_node.value
-        if current_node.idx_split_variable in excluded:
-            leaf_values = []
+
+        if excluded is not None and current_node.idx_split_variable in excluded:
+            leaf_values: List[float] = []
             self._traverse_leaf_values(leaf_values, node_index)
             return np.mean(leaf_values, 0)
 
@@ -226,12 +232,13 @@ class Tree:
             next_node = current_node.get_idx_right_child()
         return self._traverse_tree(x, next_node, excluded)
 
-    def _traverse_leaf_values(self, leaf_values, node_index):
+    def _traverse_leaf_values(self, leaf_values: List[float], node_index: int) -> None:
         """
         Traverse the tree appending leaf values starting from a particular node.
 
         Parameters
         ----------
+        leaf_values : list
         node_index : int
 
         Returns

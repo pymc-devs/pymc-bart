@@ -420,7 +420,7 @@ def grow_tree(
         current_node.get_idx_right_child(),
     )
 
-    new_nodes = []
+    new_nodes = np.array([])
     for idx in range(2):
         idx_data_point = new_idx_data_points[idx]
         node_value = draw_leaf_value(
@@ -435,7 +435,7 @@ def grow_tree(
             value=node_value,
             idx_data_points=idx_data_point,
         )
-        new_nodes.append(new_node)
+        new_nodes = np.append(new_nodes, new_node)
 
     tree.grow_leaf_node(current_node, selected_predictor, split_value, index_leaf_node)
     tree.set_node(new_nodes[0].index, new_nodes[0])
