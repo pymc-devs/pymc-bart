@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 from numba import njit
@@ -111,7 +111,7 @@ class PGBART(ArrayStepShared):
         self,
         vars=None,  # pylint: disable=redefined-builtin
         num_particles: int = 20,
-        batch: Union[str, int] = "auto",
+        batch: Tuple[float, float] = (0.1, 0.1),
         model: Optional[Model] = None,
     ):
         model = modelcontext(model)
@@ -171,14 +171,9 @@ class PGBART(ArrayStepShared):
 
         self.tune = True
 
-        if batch == "auto":
-            batch = max(1, int(self.m * 0.1))
-            self.batch = (batch, batch)
-        else:
-            if isinstance(batch, (tuple, list)):
-                self.batch = batch
-            else:
-                self.batch = (batch, batch)
+        if batch == (0.1, 0.1):
+            batch_component = max(1, int(self.m * 0.1))
+            self.batch = (batch_component, batch_component)
 
         self.num_particles = num_particles
         self.indices = list(range(1, num_particles))
