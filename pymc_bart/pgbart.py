@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 import numpy as np
 from numba import njit
@@ -184,7 +184,7 @@ class PGBART(ArrayStepShared):
         self.indices = list(range(1, num_particles))
         shared = make_shared_replacements(initial_values, vars, model)
         self.likelihood_logp = logp(initial_values, [model.datalogp], vars, shared)
-        self.all_particles = list(ParticleTree(self.a_tree) for _ in range(self.m))
+        self.all_particles = [ParticleTree(self.a_tree) for _ in range(self.m)]
         self.all_trees = np.array([p.tree for p in self.all_particles])
         self.lower = 0
         self.iter = 0
@@ -209,7 +209,7 @@ class PGBART(ArrayStepShared):
                 # Sample each particle (try to grow each tree), except for the first one
                 stop_growing = True
                 for p in particles[1:]:
-                    tree_grew = p.sample_tree(
+                    if p.sample_tree(
                         self.ssv,
                         self.available_predictors,
                         self.prior_prob_leaf_node,
@@ -219,8 +219,7 @@ class PGBART(ArrayStepShared):
                         self.m,
                         self.normal,
                         self.shape,
-                    )
-                    if tree_grew:
+                    ):
                         self.update_weight(p)
                     if p.expansion_nodes:
                         stop_growing = False

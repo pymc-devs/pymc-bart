@@ -22,6 +22,16 @@ from pytensor import config
 
 
 class Node:
+    """Node of a binary tree.
+
+    Attributes
+    ----------
+    index : int
+    value : float
+    idx_data_points : Optional[npt.NDArray[np.int_]]
+    idx_split_variable : Optional[npt.NDArray[np.int_]]
+    """
+
     __slots__ = "index", "value", "idx_split_variable", "idx_data_points"
 
     def __init__(
@@ -72,21 +82,21 @@ class Tree:
 
     Attributes
     ----------
-    tree_structure : dict
+    tree_structure : Dict[int, Node]
         A dictionary that represents the nodes stored in breadth-first order, based in the array
         method for storing binary trees (https://en.wikipedia.org/wiki/Binary_tree#Arrays).
         The dictionary's keys are integers that represent the nodes position.
         The dictionary's values are objects of type Node that represent the split and leaf nodes
         of the tree itself.
-    idx_leaf_nodes : list
-        List with the index of the leaf nodes of the tree.
-    output: array
+    idx_leaf_nodes : Optional[npt.NDArray[np.int_]]
+        Array with the index of the leaf nodes of the tree.
+    output: Optional[npt.NDArray[np.float_]]
         Array of shape number of observations, shape
 
     Parameters
     ----------
     tree_structure : Dictionary of nodes
-    idx_leaf_nodes :  List with the index of the leaf nodes of the tree.
+    idx_leaf_nodes :  Array with the index of the leaf nodes of the tree.
     output : Array of shape number of observations, shape
     """
 
@@ -174,14 +184,13 @@ class Tree:
         output = self.output
 
         if output is None:
-            return None  # ? What do we return here?
+            return None
 
-        else:
-            if self.idx_leaf_nodes is not None:
-                for node_index in self.idx_leaf_nodes:
-                    leaf_node = self.get_node(node_index)
-                    output[leaf_node.idx_data_points] = leaf_node.value
-            return output.T if output is not None else None
+        if self.idx_leaf_nodes is not None:
+            for node_index in self.idx_leaf_nodes:
+                leaf_node = self.get_node(node_index)
+                output[leaf_node.idx_data_points] = leaf_node.value
+        return output.T if output is not None else None
 
     def predict(self, x: npt.NDArray[np.float_], excluded: Optional[List[int]] = None) -> float:
         """
@@ -189,10 +198,10 @@ class Tree:
 
         Parameters
         ----------
-        x : numpy array
+        x : npt.NDArray[np.float_]
             Unobserved point
-        excluded: list
-                Indexes of the variables to exclude when computing predictions
+        excluded: Optional[List[int]]
+            Indexes of the variables to exclude when computing predictions
 
         Returns
         -------
@@ -203,15 +212,20 @@ class Tree:
             excluded = []
         return self._traverse_tree(x, 0, excluded)
 
-    def _traverse_tree(self, x, node_index: int, excluded: Optional[List[int]] = None) -> float:
+    def _traverse_tree(
+        self, x: npt.NDArray[np.float_], node_index: int, excluded: Optional[List[int]] = None
+    ) -> float:
         """
         Traverse the tree starting from a particular node given an unobserved point.
 
         Parameters
         ----------
-        x : np.ndarray
+        x : npt.NDArray[np.float_]
+            Unobserved point
         node_index : int
-        excluded: list
+            Index of the node to start the traversal from
+        excluded: Optional[List[int]]
+            Indexes of the variables to exclude when computing predictions
 
         Returns
         -------
@@ -224,7 +238,7 @@ class Tree:
         if excluded is not None and current_node.idx_split_variable in excluded:
             leaf_values: List[float] = []
             self._traverse_leaf_values(leaf_values, node_index)
-            return np.mean(leaf_values, 0)
+            return np.mean(leaf_values, axis=0)
 
         if x[current_node.idx_split_variable] <= current_node.value:
             next_node = current_node.get_idx_left_child()
@@ -238,12 +252,8 @@ class Tree:
 
         Parameters
         ----------
-        leaf_values : list
+        leaf_values : List[float]
         node_index : int
-
-        Returns
-        -------
-        List of leaf node values
         """
         node = self.get_node(node_index)
         if node.is_leaf_node():
