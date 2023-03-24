@@ -13,7 +13,7 @@
 #   limitations under the License.
 
 from typing import List, Optional, Tuple
-
+import numpy.typing as npt
 import numpy as np
 from numba import njit
 from pymc.model import Model, modelcontext
@@ -132,10 +132,7 @@ class PGBART(ArrayStepShared):
         self.missing_data = np.any(np.isnan(self.X))
         self.m = self.bart.m
         shape = initial_values[value_bart.name].shape
-        if len(shape) == 1:
-            self.shape = 1
-        else:
-            self.shape = shape[0]
+        self.shape = 1 if len(shape) == 1 else shape[0]
 
         if self.bart.split_prior:
             self.alpha_vec = self.bart.split_prior
@@ -254,7 +251,7 @@ class PGBART(ArrayStepShared):
         stats = {"variable_inclusion": variable_inclusion, "tune": self.tune}
         return self.sum_trees, [stats]
 
-    def normalize(self, particles) -> float:
+    def normalize(self, particles: List[ParticleTree]) -> float:
         """
         Use softmax to get normalized_weights.
         """
@@ -264,15 +261,17 @@ class PGBART(ArrayStepShared):
         wei = np.exp(log_w_) + 1e-12
         return wei / wei.sum()
 
-    def resample(self, particles: List[ParticleTree], normalized_weights) -> List[ParticleTree]:
+    def resample(
+        self, particles: List[ParticleTree], normalized_weights: npt.NDArray[np.float_]
+    ) -> List[ParticleTree]:
         """
         Use systematic resample for all but the first particle
 
         Ensure particles are copied only if needed.
         """
         new_indices = self.systematic(normalized_weights) + 1
-        seen = []
-        new_particles = []
+        seen: List[int] = []
+        new_particles: List[ParticleTree] = []
         for idx in new_indices:
             if idx in seen:
                 new_particles.append(particles[idx].copy())
@@ -284,7 +283,9 @@ class PGBART(ArrayStepShared):
 
         return particles
 
-    def get_particle_tree(self, particles, normalized_weights):
+    def get_particle_tree(
+        self, particles: List[ParticleTree], normalized_weights: npt.NDArray[np.float_]
+    ) -> Tuple[ParticleTree, Tree]:
         """
         Sample a new particle and associated tree
         """
@@ -295,7 +296,7 @@ class PGBART(ArrayStepShared):
 
         return new_particle, new_particle.tree
 
-    def systematic(self, normalized_weights):
+    def systematic(self, normalized_weights: npt.NDArray[np.float_]) -> npt.NDArray[np.int_]:
         """
         Systematic resampling.
 
@@ -320,7 +321,7 @@ class PGBART(ArrayStepShared):
         )
         return particles
 
-    def update_weight(self, particle):
+    def update_weight(self, particle: ParticleTree) -> None:
         """
         Update the weight of a particle.
         """
@@ -552,17 +553,19 @@ class UniformSampler:
 
 
 @njit
-def inverse_cdf(single_uniform, normalized_weights):
+def inverse_cdf(
+    single_uniform: npt.NDArray[np.float_], normalized_weights: npt.NDArray[np.float_]
+) -> npt.NDArray[np.int_]:
     """
     Inverse CDF algorithm for a finite distribution.
 
     Parameters
     ----------
-    single_uniform: ndarray
-        ordered points in [0,1]
+    single_uniform: npt.NDArray[np.float_]
+        Ordered points in [0,1]
 
-    normalized_weights: ndarray
-        normalized weights
+    normalized_weights: npt.NDArray[np.float_])
+        Normalized weights
 
     Returns
     -------
