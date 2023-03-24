@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 import numpy.typing as npt
 import numpy as np
 from numba import njit
@@ -340,7 +340,7 @@ class PGBART(ArrayStepShared):
 
 
 class SampleSplittingVariable:
-    def __init__(self, alpha_vec):
+    def __init__(self, alpha_vec: npt.NDArray[np.float_]) -> None:
         """
         Sample splitting variables proportional to `alpha_vec`.
 
@@ -349,15 +349,15 @@ class SampleSplittingVariable:
         """
         self.enu = list(enumerate(np.cumsum(alpha_vec / alpha_vec.sum())))
 
-    def rvs(self):
-        rnd = np.random.random()
+    def rvs(self) -> Union[int, Tuple[int, float]]:
+        rnd: float = np.random.random()
         for i, val in self.enu:
             if rnd <= val:
                 return i
         return self.enu[-1]
 
 
-def compute_prior_probability(alpha):
+def compute_prior_probability(alpha) -> List[float]:
     """
     Calculate the probability of the node being a leaf node (1 - p(being split node)).
 
@@ -376,7 +376,7 @@ def compute_prior_probability(alpha):
     .. [Rockova2018] Veronika Rockova, Enakshi Saha (2018). On the theory of BART.
     arXiv, `link <https://arxiv.org/abs/1810.00787>`__
     """
-    prior_leaf_prob = [0]
+    prior_leaf_prob: List[float] = [0]
     depth = 1
     while prior_leaf_prob[-1] < 1:
         prior_leaf_prob.append(1 - alpha**depth)
