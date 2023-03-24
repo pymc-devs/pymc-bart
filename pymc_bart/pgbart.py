@@ -168,9 +168,9 @@ class PGBART(ArrayStepShared):
 
         self.tune = True
 
-    batch_0 = max(1, int(self.m * batch[0]))
-    batch_1 = max(1, int(self.m * batch[1]))
-    self.batch = ( batch_0,  batch_1)
+        batch_0 = max(1, int(self.m * batch[0]))
+        batch_1 = max(1, int(self.m * batch[1]))
+        self.batch = (batch_0, batch_1)
 
         self.num_particles = num_particles
         self.indices = list(range(1, num_particles))
