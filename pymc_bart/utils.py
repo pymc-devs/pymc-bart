@@ -2,16 +2,29 @@
 
 import warnings
 
+import pytensor.tensor as pt
 import arviz as az
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 from pytensor.tensor.var import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
 from scipy.stats import norm, pearsonr
+from typing import List, Optional, Tuple, Union
+from .tree import Tree
 
 
-def _sample_posterior(all_trees, X, rng, size=None, excluded=None):
+TensorLike = Union[npt.NDArray[np.float_], pt.TensorVariable]
+
+
+def _sample_posterior(
+    all_trees: List[List[Tree]],
+    X: TensorLike,
+    rng: np.random.Generator,
+    size=Optional[Union[int, Tuple[int, ...]]],
+    excluded: Optional[List[int]] = None,
+) -> npt.NDArray[np.float_]:
     """
     Generate samples from the BART-posterior.
 

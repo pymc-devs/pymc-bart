@@ -17,13 +17,18 @@
 from multiprocessing import Manager
 
 import numpy as np
+import numpy.typing as npt
 import pytensor.tensor as pt
 from pandas import DataFrame, Series
 from pymc.distributions.distribution import Distribution, _moment
 from pymc.logprob.abstract import _logprob
 from pytensor.tensor.random.op import RandomVariable
+from typing import List, Optional, Tuple
 
-from .utils import _sample_posterior
+
+from .utils import _sample_posterior, TensorLike
+
+
 
 __all__ = ["BART"]
 
@@ -31,11 +36,11 @@ __all__ = ["BART"]
 class BARTRV(RandomVariable):
     """Base class for BART."""
 
-    name = "BART"
+    name: str = "BART"
     ndim_supp = 1
-    ndims_params = [2, 1, 0, 0, 1]
-    dtype = "floatX"
-    _print_name = ("BART", "\\operatorname{BART}")
+    ndims_params: List[int] = [2, 1, 0, 0, 1]
+    dtype: str = "floatX"
+    _print_name: Tuple[str, str] = ("BART", "\\operatorname{BART}")
     all_trees = None
 
     def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):
@@ -63,16 +68,16 @@ class BART(Distribution):
 
     Parameters
     ----------
-    X : array-like
+    X : TensorLike
         The covariate matrix.
-    Y : array-like
+    Y : TensorLike
         The response vector.
     m : int
         Number of trees
     alpha : float
         Control the prior probability over the depth of the trees. Even when it can takes values in
         the interval (0, 1), it is recommended to be in the interval (0, 0.5].
-    split_prior : array-like
+    split_prior : Optional[List[float]], default None.
         Each element of split_prior should be in the [0, 1] interval and the elements should sum to
         1. Otherwise they will be normalized.
         Defaults to 0, i.e. all covariates have the same prior probability to be selected.
@@ -80,12 +85,12 @@ class BART(Distribution):
 
     def __new__(
         cls,
-        name,
-        X,
-        Y,
-        m=50,
-        alpha=0.25,
-        split_prior=None,
+        name: str,
+        X: TensorLike,
+        Y: TensorLike,
+        m: int = 50,
+        alpha: float = 0.25,
+        split_prior: Optional[List[float]] = None,
         **kwargs,
     ):
         manager = Manager()
@@ -146,7 +151,9 @@ class BART(Distribution):
         return mean
 
 
-def preprocess_xy(X, Y):
+def preprocess_xy(
+    X: TensorLike, Y: TensorLike
+) -> Tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
     if isinstance(Y, (Series, DataFrame)):
         Y = Y.to_numpy()
     if isinstance(X, (Series, DataFrame)):
