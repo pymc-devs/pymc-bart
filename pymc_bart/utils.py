@@ -1,6 +1,7 @@
 """Utility function for variable selection and bart interpretability."""
 
 import warnings
+from typing import List, Optional, Tuple, Union
 
 import arviz as az
 import matplotlib.pyplot as plt
@@ -11,9 +12,8 @@ from pytensor.tensor.var import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
 from scipy.stats import norm, pearsonr
-from typing import List, Optional, Tuple, Union
-from .tree import Tree
 
+from .tree import Tree
 
 TensorLike = Union[npt.NDArray[np.float_], pt.TensorVariable]
 

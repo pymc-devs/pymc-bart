@@ -15,6 +15,7 @@
 #   limitations under the License.
 
 from multiprocessing import Manager
+from typing import List, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -23,11 +24,8 @@ from pandas import DataFrame, Series
 from pymc.distributions.distribution import Distribution, _moment
 from pymc.logprob.abstract import _logprob
 from pytensor.tensor.random.op import RandomVariable
-from typing import List, Optional, Tuple
 
-
-from .utils import _sample_posterior, TensorLike
-
+from .utils import TensorLike, _sample_posterior
 
 __all__ = ["BART"]
 
