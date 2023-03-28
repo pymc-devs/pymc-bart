@@ -2,11 +2,11 @@
 
 import warnings
 
-import pytensor.tensor as pt
 import arviz as az
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
+import pytensor.tensor as pt
 from pytensor.tensor.var import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
@@ -22,7 +22,7 @@ def _sample_posterior(
     all_trees: List[List[Tree]],
     X: TensorLike,
     rng: np.random.Generator,
-    size=Optional[Union[int, Tuple[int, ...]]],
+    size: Optional[Union[int, Tuple[int, ...]]] = None,
     excluded: Optional[List[int]] = None,
 ) -> npt.NDArray[np.float_]:
     """
@@ -46,12 +46,14 @@ def _sample_posterior(
         X = X.eval()
 
     if size is None:
-        size = ()
+        size_iter: Union[List, Tuple] = ()
     elif isinstance(size, int):
-        size = [size]
+        size_iter = [size]
+    else:
+        size_iter = size
 
     flatten_size = 1
-    for s in size:
+    for s in size_iter:
         flatten_size *= s
 
     idx = rng.integers(0, len(stacked_trees), size=flatten_size)
@@ -62,7 +64,7 @@ def _sample_posterior(
     for ind, p in enumerate(pred):
         for tree in stacked_trees[idx[ind]]:
             p += np.vstack([tree.predict(x, excluded) for x in X])
-    pred.reshape((*size, shape, -1))
+    pred.reshape((*size_iter, shape, -1))
     return pred
 
 
