@@ -29,7 +29,6 @@ from typing import List, Optional, Tuple
 from .utils import _sample_posterior, TensorLike
 
 
-
 __all__ = ["BART"]
 
 
