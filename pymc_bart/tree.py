@@ -189,7 +189,9 @@ class Tree:
                 output[leaf_node.idx_data_points] = leaf_node.value
         return output.T
 
-    def predict(self, x: npt.NDArray[np.float_], excluded: Optional[List[int]] = None) -> float:
+    def predict(
+        self, x: npt.NDArray[np.float_], excluded: Optional[List[int]] = None
+    ) -> npt.NDArray[np.float_]:
         """
         Predict output of tree for an (un)observed point x.
 
@@ -202,7 +204,7 @@ class Tree:
 
         Returns
         -------
-        float
+        npt.NDArray[np.float_]
             Value of the leaf value where the unobserved point lies.
         """
         if excluded is None:
@@ -211,7 +213,7 @@ class Tree:
 
     def _traverse_tree(
         self, x: npt.NDArray[np.float_], node_index: int, excluded: Optional[List[int]] = None
-    ) -> float:
+    ) -> npt.NDArray[np.float_]:
         """
         Traverse the tree starting from a particular node given an unobserved point.
 
@@ -226,11 +228,12 @@ class Tree:
 
         Returns
         -------
-        Leaf node value or mean of leaf node values
+        npt.NDArray[np.float_]
+            Leaf node value or mean of leaf node values
         """
         current_node: Node = self.get_node(node_index)
         if current_node.is_leaf_node():
-            return current_node.value
+            return np.array(current_node.value)
 
         if excluded is not None and current_node.idx_split_variable in excluded:
             leaf_values: List[float] = []
