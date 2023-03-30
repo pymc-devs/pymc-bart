@@ -1,7 +1,7 @@
 """Utility function for variable selection and bart interpretability."""
 
 import warnings
-from typing import List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import arviz as az
 import matplotlib.pyplot as plt
@@ -23,7 +23,7 @@ def _sample_posterior(
     X: TensorLike,
     rng: np.random.Generator,
     size: Optional[Union[int, Tuple[int, ...]]] = None,
-    excluded: Optional[List[int]] = None,
+    excluded: Optional[npt.NDArray[np.int_]] = None,
 ) -> npt.NDArray[np.float_]:
     """
     Generate samples from the BART-posterior.
@@ -32,13 +32,13 @@ def _sample_posterior(
     ----------
     all_trees : list
         List of all trees sampled from a posterior
-    X : array-like
+    X : tensor-like
         A covariate matrix. Use the same used to fit BART for in-sample predictions or a new one for
         out-of-sample predictions.
     rng : NumPy RandomGenerator
     size : int or tuple
         Number of samples.
-    excluded : list
+    excluded : Optional[npt.NDArray[np.int_]]
         Indexes of the variables to exclude when computing predictions
     """
     stacked_trees = all_trees
@@ -68,7 +68,13 @@ def _sample_posterior(
     return pred
 
 
-def plot_convergence(idata, var_name=None, kind="ecdf", figsize=None, ax=None):
+def plot_convergence(
+    idata: az.InferenceData,
+    var_name: Optional[str] = None,
+    kind: str = "ecdf",
+    figsize=Tuple[float, float],
+    ax=None,
+) -> List[plt.Axes]:
     """
     Plot convergence diagnostics.
 
@@ -76,20 +82,20 @@ def plot_convergence(idata, var_name=None, kind="ecdf", figsize=None, ax=None):
     ----------
     idata : InferenceData
         InferenceData object containing the posterior samples.
-    var_name : str
+    var_name : Optional[str]
         Name of the BART variable to plot. Defaults to None.
     kind : str
         Type of plot to display. Options are "ecdf" (default) and "kde".
-    figsize : tuple
+    figsize : Tuple[float, float]
         Figure size. Defaults to None.
     ax : matplotlib axes
         Axes on which to plot. Defaults to None.
 
     Returns
     -------
-    ax : matplotlib axes
+    List[ax] : matplotlib axes
     """
-    ess_threshold = idata.posterior.chain.size * 100
+    ess_threshold = idata["posterior"]["chain"].size * 100
     ess = np.atleast_2d(az.ess(idata, method="bulk", var_names=var_name)[var_name].values)
     rhat = np.atleast_2d(az.rhat(idata, var_names=var_name)[var_name].values)
 
@@ -97,7 +103,7 @@ def plot_convergence(idata, var_name=None, kind="ecdf", figsize=None, ax=None):
         figsize = (10, 3)
 
     if kind == "ecdf":
-        kind_func = az.plot_ecdf
+        kind_func: Callable[..., Any] = az.plot_ecdf
         sharey = True
     elif kind == "kde":
         kind_func = az.plot_kde
@@ -125,29 +131,28 @@ def plot_convergence(idata, var_name=None, kind="ecdf", figsize=None, ax=None):
 
 
 def plot_dependence(
-    bartrv,
-    X,
-    Y=None,
-    kind="pdp",
-    xs_interval="linear",
-    xs_values=None,
-    var_idx=None,
-    var_discrete=None,
-    func=None,
-    samples=50,
-    instances=10,
-    random_seed=None,
-    sharey=True,
-    rug=True,
-    smooth=True,
-    indices=None,
-    grid="long",
+    bartrv: Variable,
+    X: npt.NDArray[np.float_],
+    Y: Optional[npt.NDArray[np.float_]] = None,
+    kind: str = "pdp",
+    xs_interval: str = "linear",
+    xs_values: Optional[Union[int, List[float]]] = None,
+    var_idx: Optional[List[int]] = None,
+    var_discrete: Optional[List[int]] = None,
+    func: Optional[Callable] = None,
+    samples: int = 50,
+    instances: int = 10,
+    random_seed: Optional[int] = None,
+    sharey: bool = True,
+    rug: bool = True,
+    smooth: bool = True,
+    grid: str = "long",
     color="C0",
-    color_mean="C0",
-    alpha=0.1,
-    figsize=None,
-    smooth_kwargs=None,
-    ax=None,
+    color_mean: str = "C0",
+    alpha: float = 0.1,
+    figsize: Optional[Tuple[float, float]] = None,
+    smooth_kwargs: Optional[Dict[str, Any]] = None,
+    ax: Optional[plt.Axes] = None,
 ):
     """
     Partial dependence or individual conditional expectation plot.
@@ -156,9 +161,9 @@ def plot_dependence(
     ----------
     bartrv : BART Random Variable
         BART variable once the model that include it has been fitted.
-    X : array-like
+    X : npt.NDArray[np.float_]
         The covariate matrix.
-    Y : array-like
+    Y : Optional[npt.NDArray[np.float_]], by default None.
         The response vector.
     kind : str
         Whether to plor a partial dependence plot ("pdp") or an individual conditional expectation
@@ -168,22 +173,22 @@ def plot_dependence(
         evenly spaced values in the range of X. "quantiles", the evaluation is done at the specified
         quantiles of X. "insample", the evaluation is done at the values of X.
         For discrete variables these options are ommited.
-    xs_values : int or list
+    xs_values : Optional[Union[int, List[float]]], by default None.
         Values of X used to evaluate the predicted function. If ``xs_interval="linear"`` number of
         points in the evenly spaced grid. If ``xs_interval="quantiles"``quantile or sequence of
         quantiles to compute, which must be between 0 and 1 inclusive.
         Ignored when ``xs_interval="insample"``.
-    var_idx : list
+    var_idx : Optional[List[int]], by default None.
         List of the indices of the covariate for which to compute the pdp or ice.
-    var_discrete : list
+    var_discrete : Optional[List[int]], by default None.
         List of the indices of the covariate treated as discrete.
-    func : function
+    func : Optional[Callable], by default None.
         Arbitrary function to apply to the predictions. Defaults to the identity function.
     samples : int
         Number of posterior samples used in the predictions. Defaults to 50
     instances : int
         Number of instances of X to plot. Only relevant if ice ``kind="ice"`` plots.
-    random_seed : int
+    random_seed : Optional[int], by default None.
         Seed used to sample from the posterior. Defaults to None.
     sharey : bool
         Controls sharing of properties among y-axes. Defaults to True.
@@ -233,7 +238,7 @@ def plot_dependence(
     else:
         x_names = []
 
-    if hasattr(Y, "name"):
+    if Y is not None and hasattr(Y, "name"):
         y_label = f"Predicted {Y.name}"
     else:
         y_label = "Predicted Y"
@@ -261,7 +266,7 @@ def plot_dependence(
         xs_values = [0.05, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.95]
 
     if kind == "ice":
-        instances = rng.choice(range(X.shape[0]), replace=False, size=instances)
+        instances_ary = rng.choice(range(X.shape[0]), replace=False, size=instances)
 
     new_y = []
     new_x_target = []
@@ -278,9 +283,9 @@ def plot_dependence(
             if i in var_discrete:
                 new_x_i = np.unique(X[:, i])
             else:
-                if xs_interval == "linear":
+                if xs_interval == "linear" and isinstance(xs_values, int):
                     new_x_i = np.linspace(np.nanmin(X[:, i]), np.nanmax(X[:, i]), xs_values)
-                elif xs_interval == "quantiles":
+                elif xs_interval == "quantiles" and isinstance(xs_values, list):
                     new_x_i = np.quantile(X[:, i], q=xs_values)
                 elif xs_interval == "insample":
                     new_x_i = X[:, i]
@@ -293,7 +298,7 @@ def plot_dependence(
                 )
             new_x_target.append(new_x_i)
         else:
-            for instance in instances:
+            for instance in instances_ary:
                 new_X = X[idx_s]
                 new_X[:, indices_mi] = X[:, indices_mi][instance]
                 y_pred.append(
@@ -306,9 +311,9 @@ def plot_dependence(
     if func is not None:
         new_y = [func(nyi) for nyi in new_y]
     shape = 1
-    new_y = np.array(new_y)
-    if new_y[0].ndim == 3:
-        shape = new_y[0].shape[0]
+    new_y_ary = np.array(new_y)
+    if new_y_ary[0].ndim == 3:
+        shape = new_y_ary[0].shape[0]
     if ax is None:
         if grid == "long":
             fig, axes = plt.subplots(len(var_idx) * shape, sharey=sharey, figsize=figsize)
@@ -317,7 +322,7 @@ def plot_dependence(
         elif isinstance(grid, tuple):
             fig, axes = plt.subplots(grid[0], grid[1], sharey=sharey, figsize=figsize)
             grid_size = grid[0] * grid[1]
-            n_plots = new_y.squeeze().shape[0]
+            n_plots = new_y_ary.squeeze().shape[0]
             if n_plots > grid_size:
                 warnings.warn("The grid is smaller than the number of available variables to plot")
             elif n_plots < grid_size:
@@ -332,7 +337,7 @@ def plot_dependence(
     x_idx = 0
     y_idx = 0
     for ax in axes:  # pylint: disable=redefined-argument-from-local
-        nyi = new_y[x_idx][y_idx]
+        nyi = new_y_ary[x_idx][y_idx]
         nxi = new_x_target[x_idx]
         var = var_idx[x_idx]
 
@@ -402,8 +407,15 @@ def plot_dependence(
 
 
 def plot_variable_importance(
-    idata, bartrv, X, labels=None, sort_vars=True, figsize=None, samples=100, random_seed=None
-):
+    idata: az.InferenceData,
+    bartrv: Variable,
+    X: npt.NDArray[np.float_],
+    labels: Optional[List[str]] = None,
+    sort_vars: bool = True,
+    figsize: Optional[Tuple[float, float]] = None,
+    samples: int = 100,
+    random_seed: Optional[int] = None,
+) -> Tuple[npt.NDArray[np.int_], List[plt.axes]]:
     """
     Estimates variable importance from the BART-posterior.
 
@@ -413,9 +425,9 @@ def plot_variable_importance(
         InferenceData containing a collection of BART_trees in sample_stats group
     bartrv : BART Random Variable
         BART variable once the model that include it has been fitted.
-    X : array-like
+    X : npt.NDArray[np.float_]
         The covariate matrix.
-    labels : list
+    labels : Optional[List[str]]
         List of the names of the covariates. If X is a DataFrame the names of the covariables will
         be taken from it and this argument will be ignored.
     sort_vars : bool
@@ -424,7 +436,7 @@ def plot_variable_importance(
         Figure size. If None it will be defined automatically.
     samples : int
         Number of predictions used to compute correlation for subsets of variables. Defaults to 100
-    random_seed : int
+    random_seed : Optional[int]
         random_seed used to sample from the posterior. Defaults to None.
     Returns
     -------
@@ -437,18 +449,18 @@ def plot_variable_importance(
         labels = X.columns
         X = X.values
 
-    var_imp = idata.sample_stats["variable_inclusion"].mean(("chain", "draw")).values
+    var_imp = idata["sample_stats"]["variable_inclusion"].mean(("chain", "draw")).values
     if labels is None:
-        labels = np.arange(len(var_imp))
+        labels_ary = np.arange(len(var_imp))
     else:
-        labels = np.array(labels)
+        labels_ary = np.array(labels)
 
     rng = np.random.default_rng(random_seed)
 
     ticks = np.arange(len(var_imp), dtype=int)
     idxs = np.argsort(var_imp)
     subsets = [idxs[:-i] for i in range(1, len(idxs))]
-    subsets.append(None)
+    subsets.append(None)  # type: ignore
 
     if sort_vars:
         indices = idxs[::-1]
@@ -456,7 +468,7 @@ def plot_variable_importance(
         indices = np.arange(len(var_imp))
     axes[0].plot((var_imp / var_imp.sum())[indices], "o-")
     axes[0].set_xticks(ticks)
-    axes[0].set_xticklabels(labels[indices])
+    axes[0].set_xticklabels(labels_ary[indices])
     axes[0].set_xlabel("covariables")
     axes[0].set_ylabel("importance")
 
@@ -467,7 +479,9 @@ def plot_variable_importance(
     ev_mean = np.zeros(len(var_imp))
     ev_hdi = np.zeros((len(var_imp), 2))
     for idx, subset in enumerate(subsets):
-        predicted_subset = _sample_posterior(all_trees, X=X, rng=rng, size=samples, excluded=subset)
+        predicted_subset = _sample_posterior(
+            all_trees=all_trees, X=X, rng=rng, size=samples, excluded=subset
+        )
         pearson = np.zeros(samples)
         for j in range(samples):
             pearson[j] = (

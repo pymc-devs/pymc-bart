@@ -25,6 +25,7 @@ from pymc.distributions.distribution import Distribution, _moment
 from pymc.logprob.abstract import _logprob
 from pytensor.tensor.random.op import RandomVariable
 
+from .tree import Tree
 from .utils import TensorLike, _sample_posterior
 
 __all__ = ["BART"]
@@ -38,7 +39,7 @@ class BARTRV(RandomVariable):
     ndims_params: List[int] = [2, 1, 0, 0, 1]
     dtype: str = "floatX"
     _print_name: Tuple[str, str] = ("BART", "\\operatorname{BART}")
-    all_trees = None
+    all_trees = List[List[Tree]]
 
     def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):
         return dist_params[0].shape[:1]
