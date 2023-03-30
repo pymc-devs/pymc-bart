@@ -4,7 +4,7 @@ import pytest
 from numpy.random import RandomState
 from numpy.testing import assert_almost_equal, assert_array_equal
 from pymc.initial_point import make_initial_point_fn
-from pymc.logprob.joint_logprob import joint_logp
+from pymc.logprob.basic import joint_logp
 
 import pymc_bart as pmb
 
