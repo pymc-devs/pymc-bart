@@ -110,7 +110,7 @@ class Tree:
         self,
         tree_structure: Dict[int, Node],
         idx_leaf_nodes: Optional[npt.NDArray[np.int_]],
-        output: Optional[npt.NDArray[np.float_]],
+        output: npt.NDArray[np.float_],
     ) -> None:
         self.tree_structure = tree_structure
         self.idx_leaf_nodes = idx_leaf_nodes
@@ -173,24 +173,21 @@ class Tree:
             k: Node(v.index, v.value, None, v.idx_split_variable)
             for k, v in self.tree_structure.items()
         }
-        return Tree(tree, None, None)
+        return Tree(tree_structure=tree, idx_leaf_nodes=None, output=np.array([-1]))
 
     def get_split_variables(self) -> Generator[int, None, None]:
         for node in self.tree_structure.values():
             if node.is_split_node():
                 yield node.idx_split_variable
 
-    def _predict(self) -> Optional[npt.NDArray[np.float_]]:
+    def _predict(self) -> npt.NDArray[np.float_]:
         output = self.output
-
-        if output is None:
-            return None
 
         if self.idx_leaf_nodes is not None:
             for node_index in self.idx_leaf_nodes:
                 leaf_node = self.get_node(node_index)
                 output[leaf_node.idx_data_points] = leaf_node.value
-        return output.T if output is not None else None
+        return output.T
 
     def predict(self, x: npt.NDArray[np.float_], excluded: Optional[List[int]] = None) -> float:
         """
@@ -244,7 +241,7 @@ class Tree:
             next_node = current_node.get_idx_left_child()
         else:
             next_node = current_node.get_idx_right_child()
-        return self._traverse_tree(x, next_node, excluded)
+        return self._traverse_tree(x=x, node_index=next_node, excluded=excluded)
 
     def _traverse_leaf_values(self, leaf_values: List[float], node_index: int) -> None:
         """
