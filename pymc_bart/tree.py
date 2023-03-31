@@ -130,7 +130,7 @@ class Tree:
                     index=0, value=leaf_node_value, idx_data_points=idx_data_points
                 )
             },
-            idx_leaf_nodes=np.array([0]),
+            idx_leaf_nodes=[0],
             output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
         )
 
