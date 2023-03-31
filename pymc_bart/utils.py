@@ -72,7 +72,7 @@ def plot_convergence(
     idata: az.InferenceData,
     var_name: Optional[str] = None,
     kind: str = "ecdf",
-    figsize=Tuple[float, float],
+    figsize: Optional[Tuple[float, float]] = None,
     ax=None,
 ) -> List[plt.Axes]:
     """
@@ -86,7 +86,7 @@ def plot_convergence(
         Name of the BART variable to plot. Defaults to None.
     kind : str
         Type of plot to display. Options are "ecdf" (default) and "kde".
-    figsize : Tuple[float, float]
+    figsize : Optional[Tuple[float, float]], by default None.
         Figure size. Defaults to None.
     ax : matplotlib axes
         Axes on which to plot. Defaults to None.
