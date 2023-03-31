@@ -415,7 +415,7 @@ def grow_tree(
         current_node.get_idx_right_child(),
     )
 
-    new_nodes = np.array([])
+    new_nodes = np.empty(2, dtype=object)
     for idx in range(2):
         idx_data_point = new_idx_data_points[idx]
         node_value = draw_leaf_value(
