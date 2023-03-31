@@ -3,11 +3,10 @@ import pymc as pm
 import pytest
 from numpy.random import RandomState
 from numpy.testing import assert_almost_equal, assert_array_equal
+from pymc.initial_point import make_initial_point_fn
+from pymc.logprob.basic import joint_logp
 
 import pymc_bart as pmb
-
-from pymc.logprob.joint_logprob import joint_logp
-from pymc.initial_point import make_initial_point_fn
 
 
 def assert_moment_is_expected(model, expected, check_finite_logp=True):
