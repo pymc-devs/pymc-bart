@@ -155,8 +155,7 @@ class Tree:
     def set_node(self, index: int, node: Node) -> None:
         self.tree_structure[index] = node
         if node.is_leaf_node() and self.idx_leaf_nodes is not None:
-            # self.idx_leaf_nodes.append(index)
-            self.idx_leaf_nodes = np.append(self.idx_leaf_nodes, index)
+            self.idx_leaf_nodes.append(index)
 
     def grow_leaf_node(
         self, current_node: Node, selected_predictor: int, split_value: float, index_leaf_node: int
