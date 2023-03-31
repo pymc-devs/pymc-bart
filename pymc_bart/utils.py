@@ -72,7 +72,7 @@ def plot_convergence(
     idata: az.InferenceData,
     var_name: Optional[str] = None,
     kind: str = "ecdf",
-    figsize: Tuple[float, float] = None,
+    figsize=Tuple[float, float],
     ax=None,
 ) -> List[plt.Axes]:
     """

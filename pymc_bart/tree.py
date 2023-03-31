@@ -88,29 +88,29 @@ class Tree:
         The dictionary's keys are integers that represent the nodes position.
         The dictionary's values are objects of type Node that represent the split and leaf nodes
         of the tree itself.
-    idx_leaf_nodes : Optional[npt.NDArray[np.int_]]
-        Array with the index of the leaf nodes of the tree.
     output: Optional[npt.NDArray[np.float_]]
         Array of shape number of observations, shape
+    idx_leaf_nodes : Optional[List[int]], by default None.
+        Array with the index of the leaf nodes of the tree.
 
     Parameters
     ----------
     tree_structure : Dictionary of nodes
-    idx_leaf_nodes :  Array with the index of the leaf nodes of the tree.
     output : Array of shape number of observations, shape
+    idx_leaf_nodes :  List with the index of the leaf nodes of the tree.
     """
 
     __slots__ = (
         "tree_structure",
-        "idx_leaf_nodes",
         "output",
+        "idx_leaf_nodes",
     )
 
     def __init__(
         self,
         tree_structure: Dict[int, Node],
-        idx_leaf_nodes: Optional[npt.NDArray[np.int_]],
         output: npt.NDArray[np.float_],
+        idx_leaf_nodes: Optional[List[int]] = None,
     ) -> None:
         self.tree_structure = tree_structure
         self.idx_leaf_nodes = idx_leaf_nodes
@@ -146,8 +146,7 @@ class Tree:
             for k, v in self.tree_structure.items()
         }
         idx_leaf_nodes = self.idx_leaf_nodes.copy() if self.idx_leaf_nodes is not None else None
-        output = self.output.copy() if self.output is not None else None
-        return Tree(tree_structure=tree, idx_leaf_nodes=idx_leaf_nodes, output=output)
+        return Tree(tree_structure=tree, idx_leaf_nodes=idx_leaf_nodes, output=self.output)
 
     def get_node(self, index: int) -> Node:
         return self.tree_structure[index]
@@ -164,8 +163,7 @@ class Tree:
         current_node.idx_split_variable = selected_predictor
         current_node.idx_data_points = None
         if self.idx_leaf_nodes is not None:
-            # self.idx_leaf_nodes.remove(index_leaf_node)
-            self.idx_leaf_nodes = np.setdiff1d(self.idx_leaf_nodes, index_leaf_node)
+            self.idx_leaf_nodes.remove(index_leaf_node)
 
     def trim(self) -> "Tree":
         tree: Dict[int, Node] = {
