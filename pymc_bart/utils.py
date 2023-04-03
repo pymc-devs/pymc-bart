@@ -21,6 +21,7 @@ TensorLike = Union[npt.NDArray[np.float_], pt.TensorVariable]
 def _sample_posterior(
     all_trees: List[List[Tree]],
     X: TensorLike,
+    m: int,
     rng: np.random.Generator,
     size: Optional[Union[int, Tuple[int, ...]]] = None,
     excluded: Optional[npt.NDArray[np.int_]] = None,
@@ -35,6 +36,8 @@ def _sample_posterior(
     X : tensor-like
         A covariate matrix. Use the same used to fit BART for in-sample predictions or a new one for
         out-of-sample predictions.
+    m : int
+        Number of trees
     rng : NumPy RandomGenerator
     size : int or tuple
         Number of samples.
@@ -57,7 +60,7 @@ def _sample_posterior(
         flatten_size *= s
 
     idx = rng.integers(0, len(stacked_trees), size=flatten_size)
-    shape = stacked_trees[0][0].predict(X[0]).size
+    shape = stacked_trees[0][0].predict(x=X[0], m=m).size
 
     pred = np.zeros((flatten_size, X.shape[0], shape))
 
@@ -220,6 +223,8 @@ def plot_dependence(
     -------
     axes: matplotlib axes
     """
+    m: int = bartrv.owner.op.m
+
     if kind not in ["pdp", "ice"]:
         raise ValueError(f"kind={kind} is not suported. Available option are 'pdp' or 'ice'")
 
@@ -294,7 +299,7 @@ def plot_dependence(
                 new_X[:, indices_mi] = X[:, indices_mi]
                 new_X[:, i] = x_i
                 y_pred.append(
-                    np.mean(_sample_posterior(all_trees, X=new_X, rng=rng, size=samples), 1)
+                    np.mean(_sample_posterior(all_trees, X=new_X, m=m, rng=rng, size=samples), 1)
                 )
             new_x_target.append(new_x_i)
         else:
@@ -302,7 +307,7 @@ def plot_dependence(
                 new_X = X[idx_s]
                 new_X[:, indices_mi] = X[:, indices_mi][instance]
                 y_pred.append(
-                    np.mean(_sample_posterior(all_trees, X=new_X, rng=rng, size=samples), 0)
+                    np.mean(_sample_posterior(all_trees, X=new_X, m=m, rng=rng, size=samples), 0)
                 )
             new_x_target.append(new_X[:, i])
         y_mins.append(np.min(y_pred))
@@ -445,6 +450,8 @@ def plot_variable_importance(
     """
     _, axes = plt.subplots(2, 1, figsize=figsize)
 
+    m: int = bartrv.owner.op.m
+
     if hasattr(X, "columns") and hasattr(X, "values"):
         labels = X.columns
         X = X.values
@@ -474,13 +481,13 @@ def plot_variable_importance(
 
     all_trees = bartrv.owner.op.all_trees
 
-    predicted_all = _sample_posterior(all_trees, X=X, rng=rng, size=samples, excluded=None)
+    predicted_all = _sample_posterior(all_trees, X=X, m=m, rng=rng, size=samples, excluded=None)
 
     ev_mean = np.zeros(len(var_imp))
     ev_hdi = np.zeros((len(var_imp), 2))
     for idx, subset in enumerate(subsets):
         predicted_subset = _sample_posterior(
-            all_trees=all_trees, X=X, rng=rng, size=samples, excluded=subset
+            all_trees=all_trees, X=X, m=m, rng=rng, size=samples, excluded=subset
         )
         pearson = np.zeros(samples)
         for j in range(samples):

@@ -54,6 +54,8 @@ class ParticleTree:
         missing_data,
         sum_trees,
         m,
+        linear_fit,
+        response,
         normal,
         shape,
     ) -> bool:
@@ -73,6 +75,8 @@ class ParticleTree:
                     missing_data,
                     sum_trees,
                     m,
+                    linear_fit,
+                    response,
                     normal,
                     self.kfactor,
                     shape,
@@ -131,6 +135,7 @@ class PGBART(ArrayStepShared):
 
         self.missing_data = np.any(np.isnan(self.X))
         self.m = self.bart.m
+        self.response = self.bart.response
         shape = initial_values[value_bart.name].shape
         self.shape = 1 if len(shape) == 1 else shape[0]
 
@@ -160,6 +165,9 @@ class PGBART(ArrayStepShared):
             num_observations=self.num_observations,
             shape=self.shape,
         )
+
+        self.linear_fit = fast_linear_fit()
+
         self.normal = NormalSampler(mu_std, self.shape)
         self.uniform = UniformSampler(0, 1)
         self.uniform_kf = UniformSampler(0.33, 0.75, self.shape)
@@ -209,6 +217,8 @@ class PGBART(ArrayStepShared):
                         self.missing_data,
                         self.sum_trees,
                         self.m,
+                        self.linear_fit,
+                        self.response,
                         self.normal,
                         self.shape,
                     ):
@@ -393,6 +403,8 @@ def grow_tree(
     missing_data,
     sum_trees,
     m,
+    linear_fit,
+    response,
     normal,
     kfactor,
     shape,
@@ -597,3 +609,27 @@ def logp(point, out_vars, vars, shared):  # pylint: disable=redefined-builtin
     function = pytensor_function([inarray0], out_list[0])
     function.trust_input = True
     return function
+
+
+def fast_linear_fit():
+    """If available use Numba to speed up the computation of the linear fit"""
+
+    def linear_fit(X, Y):
+
+        n = len(Y)
+        xbar = np.sum(X) / n
+        ybar = np.sum(Y) / n
+
+        b = (X @ Y - n * xbar * ybar) / (X @ X - n * xbar**2)
+        a = ybar - b * xbar
+
+        y_fit = a + b * X
+        return y_fit, (a, b)
+
+    try:
+        from numba import jit
+
+        return jit(linear_fit)
+
+    except ImportError:
+        return linear_fit

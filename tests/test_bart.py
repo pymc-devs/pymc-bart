@@ -119,9 +119,13 @@ class TestUtils:
     def test_sample_posterior(self):
         all_trees = self.mu.owner.op.all_trees
         rng = np.random.default_rng(3)
-        pred_all = pmb.utils._sample_posterior(all_trees, X=self.X, rng=rng, size=2)
+        pred_all = pmb.utils._sample_posterior(
+            all_trees, X=self.X, m=self.mu.owner.op.m, rng=rng, size=2
+        )
         rng = np.random.default_rng(3)
-        pred_first = pmb.utils._sample_posterior(all_trees, X=self.X[:10], rng=rng)
+        pred_first = pmb.utils._sample_posterior(
+            all_trees, X=self.X[:10], m=self.mu.owner.op.m, rng=rng
+        )
 
         assert_almost_equal(pred_first[0], pred_all[0, :10], decimal=4)
         assert pred_all.shape == (2, 50, 1)
