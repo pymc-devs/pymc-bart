@@ -26,47 +26,44 @@ class Node:
 
     Attributes
     ----------
-    index : int
     value : float
     idx_data_points : Optional[npt.NDArray[np.int_]]
     idx_split_variable : Optional[npt.NDArray[np.int_]]
     """
 
-    __slots__ = "index", "value", "idx_split_variable", "idx_data_points"
+    __slots__ = "value", "idx_split_variable", "idx_data_points"
 
     def __init__(
         self,
-        index: int,
         value: float = -1.0,
         idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
     ) -> None:
-        self.index = index
         self.value = value
         self.idx_data_points = idx_data_points
         self.idx_split_variable = idx_split_variable
 
     @classmethod
-    def new_leaf_node(
-        cls, index: int, value: float, idx_data_points: Optional[npt.NDArray[np.int_]]
-    ) -> "Node":
-        return cls(index, value=value, idx_data_points=idx_data_points)
+    def new_leaf_node(cls, value: float, idx_data_points: Optional[npt.NDArray[np.int_]]) -> "Node":
+        return cls(value=value, idx_data_points=idx_data_points)
 
     @classmethod
-    def new_split_node(cls, index: int, split_value: float, idx_split_variable: int) -> "Node":
-        return cls(index=index, value=split_value, idx_split_variable=idx_split_variable)
-
-    def get_idx_left_child(self) -> int:
-        return self.index * 2 + 1
-
-    def get_idx_right_child(self) -> int:
-        return self.index * 2 + 2
+    def new_split_node(cls, split_value: float, idx_split_variable: int) -> "Node":
+        return cls(value=split_value, idx_split_variable=idx_split_variable)
 
     def is_split_node(self) -> bool:
         return self.idx_split_variable >= 0
 
     def is_leaf_node(self) -> bool:
         return not self.is_split_node()
+
+
+def get_idx_left_child(index) -> int:
+    return index * 2 + 1
+
+
+def get_idx_right_child(index) -> int:
+    return index * 2 + 2
 
 
 @lru_cache
@@ -126,9 +123,7 @@ class Tree:
     ) -> "Tree":
         return cls(
             tree_structure={
-                0: Node.new_leaf_node(
-                    index=0, value=leaf_node_value, idx_data_points=idx_data_points
-                )
+                0: Node.new_leaf_node(value=leaf_node_value, idx_data_points=idx_data_points)
             },
             idx_leaf_nodes=[0],
             output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
@@ -142,7 +137,7 @@ class Tree:
 
     def copy(self) -> "Tree":
         tree: Dict[int, Node] = {
-            k: Node(v.index, v.value, v.idx_data_points, v.idx_split_variable)
+            k: Node(v.value, v.idx_data_points, v.idx_split_variable)
             for k, v in self.tree_structure.items()
         }
         idx_leaf_nodes = self.idx_leaf_nodes.copy() if self.idx_leaf_nodes is not None else None
@@ -167,8 +162,7 @@ class Tree:
 
     def trim(self) -> "Tree":
         tree: Dict[int, Node] = {
-            k: Node(v.index, v.value, None, v.idx_split_variable)
-            for k, v in self.tree_structure.items()
+            k: Node(v.value, None, v.idx_split_variable) for k, v in self.tree_structure.items()
         }
         return Tree(tree_structure=tree, idx_leaf_nodes=None, output=np.array([-1]))
 
@@ -241,9 +235,9 @@ class Tree:
             return np.mean(leaf_values, axis=0)
 
         if x[current_node.idx_split_variable] <= current_node.value:
-            next_node = current_node.get_idx_left_child()
+            next_node = get_idx_left_child(node_index)
         else:
-            next_node = current_node.get_idx_right_child()
+            next_node = get_idx_right_child(node_index)
         return self._traverse_tree(x=x, node_index=next_node, excluded=excluded)
 
     def _traverse_leaf_values(self, leaf_values: List[float], node_index: int) -> None:
@@ -259,5 +253,5 @@ class Tree:
         if node.is_leaf_node():
             leaf_values.append(node.value)
         else:
-            self._traverse_leaf_values(leaf_values, node.get_idx_left_child())
-            self._traverse_leaf_values(leaf_values, node.get_idx_right_child())
+            self._traverse_leaf_values(leaf_values, get_idx_left_child(node_index))
+            self._traverse_leaf_values(leaf_values, get_idx_right_child(node_index))
