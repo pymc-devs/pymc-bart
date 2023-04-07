@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-import math
 from functools import lru_cache
 from typing import Dict, Generator, List, Optional
 
@@ -68,7 +67,7 @@ def get_idx_right_child(index) -> int:
 
 @lru_cache
 def get_depth(index: int) -> int:
-    return math.floor(math.log2(index + 1))
+    return (index + 1).bit_length() - 1
 
 
 class Tree:
