@@ -25,7 +25,7 @@ from pytensor import function as pytensor_function
 from pytensor.tensor.var import Variable
 
 from pymc_bart.bart import BARTRV
-from pymc_bart.tree import Node, Tree, get_depth
+from pymc_bart.tree import Node, Tree, get_idx_left_child, get_idx_right_child, get_depth
 
 
 class ParticleTree:
@@ -411,11 +411,10 @@ def grow_tree(
         available_splitting_values, split_value, idx_data_points
     )
     current_node_children = (
-        current_node.get_idx_left_child(),
-        current_node.get_idx_right_child(),
+        get_idx_left_child(index_leaf_node),
+        get_idx_right_child(index_leaf_node),
     )
 
-    new_nodes = np.empty(2, dtype=object)
     for idx in range(2):
         idx_data_point = new_idx_data_points[idx]
         node_value = draw_leaf_value(
@@ -426,17 +425,13 @@ def grow_tree(
         )
 
         new_node = Node.new_leaf_node(
-            index=current_node_children[idx],
             value=node_value,
             idx_data_points=idx_data_point,
         )
-        new_nodes[idx] = new_node
+        tree.set_node(current_node_children[idx], new_node)
 
     tree.grow_leaf_node(current_node, selected_predictor, split_value, index_leaf_node)
-    tree.set_node(new_nodes[0].index, new_nodes[0])
-    tree.set_node(new_nodes[1].index, new_nodes[1])
-
-    return [new_nodes[0].index, new_nodes[1].index]
+    return current_node_children
 
 
 @njit
