@@ -255,7 +255,9 @@ class Tree:
             next_node = get_idx_left_child(node_index)
         else:
             next_node = get_idx_right_child(node_index)
-        return self._traverse_tree(x=x, node_index=next_node, split_variable=split_variable, excluded=excluded)
+        return self._traverse_tree(
+            x=x, m=m, node_index=next_node, split_variable=split_variable, excluded=excluded
+        )
 
     def _traverse_leaf_values(self, leaf_values: List[float], node_index: int) -> None:
         """
