@@ -240,23 +240,23 @@ class PGBART(ArrayStepShared):
 
             normalized_weights = self.normalize(particles)
             # Get the new particle and associated tree
-            self.all_particles[tree_id], new_tree = self.get_particle_tree(
+            self.all_particles[tree_id], current_tree = self.get_particle_tree(
                 particles, normalized_weights
             )
             # Update the sum of trees
-            self.sum_trees = self.sum_trees_noi + _predict(new_tree)
+            self.sum_trees = self.sum_trees_noi + _predict(current_tree)
             # To reduce memory usage, we trim the tree
-            self.all_trees[tree_id] = trim_tree(new_tree)
+            self.all_trees[tree_id] = trim_tree(current_tree)
 
             if self.tune:
                 # Update the splitting variable and the splitting variable sampler
                 if self.iter > self.m:
                     self.ssv = SampleSplittingVariable(self.alpha_vec)
-                for index in get_split_variables(new_tree):
+                for index in get_split_variables(current_tree):
                     self.alpha_vec[index] += 1
             else:
                 # update the variable inclusion
-                for index in get_split_variables(new_tree):
+                for index in get_split_variables(current_tree):
                     variable_inclusion[index] += 1
 
         if not self.tune:
