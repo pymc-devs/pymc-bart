@@ -118,15 +118,13 @@ class Tree:
 
 
 def new_tree(
-        leaf_node_value: float,
-        idx_data_points: Optional[npt.NDArray[np.int_]],
-        num_observations: int,
-        shape: int,
+    leaf_node_value: float,
+    idx_data_points: Optional[npt.NDArray[np.int_]],
+    num_observations: int,
+    shape: int,
 ) -> "Tree":
     return Tree(
-        tree_structure={
-            0: new_leaf_node(value=leaf_node_value, idx_data_points=idx_data_points)
-        },
+        tree_structure={0: new_leaf_node(value=leaf_node_value, idx_data_points=idx_data_points)},
         idx_leaf_nodes=[0],
         output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
     )
@@ -146,7 +144,7 @@ def get_node(t: Tree, index: int) -> Node:
 
 
 def grow_leaf_node(
-        t: Tree, current_node: Node, selected_predictor: int, split_value: float, index_leaf_node: int
+    t: Tree, current_node: Node, selected_predictor: int, split_value: float, index_leaf_node: int
 ) -> None:
     current_node.value = split_value
     current_node.idx_split_variable = selected_predictor
@@ -185,7 +183,7 @@ def _predict(t: Tree) -> npt.NDArray[np.float_]:
 
 
 def predict(
-        t: Tree, x: npt.NDArray[np.float_], excluded: Optional[List[int]] = None
+    t: Tree, x: npt.NDArray[np.float_], excluded: Optional[List[int]] = None
 ) -> npt.NDArray[np.float_]:
     """
     Predict output of tree for an (un)observed point x.
@@ -210,10 +208,10 @@ def predict(
 
 
 def _traverse_tree(
-        t: Tree,
-        x: npt.NDArray[np.float_],
-        node_index: int,
-        excluded: Optional[List[int]] = None,
+    t: Tree,
+    x: npt.NDArray[np.float_],
+    node_index: int,
+    excluded: Optional[List[int]] = None,
 ) -> npt.NDArray[np.float_]:
     """
     Traverse the tree starting from a particular node given an unobserved point.

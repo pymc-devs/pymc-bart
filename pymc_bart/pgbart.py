@@ -25,8 +25,21 @@ from pytensor import function as pytensor_function
 from pytensor.tensor.var import Variable
 
 from pymc_bart.bart import BARTRV
-from pymc_bart.tree import Tree, get_idx_left_child, get_idx_right_child, get_depth, copy_tree, get_node, \
-    grow_leaf_node, trim_tree, set_node, get_split_variables, new_leaf_node, _predict, new_tree
+from pymc_bart.tree import (
+    Tree,
+    get_idx_left_child,
+    get_idx_right_child,
+    get_depth,
+    copy_tree,
+    get_node,
+    grow_leaf_node,
+    trim_tree,
+    set_node,
+    get_split_variables,
+    new_leaf_node,
+    _predict,
+    new_tree,
+)
 
 
 class ParticleTree:
