@@ -25,7 +25,8 @@ from pytensor import function as pytensor_function
 from pytensor.tensor.var import Variable
 
 from pymc_bart.bart import BARTRV
-from pymc_bart.tree import Node, Tree, get_idx_left_child, get_idx_right_child, get_depth
+from pymc_bart.tree import Tree, get_idx_left_child, get_idx_right_child, get_depth, copy_tree, get_node, \
+    grow_leaf_node, trim_tree, set_node, get_split_variables, new_leaf_node, _predict, new_tree
 
 
 class ParticleTree:
@@ -34,7 +35,7 @@ class ParticleTree:
     __slots__ = "tree", "expansion_nodes", "log_weight", "kfactor"
 
     def __init__(self, tree: Tree, kfactor: float = 0.75):
-        self.tree: Tree = tree.copy()
+        self.tree: Tree = copy_tree(tree)
         self.expansion_nodes: List[int] = [0]
         self.log_weight: float = 0
         self.kfactor: float = kfactor
@@ -154,7 +155,7 @@ class PGBART(ArrayStepShared):
             config.floatX
         )
         self.sum_trees_noi = self.sum_trees - init_mean
-        self.a_tree = Tree.new_tree(
+        self.a_tree = new_tree(
             leaf_node_value=init_mean / self.m,
             idx_data_points=np.arange(self.num_observations, dtype="int32"),
             num_observations=self.num_observations,
@@ -230,19 +231,19 @@ class PGBART(ArrayStepShared):
                 particles, normalized_weights
             )
             # Update the sum of trees
-            self.sum_trees = self.sum_trees_noi + new_tree._predict()
+            self.sum_trees = self.sum_trees_noi + _predict(new_tree)
             # To reduce memory usage, we trim the tree
-            self.all_trees[tree_id] = new_tree.trim()
+            self.all_trees[tree_id] = trim_tree(new_tree)
 
             if self.tune:
                 # Update the splitting variable and the splitting variable sampler
                 if self.iter > self.m:
                     self.ssv = SampleSplittingVariable(self.alpha_vec)
-                for index in new_tree.get_split_variables():
+                for index in get_split_variables(new_tree):
                     self.alpha_vec[index] += 1
             else:
                 # update the variable inclusion
-                for index in new_tree.get_split_variables():
+                for index in get_split_variables(new_tree):
                     variable_inclusion[index] += 1
 
         if not self.tune:
@@ -326,7 +327,7 @@ class PGBART(ArrayStepShared):
         Update the weight of a particle.
         """
         new_likelihood = self.likelihood_logp(
-            (self.sum_trees_noi + particle.tree._predict()).flatten()
+            (self.sum_trees_noi + _predict(particle.tree)).flatten()
         )
         particle.log_weight = new_likelihood
 
@@ -397,7 +398,7 @@ def grow_tree(
     kfactor,
     shape,
 ):
-    current_node = tree.get_node(index_leaf_node)
+    current_node = get_node(tree, index_leaf_node)
     idx_data_points = current_node.idx_data_points
 
     index_selected_predictor = ssv.rvs()
@@ -424,13 +425,13 @@ def grow_tree(
             shape,
         )
 
-        new_node = Node.new_leaf_node(
+        new_node = new_leaf_node(
             value=node_value,
             idx_data_points=idx_data_point,
         )
-        tree.set_node(current_node_children[idx], new_node)
+        set_node(tree, current_node_children[idx], new_node)
 
-    tree.grow_leaf_node(current_node, selected_predictor, split_value, index_leaf_node)
+    grow_leaf_node(tree, current_node, selected_predictor, split_value, index_leaf_node)
     return current_node_children
 
 

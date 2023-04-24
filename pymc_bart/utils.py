@@ -13,7 +13,7 @@ from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
 from scipy.stats import norm, pearsonr
 
-from .tree import Tree
+from .tree import Tree, predict
 
 TensorLike = Union[npt.NDArray[np.float_], pt.TensorVariable]
 
@@ -57,13 +57,13 @@ def _sample_posterior(
         flatten_size *= s
 
     idx = rng.integers(0, len(stacked_trees), size=flatten_size)
-    shape = stacked_trees[0][0].predict(X[0]).size
+    shape = predict(stacked_trees[0][0], X[0]).size
 
     pred = np.zeros((flatten_size, X.shape[0], shape))
 
     for ind, p in enumerate(pred):
         for tree in stacked_trees[idx[ind]]:
-            p += np.vstack([tree.predict(x, excluded) for x in X])
+            p += np.vstack([predict(tree, x, excluded) for x in X])
     pred.reshape((*size_iter, shape, -1))
     return pred
 

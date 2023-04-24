@@ -42,19 +42,17 @@ class Node:
         self.idx_data_points = idx_data_points
         self.idx_split_variable = idx_split_variable
 
-    @classmethod
-    def new_leaf_node(cls, value: float, idx_data_points: Optional[npt.NDArray[np.int_]]) -> "Node":
-        return cls(value=value, idx_data_points=idx_data_points)
 
-    @classmethod
-    def new_split_node(cls, split_value: float, idx_split_variable: int) -> "Node":
-        return cls(value=split_value, idx_split_variable=idx_split_variable)
+def new_leaf_node(value: float, idx_data_points: Optional[npt.NDArray[np.int_]]) -> "Node":
+    return Node(value=value, idx_data_points=idx_data_points)
 
-    def is_split_node(self) -> bool:
-        return self.idx_split_variable >= 0
 
-    def is_leaf_node(self) -> bool:
-        return not self.is_split_node()
+def is_split_node(node) -> bool:
+    return node.idx_split_variable >= 0
+
+
+def is_leaf_node(node) -> bool:
+    return node.idx_split_variable == -1
 
 
 def get_idx_left_child(index) -> int:
@@ -112,145 +110,159 @@ class Tree:
         self.idx_leaf_nodes = idx_leaf_nodes
         self.output = output
 
-    @classmethod
-    def new_tree(
-        cls,
+    def __getitem__(self, index) -> Node:
+        return get_node(self, index)
+
+    def __setitem__(self, index, node) -> None:
+        set_node(self, index, node)
+
+
+def new_tree(
         leaf_node_value: float,
         idx_data_points: Optional[npt.NDArray[np.int_]],
         num_observations: int,
         shape: int,
-    ) -> "Tree":
-        return cls(
-            tree_structure={
-                0: Node.new_leaf_node(value=leaf_node_value, idx_data_points=idx_data_points)
-            },
-            idx_leaf_nodes=[0],
-            output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
-        )
+) -> "Tree":
+    return Tree(
+        tree_structure={
+            0: new_leaf_node(value=leaf_node_value, idx_data_points=idx_data_points)
+        },
+        idx_leaf_nodes=[0],
+        output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
+    )
 
-    def __getitem__(self, index) -> Node:
-        return self.get_node(index)
 
-    def __setitem__(self, index, node) -> None:
-        self.set_node(index, node)
+def copy_tree(t: Tree) -> "Tree":
+    tree: Dict[int, Node] = {
+        k: Node(v.value, v.idx_data_points, v.idx_split_variable)
+        for k, v in t.tree_structure.items()
+    }
+    idx_leaf_nodes = t.idx_leaf_nodes.copy() if t.idx_leaf_nodes is not None else None
+    return Tree(tree_structure=tree, idx_leaf_nodes=idx_leaf_nodes, output=t.output)
 
-    def copy(self) -> "Tree":
-        tree: Dict[int, Node] = {
-            k: Node(v.value, v.idx_data_points, v.idx_split_variable)
-            for k, v in self.tree_structure.items()
-        }
-        idx_leaf_nodes = self.idx_leaf_nodes.copy() if self.idx_leaf_nodes is not None else None
-        return Tree(tree_structure=tree, idx_leaf_nodes=idx_leaf_nodes, output=self.output)
 
-    def get_node(self, index: int) -> Node:
-        return self.tree_structure[index]
+def get_node(t: Tree, index: int) -> Node:
+    return t.tree_structure[index]
 
-    def set_node(self, index: int, node: Node) -> None:
-        self.tree_structure[index] = node
-        if node.is_leaf_node() and self.idx_leaf_nodes is not None:
-            self.idx_leaf_nodes.append(index)
 
-    def grow_leaf_node(
-        self, current_node: Node, selected_predictor: int, split_value: float, index_leaf_node: int
-    ) -> None:
-        current_node.value = split_value
-        current_node.idx_split_variable = selected_predictor
-        current_node.idx_data_points = None
-        if self.idx_leaf_nodes is not None:
-            self.idx_leaf_nodes.remove(index_leaf_node)
+def grow_leaf_node(
+        t: Tree, current_node: Node, selected_predictor: int, split_value: float, index_leaf_node: int
+) -> None:
+    current_node.value = split_value
+    current_node.idx_split_variable = selected_predictor
+    current_node.idx_data_points = None
+    if t.idx_leaf_nodes is not None:
+        t.idx_leaf_nodes.remove(index_leaf_node)
 
-    def trim(self) -> "Tree":
-        tree: Dict[int, Node] = {
-            k: Node(v.value, None, v.idx_split_variable) for k, v in self.tree_structure.items()
-        }
-        return Tree(tree_structure=tree, idx_leaf_nodes=None, output=np.array([-1]))
 
-    def get_split_variables(self) -> Generator[int, None, None]:
-        for node in self.tree_structure.values():
-            if node.is_split_node():
-                yield node.idx_split_variable
+def trim_tree(t: Tree) -> "Tree":
+    tree: Dict[int, Node] = {
+        k: Node(v.value, None, v.idx_split_variable) for k, v in t.tree_structure.items()
+    }
+    return Tree(tree_structure=tree, idx_leaf_nodes=None, output=np.array([-1]))
 
-    def _predict(self) -> npt.NDArray[np.float_]:
-        output = self.output
 
-        if self.idx_leaf_nodes is not None:
-            for node_index in self.idx_leaf_nodes:
-                leaf_node = self.get_node(node_index)
-                output[leaf_node.idx_data_points] = leaf_node.value
-        return output.T
+def set_node(t: Tree, index: int, node: Node) -> None:
+    t.tree_structure[index] = node
+    if is_leaf_node(node) and t.idx_leaf_nodes is not None:
+        t.idx_leaf_nodes.append(index)
 
-    def predict(
-        self, x: npt.NDArray[np.float_], excluded: Optional[List[int]] = None
-    ) -> npt.NDArray[np.float_]:
-        """
-        Predict output of tree for an (un)observed point x.
 
-        Parameters
-        ----------
-        x : npt.NDArray[np.float_]
-            Unobserved point
-        excluded: Optional[List[int]]
-            Indexes of the variables to exclude when computing predictions
+def get_split_variables(t: Tree) -> Generator[int, None, None]:
+    for node in t.tree_structure.values():
+        if not is_leaf_node(node):
+            yield node.idx_split_variable
 
-        Returns
-        -------
-        npt.NDArray[np.float_]
-            Value of the leaf value where the unobserved point lies.
-        """
-        if excluded is None:
-            excluded = []
-        return self._traverse_tree(x, 0, excluded)
 
-    def _traverse_tree(
-        self,
+def _predict(t: Tree) -> npt.NDArray[np.float_]:
+    output = t.output
+
+    if t.idx_leaf_nodes is not None:
+        for node_index in t.idx_leaf_nodes:
+            leaf_node = get_node(t, node_index)
+            output[leaf_node.idx_data_points] = leaf_node.value
+    return output.T
+
+
+def predict(
+        t: Tree, x: npt.NDArray[np.float_], excluded: Optional[List[int]] = None
+) -> npt.NDArray[np.float_]:
+    """
+    Predict output of tree for an (un)observed point x.
+
+    Parameters
+    ----------
+    t : Tree
+        Tree to predict
+    x : npt.NDArray[np.float_]
+        Unobserved point
+    excluded: Optional[List[int]]
+        Indexes of the variables to exclude when computing predictions
+
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Value of the leaf value where the unobserved point lies.
+    """
+    if excluded is None:
+        excluded = []
+    return _traverse_tree(t, x, 0, excluded)
+
+
+def _traverse_tree(
+        t: Tree,
         x: npt.NDArray[np.float_],
         node_index: int,
         excluded: Optional[List[int]] = None,
-    ) -> npt.NDArray[np.float_]:
-        """
-        Traverse the tree starting from a particular node given an unobserved point.
+) -> npt.NDArray[np.float_]:
+    """
+    Traverse the tree starting from a particular node given an unobserved point.
 
-        Parameters
-        ----------
-        x : npt.NDArray[np.float_]
-            Unobserved point
-        node_index : int
-            Index of the node to start the traversal from
-        excluded: Optional[List[int]]
-            Indexes of the variables to exclude when computing predictions
+    Parameters
+    ----------
+    t : Tree
+        Tree to traverse
+    x : npt.NDArray[np.float_]
+        Unobserved point
+    node_index : int
+        Index of the node to start the traversal from
+    excluded: Optional[List[int]]
+        Indexes of the variables to exclude when computing predictions
 
-        Returns
-        -------
-        npt.NDArray[np.float_]
-            Leaf node value or mean of leaf node values
-        """
-        current_node: Node = self.get_node(node_index)
-        if current_node.is_leaf_node():
-            return np.array(current_node.value)
+    Returns
+    -------
+    npt.NDArray[np.float_]
+        Leaf node value or mean of leaf node values
+    """
+    current_node: Node = get_node(t, node_index)
+    if is_leaf_node(current_node):
+        return np.array(current_node.value)
 
-        if excluded is not None and current_node.idx_split_variable in excluded:
-            leaf_values: List[float] = []
-            self._traverse_leaf_values(leaf_values, node_index)
-            return np.mean(leaf_values, axis=0)
+    if excluded is not None and current_node.idx_split_variable in excluded:
+        leaf_values: List[float] = []
+        _traverse_leaf_values(t, leaf_values, node_index)
+        return np.mean(leaf_values, axis=0)
 
-        if x[current_node.idx_split_variable] <= current_node.value:
-            next_node = get_idx_left_child(node_index)
-        else:
-            next_node = get_idx_right_child(node_index)
-        return self._traverse_tree(x=x, node_index=next_node, excluded=excluded)
+    if x[current_node.idx_split_variable] <= current_node.value:
+        next_node = get_idx_left_child(node_index)
+    else:
+        next_node = get_idx_right_child(node_index)
+    return _traverse_tree(t, x=x, node_index=next_node, excluded=excluded)
 
-    def _traverse_leaf_values(self, leaf_values: List[float], node_index: int) -> None:
-        """
-        Traverse the tree appending leaf values starting from a particular node.
 
-        Parameters
-        ----------
-        leaf_values : List[float]
-        node_index : int
-        """
-        node = self.get_node(node_index)
-        if node.is_leaf_node():
-            leaf_values.append(node.value)
-        else:
-            self._traverse_leaf_values(leaf_values, get_idx_left_child(node_index))
-            self._traverse_leaf_values(leaf_values, get_idx_right_child(node_index))
+def _traverse_leaf_values(t: Tree, leaf_values: List[float], node_index: int) -> None:
+    """
+    Traverse the tree appending leaf values starting from a particular node.
+
+    Parameters
+    ----------
+    t : Tree
+    leaf_values : List[float]
+    node_index : int
+    """
+    node = get_node(t, node_index)
+    if is_leaf_node(node):
+        leaf_values.append(node.value)
+    else:
+        _traverse_leaf_values(t, leaf_values, get_idx_left_child(node_index))
+        _traverse_leaf_values(t, leaf_values, get_idx_right_child(node_index))
