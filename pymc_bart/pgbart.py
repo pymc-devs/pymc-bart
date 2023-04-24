@@ -206,7 +206,7 @@ class PGBART(ArrayStepShared):
         for tree_id in tree_ids:
             self.iter += 1
             # Compute the sum of trees without the old tree that we are attempting to replace
-            self.sum_trees_noi = self.sum_trees - self.all_particles[tree_id].tree._predict()
+            self.sum_trees_noi = self.sum_trees - _predict(self.all_particles[tree_id].tree)
             # Generate an initial set of particles
             # at the end we return one of these particles as the new tree
             particles = self.init_particles(tree_id)
