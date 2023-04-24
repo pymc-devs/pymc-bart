@@ -144,7 +144,11 @@ def get_node(tree: Tree, index: int) -> Node:
 
 
 def grow_leaf_node(
-    tree: Tree, current_node: Node, selected_predictor: int, split_value: float, index_leaf_node: int
+    tree: Tree,
+    current_node: Node,
+    selected_predictor: int,
+    split_value: float,
+    index_leaf_node: int,
 ) -> None:
     current_node.value = split_value
     current_node.idx_split_variable = selected_predictor
