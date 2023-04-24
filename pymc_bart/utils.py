@@ -23,7 +23,7 @@ def _sample_posterior(
     X: TensorLike,
     rng: np.random.Generator,
     size: Optional[Union[int, Tuple[int, ...]]] = None,
-    excluded: Optional[npt.NDArray[np.int_]] = None,
+    excluded: Optional[List[int]] = None,
 ) -> npt.NDArray[np.float_]:
     """
     Generate samples from the BART-posterior.
@@ -480,7 +480,7 @@ def plot_variable_importance(
     ev_hdi = np.zeros((len(var_imp), 2))
     for idx, subset in enumerate(subsets):
         predicted_subset = _sample_posterior(
-            all_trees=all_trees, X=X, rng=rng, size=samples, excluded=subset
+            all_trees=all_trees, X=X, rng=rng, size=samples, excluded=subset.tolist()
         )
         pearson = np.zeros(samples)
         for j in range(samples):
