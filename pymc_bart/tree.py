@@ -46,8 +46,19 @@ class Node:
         self.linear_params = linear_params
 
     @classmethod
-    def new_leaf_node(cls, value: float, idx_data_points: Optional[npt.NDArray[np.int_]]) -> "Node":
-        return cls(value=value, idx_data_points=idx_data_points)
+    def new_leaf_node(
+        cls,
+        value: float,
+        idx_data_points: Optional[npt.NDArray[np.int_]] = None,
+        idx_split_variable: int = -1,
+        linear_params: Optional[List[float]] = None,
+    ) -> "Node":
+        return cls(
+            value=value,
+            idx_data_points=idx_data_points,
+            idx_split_variable=idx_split_variable,
+            linear_params=linear_params,
+        )
 
     @classmethod
     def new_split_node(cls, split_value: float, idx_split_variable: int) -> "Node":

@@ -256,6 +256,9 @@ good-names=i,
            rv,
            new_X,
            new_y,
+           a,
+           b,
+           n,
 
 
 # Include a hint for the correct naming format with invalid-name

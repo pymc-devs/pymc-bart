@@ -54,7 +54,6 @@ class ParticleTree:
         missing_data,
         sum_trees,
         m,
-        linear_fit,
         response,
         normal,
         shape,
@@ -75,7 +74,6 @@ class ParticleTree:
                     missing_data,
                     sum_trees,
                     m,
-                    linear_fit,
                     response,
                     normal,
                     self.kfactor,
@@ -166,8 +164,6 @@ class PGBART(ArrayStepShared):
             shape=self.shape,
         )
 
-        self.linear_fit = fast_linear_fit()
-
         self.normal = NormalSampler(mu_std, self.shape)
         self.uniform = UniformSampler(0, 1)
         self.uniform_kf = UniformSampler(0.33, 0.75, self.shape)
@@ -217,7 +213,6 @@ class PGBART(ArrayStepShared):
                         self.missing_data,
                         self.sum_trees,
                         self.m,
-                        self.linear_fit,
                         self.response,
                         self.normal,
                         self.shape,
@@ -403,7 +398,6 @@ def grow_tree(
     missing_data,
     sum_trees,
     m,
-    linear_fit,
     response,
     normal,
     kfactor,
@@ -429,16 +423,19 @@ def grow_tree(
 
     for idx in range(2):
         idx_data_point = new_idx_data_points[idx]
-        node_value = draw_leaf_value(
-            sum_trees[:, idx_data_point],
-            m,
-            normal.rvs() * kfactor,
-            shape,
+        node_value, linear_parms = draw_leaf_value(
+            y_mu_pred=X[idx_data_point, selected_predictor],
+            x_mu=sum_trees[:, idx_data_point],
+            m=m,
+            norm=normal.rvs() * kfactor,
+            shape=shape,
+            response=response,
         )
 
         new_node = Node.new_leaf_node(
             value=node_value,
             idx_data_points=idx_data_point,
+            linear_params=linear_parms,
         )
         tree.set_node(current_node_children[idx], new_node)
 
@@ -468,17 +465,23 @@ def get_split_value(available_splitting_values, idx_data_points, missing_data):
 
 
 @njit
-def draw_leaf_value(y_mu_pred, m, norm, shape):
+def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
     """Draw Gaussian distributed leaf values."""
+    linear_params = None
     if y_mu_pred.size == 0:
-        return np.zeros(shape)
+        mu_mean = np.zeros(shape)
 
-    if y_mu_pred.size == 1:
+    elif y_mu_pred.size == 1:
         mu_mean = np.full(shape, y_mu_pred.item() / m)
-    else:
+
+    elif response == "constant":
         mu_mean = fast_mean(y_mu_pred) / m
 
-    return norm + mu_mean
+    elif response == "linear":
+        y_fit, _ = fast_linear_fit(x=x_mu, y=y_mu_pred)
+        mu_mean = y_fit / m
+
+    return norm + mu_mean, linear_params
 
 
 @njit
@@ -498,6 +501,20 @@ def fast_mean(ari):
             for i in range(count):
                 res[j] += ari[j, i]
         return res / count
+
+
+@njit
+def fast_linear_fit(x, y):
+    """Use Numba to speed up the computation of the linear fit"""
+    n = len(x)
+    xbar = np.sum(x) / n
+    ybar = np.sum(y) / n
+
+    b = (x @ y - n * xbar * ybar) / (x @ x - n * xbar**2)
+    a = ybar - b * xbar
+
+    y_fit = a + b * x
+    return y_fit, (a, b)
 
 
 def discrete_uniform_sampler(upper_value):
@@ -609,16 +626,3 @@ def logp(point, out_vars, vars, shared):  # pylint: disable=redefined-builtin
     function = pytensor_function([inarray0], out_list[0])
     function.trust_input = True
     return function
-
-
-def fast_linear_fit(X, Y):
-    """Use Numba to speed up the computation of the linear fit"""
-    n = len(Y)
-    xbar = np.sum(X) / n
-    ybar = np.sum(Y) / n
-
-    b = (X @ Y - n * xbar * ybar) / (X @ X - n * xbar**2)
-    a = ybar - b * xbar
-
-    y_fit = a + b * X
-    return y_fit, (a, b)
