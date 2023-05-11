@@ -611,25 +611,14 @@ def logp(point, out_vars, vars, shared):  # pylint: disable=redefined-builtin
     return function
 
 
-def fast_linear_fit():
-    """If available use Numba to speed up the computation of the linear fit"""
+def fast_linear_fit(X, Y):
+    """Use Numba to speed up the computation of the linear fit"""
+    n = len(Y)
+    xbar = np.sum(X) / n
+    ybar = np.sum(Y) / n
 
-    def linear_fit(X, Y):
+    b = (X @ Y - n * xbar * ybar) / (X @ X - n * xbar**2)
+    a = ybar - b * xbar
 
-        n = len(Y)
-        xbar = np.sum(X) / n
-        ybar = np.sum(Y) / n
-
-        b = (X @ Y - n * xbar * ybar) / (X @ X - n * xbar**2)
-        a = ybar - b * xbar
-
-        y_fit = a + b * X
-        return y_fit, (a, b)
-
-    try:
-        from numba import jit
-
-        return jit(linear_fit)
-
-    except ImportError:
-        return linear_fit
+    y_fit = a + b * X
+    return y_fit, (a, b)
