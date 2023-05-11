@@ -478,7 +478,7 @@ def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
         mu_mean = fast_mean(y_mu_pred) / m
 
     elif response == "linear":
-        y_fit, _ = fast_linear_fit(x=x_mu, y=y_mu_pred)
+        y_fit, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred)
         mu_mean = y_fit / m
 
     return norm + mu_mean, linear_params
