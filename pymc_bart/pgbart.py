@@ -468,6 +468,7 @@ def get_split_value(available_splitting_values, idx_data_points, missing_data):
 def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
     """Draw Gaussian distributed leaf values."""
     linear_params = None
+    mu_mean = np.empty(shape)
     if y_mu_pred.size == 0:
         return np.zeros(shape), linear_params
 
@@ -476,7 +477,7 @@ def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
     else:
         if response == "linear":
             y_fit, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred)
-            mu_mean = fast_mean(y_fit / m)
+            mu_mean = fast_mean(y_fit) / m
         else:
             mu_mean = fast_mean(y_mu_pred) / m
     draw = norm + mu_mean
