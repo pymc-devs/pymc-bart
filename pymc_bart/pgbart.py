@@ -469,21 +469,18 @@ def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
     """Draw Gaussian distributed leaf values."""
     linear_params = None
     if y_mu_pred.size == 0:
-        mu_mean = np.zeros(shape)
+        return np.zeros(shape), linear_params
 
-    elif y_mu_pred.size == 1:
+    if y_mu_pred.size == 1:
         mu_mean = np.full(shape, y_mu_pred.item() / m)
-
     else:
-        if response == "constant":
+        if response == "linear":
+            y_fit, linear_params = fast_linear_fit(x_mu, y_mu_pred)
+            mu_mean = fast_mean(y_fit) / m
+        else:
             mu_mean = fast_mean(y_mu_pred) / m
 
-        elif response == "linear":
-            y_fit, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred)
-            mu_mean = fast_mean(y_fit) / m
-
-    draws = norm + mu_mean
-    return draws, linear_params
+    return norm + mu_mean, linear_params
 
 
 @njit
