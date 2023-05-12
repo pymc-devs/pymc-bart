@@ -423,7 +423,7 @@ def grow_tree(
 
     for idx in range(2):
         idx_data_point = new_idx_data_points[idx]
-        node_value, linear_parms = draw_leaf_value(
+        node_value, linear_params = draw_leaf_value(
             y_mu_pred=X[idx_data_point, selected_predictor],
             x_mu=sum_trees[:, idx_data_point],
             m=m,
@@ -435,7 +435,7 @@ def grow_tree(
         new_node = Node.new_leaf_node(
             value=node_value,
             idx_data_points=idx_data_point,
-            linear_params=linear_parms,
+            linear_params=linear_params,
         )
         tree.set_node(current_node_children[idx], new_node)
 
@@ -467,21 +467,22 @@ def get_split_value(available_splitting_values, idx_data_points, missing_data):
 @njit
 def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
     """Draw Gaussian distributed leaf values."""
-    linear_params = None
     if y_mu_pred.size == 0:
         mu_mean = np.zeros(shape)
 
     elif y_mu_pred.size == 1:
         mu_mean = np.full(shape, y_mu_pred.item() / m)
 
-    elif response == "constant":
-        mu_mean = fast_mean(y_mu_pred) / m
+    else:
+        if response == "constant":
+            mu_mean = fast_mean(y_mu_pred) / m
 
-    elif response == "linear":
-        y_fit, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred)
-        mu_mean = y_fit / m
+        elif response == "linear":
+            y_fit, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred)
+            mu_mean = fast_mean(y_fit) / m
 
-    return (norm + mu_mean), linear_params
+    draws = norm + mu_mean
+    return draws, linear_params
 
 
 @njit
