@@ -4,8 +4,7 @@ import numpy as np
 import pymc as pm
 
 import pymc_bart as pmb
-from pymc_bart.pgbart import (NormalSampler, UniformSampler,
-                              discrete_uniform_sampler, fast_mean)
+from pymc_bart.pgbart import NormalSampler, UniformSampler, discrete_uniform_sampler, fast_mean
 
 
 class TestSystematic(TestCase):
@@ -24,7 +23,7 @@ class TestSystematic(TestCase):
         indices = step.systematic(normalized_weights)
 
         self.assertEqual(len(indices), len(normalized_weights))
-        self.assertEqual(indices.dtype, np.int)
+        self.assertEqual(indices.dtype, np.int_)
         self.assertTrue(all(i >= 0 and i < len(normalized_weights) for i in indices))
 
         normalized_weights = np.array([0, 0.25, 0.75])

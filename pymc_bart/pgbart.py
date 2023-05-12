@@ -424,8 +424,8 @@ def grow_tree(
     for idx in range(2):
         idx_data_point = new_idx_data_points[idx]
         node_value, linear_params = draw_leaf_value(
-            y_mu_pred=X[idx_data_point, selected_predictor],
-            x_mu=sum_trees[:, idx_data_point],
+            y_mu_pred=sum_trees[:, idx_data_point],
+            x_mu=X[idx_data_point, selected_predictor],
             m=m,
             norm=normal.rvs() * kfactor,
             shape=shape,
@@ -475,12 +475,12 @@ def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
         mu_mean = np.full(shape, y_mu_pred.item() / m)
     else:
         if response == "linear":
-            y_fit, linear_params = fast_linear_fit(x_mu, y_mu_pred)
-            mu_mean = fast_mean(y_fit) / m
+            y_fit, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred)
+            mu_mean = fast_mean(y_fit / m)
         else:
             mu_mean = fast_mean(y_mu_pred) / m
-
-    return norm + mu_mean, linear_params
+    draw = norm + mu_mean
+    return draw, linear_params
 
 
 @njit
@@ -513,7 +513,7 @@ def fast_linear_fit(x, y):
     a = ybar - b * xbar
 
     y_fit = a + b * x
-    return y_fit, (a, b)
+    return y_fit, [a, b]
 
 
 def discrete_uniform_sampler(upper_value):
