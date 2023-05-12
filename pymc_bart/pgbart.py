@@ -467,6 +467,7 @@ def get_split_value(available_splitting_values, idx_data_points, missing_data):
 @njit
 def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
     """Draw Gaussian distributed leaf values."""
+    linear_params = None
     if y_mu_pred.size == 0:
         mu_mean = np.zeros(shape)
 
