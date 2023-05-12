@@ -40,13 +40,18 @@ def assert_moment_is_expected(model, expected, check_finite_logp=True):
         assert np.isfinite(logp_moment)
 
 
-def test_bart_vi():
+@pytest.mark.parametrize(
+    argnames="response",
+    argvalues=["constant", "linear"],
+    ids=["constant-response", "linear-response"],
+)
+def test_bart_vi(response):
     X = np.random.normal(0, 1, size=(250, 3))
     Y = np.random.normal(0, 1, size=250)
     X[:, 0] = np.random.normal(Y, 0.1)
 
     with pm.Model() as model:
-        mu = pmb.BART("mu", X, Y, m=10)
+        mu = pmb.BART("mu", X, Y, m=10, response=response)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y)
         idata = pm.sample(random_seed=3415)
