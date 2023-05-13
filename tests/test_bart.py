@@ -42,8 +42,8 @@ def assert_moment_is_expected(model, expected, check_finite_logp=True):
 
 @pytest.mark.parametrize(
     argnames="response",
-    argvalues=["constant", "linear"],
-    ids=["constant-response", "linear-response"],
+    argvalues=["linear"],
+    ids=["linear-response"],
 )
 def test_bart_vi(response):
     X = np.random.normal(0, 1, size=(250, 3))
@@ -65,25 +65,35 @@ def test_bart_vi(response):
         assert_almost_equal(var_imp.sum(), 1)
 
 
-def test_missing_data():
+@pytest.mark.parametrize(
+    argnames="response",
+    argvalues=["constant", "linear"],
+    ids=["constant", "linear-response"],
+)
+def test_missing_data(response):
     X = np.random.normal(0, 1, size=(50, 2))
     Y = np.random.normal(0, 1, size=50)
     X[10:20, 0] = np.nan
 
     with pm.Model() as model:
-        mu = pmb.BART("mu", X, Y, m=10)
+        mu = pmb.BART("mu", X, Y, m=10, response=response)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y)
         idata = pm.sample(tune=100, draws=100, chains=1, random_seed=3415)
 
 
-def test_shared_variable():
+@pytest.mark.parametrize(
+    argnames="response",
+    argvalues=["constant", "linear"],
+    ids=["constant", "linear-response"],
+)
+def test_shared_variable(response):
     X = np.random.normal(0, 1, size=(50, 2))
     Y = np.random.normal(0, 1, size=50)
 
     with pm.Model() as model:
         data_X = pm.MutableData("data_X", X)
-        mu = pmb.BART("mu", data_X, Y, m=2)
+        mu = pmb.BART("mu", data_X, Y, m=2, response=response)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y, shape=mu.shape)
         idata = pm.sample(tune=100, draws=100, chains=2, random_seed=3415)
@@ -95,12 +105,17 @@ def test_shared_variable():
     assert ppc2.posterior_predictive["y"].shape == (2, 100, 3)
 
 
-def test_shape():
+@pytest.mark.parametrize(
+    argnames="response",
+    argvalues=["constant", "linear"],
+    ids=["constant", "linear-response"],
+)
+def test_shape(response):
     X = np.random.normal(0, 1, size=(250, 3))
     Y = np.random.normal(0, 1, size=250)
 
     with pm.Model() as model:
-        w = pmb.BART("w", X, Y, m=2, shape=(2, 250))
+        w = pmb.BART("w", X, Y, m=2, response=response, shape=(2, 250))
         y = pm.Normal("y", w[0], pm.math.abs(w[1]), observed=Y)
         idata = pm.sample(random_seed=3415)
 

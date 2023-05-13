@@ -477,7 +477,7 @@ def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
     else:
         if response == "linear":
             y_fit, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred)
-            mu_mean = fast_mean(y_fit.reshape(-1, 1)) / m
+            mu_mean = fast_mean(y_fit.reshape(1, -1)) / m
         else:
             mu_mean = fast_mean(y_mu_pred) / m
     draw = norm + mu_mean
@@ -510,7 +510,7 @@ def fast_linear_fit(x, y):
     xbar = np.sum(x) / n
     ybar = np.sum(y) / n
 
-    b = (x @ y - n * xbar * ybar) / (x @ x - n * xbar**2)
+    b = (x @ y.T - n * xbar * ybar) / (x @ x - n * xbar**2)
     a = ybar - b * xbar
 
     y_fit = a + b * x
