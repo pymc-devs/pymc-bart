@@ -42,8 +42,8 @@ def assert_moment_is_expected(model, expected, check_finite_logp=True):
 
 @pytest.mark.parametrize(
     argnames="response",
-    argvalues=["linear"],
-    ids=["linear-response"],
+    argvalues=["constant", "linear"],
+    ids=["constant", "linear-response"],
 )
 def test_bart_vi(response):
     X = np.random.normal(0, 1, size=(250, 3))
