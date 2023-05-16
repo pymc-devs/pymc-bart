@@ -426,15 +426,11 @@ def grow_tree(
 
     for idx in range(2):
         idx_data_point = new_idx_data_points[idx]
-        y_mu_pred = sum_trees[:, idx_data_point]
-        x_mu = X[idx_data_point, selected_predictor]
-        norm = normal.rvs() * kfactor
-
-        node_value, *linear_params = draw_leaf_value(
-            y_mu_pred=y_mu_pred,
-            x_mu=x_mu,
+        node_value, linear_params = draw_leaf_value(
+            y_mu_pred=sum_trees[:, idx_data_point],
+            x_mu=X[idx_data_point, selected_predictor],
             m=m,
-            norm=norm,
+            norm=normal.rvs() * kfactor,
             shape=shape,
             response=response,
         )
@@ -472,7 +468,14 @@ def get_split_value(available_splitting_values, idx_data_points, missing_data):
 
 
 @njit
-def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
+def draw_leaf_value(
+    y_mu_pred: npt.NDArray[np.float_],
+    x_mu: npt.NDArray[np.float_],
+    m: int,
+    norm: npt.NDArray[np.float_],
+    shape: int,
+    response: str,
+) -> Tuple[npt.NDArray[np.float_], Optional[List[float]]]:
     """Draw Gaussian distributed leaf values."""
     linear_params = None
     mu_mean = np.empty(shape)
@@ -482,17 +485,18 @@ def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
     if y_mu_pred.size == 1:
         mu_mean = np.full(shape, y_mu_pred.item() / m)
     else:
+        if response == "constant":
+            mu_mean = fast_mean(y_mu_pred) / m
         if response == "linear":
             y_fit, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred)
             mu_mean = y_fit / m
-        else:
-            mu_mean = fast_mean(y_mu_pred) / m
+
     draw = norm + mu_mean
     return draw, linear_params
 
 
 @njit
-def fast_mean(ari):
+def fast_mean(ari: npt.NDArray[np.float_]) -> Union[float, npt.NDArray[np.float_]]:
     """Use Numba to speed up the computation of the mean."""
 
     if ari.ndim == 1:
@@ -511,7 +515,9 @@ def fast_mean(ari):
 
 
 @njit
-def fast_linear_fit(x, y):
+def fast_linear_fit(
+    x: npt.NDArray[np.float_], y: npt.NDArray[np.float_]
+) -> Tuple[npt.NDArray[np.float_], List[float]]:
     """Use Numba to speed up the computation of the linear fit"""
     n = len(x)
     xbar = np.sum(x) / n
@@ -521,7 +527,7 @@ def fast_linear_fit(x, y):
     a = ybar - b * xbar
 
     y_fit = a + b * x
-    return y_fit, [a, b]
+    return y_fit, [a.item(), b.item()]
 
 
 def discrete_uniform_sampler(upper_value):
