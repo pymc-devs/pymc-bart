@@ -150,7 +150,12 @@ class Tree:
 
     def copy(self) -> "Tree":
         tree: Dict[int, Node] = {
-            k: Node(v.value, v.idx_data_points, v.idx_split_variable)
+            k: Node(
+                value=v.value,
+                idx_data_points=v.idx_data_points,
+                idx_split_variable=v.idx_split_variable,
+                linear_params=v.linear_params,
+            )
             for k, v in self.tree_structure.items()
         }
         idx_leaf_nodes = self.idx_leaf_nodes.copy() if self.idx_leaf_nodes is not None else None

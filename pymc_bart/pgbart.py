@@ -421,6 +421,9 @@ def grow_tree(
         get_idx_right_child(index_leaf_node),
     )
 
+    if response == "mix":
+        response = "linear" if np.random.random() >= 0.5 else "constant"
+
     for idx in range(2):
         idx_data_point = new_idx_data_points[idx]
         node_value, linear_params = draw_leaf_value(
@@ -477,7 +480,7 @@ def draw_leaf_value(y_mu_pred, x_mu, m, norm, shape, response):
     else:
         if response == "linear":
             y_fit, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred)
-            mu_mean = y_fit.reshape(1, -1) / m
+            mu_mean = y_fit / m
         else:
             mu_mean = fast_mean(y_mu_pred) / m
     draw = norm + mu_mean
@@ -510,11 +513,11 @@ def fast_linear_fit(x, y):
     xbar = np.sum(x) / n
     ybar = np.sum(y) / n
 
-    b = (x @ y.T - n * xbar * ybar) / (x @ x - n * xbar**2)
+    b = ((x - xbar) @ (y - ybar).T) / ((x - xbar) @ (x - xbar).T)
     a = ybar - b * xbar
 
     y_fit = a + b * x
-    return y_fit, [a, b]
+    return y_fit, [a.item(), b.item()]
 
 
 def discrete_uniform_sampler(upper_value):
