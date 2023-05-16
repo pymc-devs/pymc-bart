@@ -74,7 +74,7 @@ class BART(Distribution):
         Number of trees
     response : str
         How the leaf_node values are computed. Available options are ``constant``, ``linear`` or
-        ``mix`` (default).
+        ``mix``. Defaults to ``constant``.
     alpha : float
         Control the prior probability over the depth of the trees. Even when it can takes values in
         the interval (0, 1), it is recommended to be in the interval (0, 0.5].
@@ -91,7 +91,7 @@ class BART(Distribution):
         Y: TensorLike,
         m: int = 50,
         alpha: float = 0.25,
-        response: str = "mix",
+        response: str = "constant",
         split_prior: Optional[List[float]] = None,
         **kwargs,
     ):
