@@ -180,7 +180,13 @@ class Tree:
 
     def trim(self) -> "Tree":
         tree: Dict[int, Node] = {
-            k: Node(v.value, None, v.idx_split_variable) for k, v in self.tree_structure.items()
+            k: Node(
+                value=v.value,
+                idx_data_points=None,
+                idx_split_variable=v.idx_split_variable,
+                linear_params=v.linear_params,
+            )
+            for k, v in self.tree_structure.items()
         }
         return Tree(tree_structure=tree, idx_leaf_nodes=None, output=np.array([-1]))
 
