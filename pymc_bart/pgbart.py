@@ -528,9 +528,7 @@ def fast_linear_fit(
 
     x_var = x_diff @ x_diff.T
 
-    if x_var == 0:
-        b = np.zeros(1)
-    else:
+    if x_var != 0:
         b = (x_diff @ y_diff.T) / x_var
 
     a = ybar - b * xbar
