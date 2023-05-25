@@ -48,8 +48,8 @@ def test_fast_mean():
 @pytest.mark.parametrize(
     argnames="x,y,a_expected, b_expected",
     argvalues=[
-        (np.array([1, 2, 3, 4, 5]), np.array([1, 2, 3, 4, 5]), 0.0, 1.0),
-        (np.array([1, 2, 3, 4, 5]), np.array([1, 1, 1, 1, 1]), 1.0, 0.0),
+        (np.array([1, 2, 3, 4, 5]), np.array([[1, 2, 3, 4, 5]]), 0.0, 1.0),
+        (np.array([1, 2, 3, 4, 5]), np.array([[1, 1, 1, 1, 1]]), 1.0, 0.0),
     ],
     ids=["1d-id", "1d-const"],
 )
@@ -57,7 +57,9 @@ def test_fast_linear_fit(x, y, a_expected, b_expected):
     y_fit, linear_params = fast_linear_fit(x, y)
     assert linear_params[0] == a_expected
     assert linear_params[1] == b_expected
-    np.testing.assert_almost_equal(actual=y_fit, desired=a_expected + x * b_expected)
+    np.testing.assert_almost_equal(
+        actual=y_fit, desired=np.atleast_2d(a_expected + x * b_expected).T
+    )
 
 
 def test_discrete_uniform():

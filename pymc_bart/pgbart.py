@@ -467,7 +467,6 @@ def get_split_value(available_splitting_values, idx_data_points, missing_data):
     return split_value
 
 
-@njit
 def draw_leaf_value(
     y_mu_pred: npt.NDArray[np.float_],
     x_mu: npt.NDArray[np.float_],
@@ -475,7 +474,7 @@ def draw_leaf_value(
     norm: npt.NDArray[np.float_],
     shape: int,
     response: str,
-) -> Tuple[npt.NDArray[np.float_], Optional[List[float]]]:
+) -> Tuple[npt.NDArray[np.float_], Optional[npt.NDArray[np.float_]]]:
     """Draw Gaussian distributed leaf values."""
     linear_params = None
     mu_mean = np.empty(shape)
@@ -498,7 +497,6 @@ def draw_leaf_value(
 @njit
 def fast_mean(ari: npt.NDArray[np.float_]) -> Union[float, npt.NDArray[np.float_]]:
     """Use Numba to speed up the computation of the mean."""
-
     if ari.ndim == 1:
         count = ari.shape[0]
         suma = 0
@@ -518,23 +516,25 @@ def fast_mean(ari: npt.NDArray[np.float_]) -> Union[float, npt.NDArray[np.float_
 def fast_linear_fit(
     x: npt.NDArray[np.float_], y: npt.NDArray[np.float_]
 ) -> Tuple[npt.NDArray[np.float_], List[float]]:
-    """Use Numba to speed up the computation of the linear fit"""
     n = len(x)
+
     xbar = np.sum(x) / n
-    ybar = np.sum(y) / n
+    ybar = np.sum(y, axis=1) / n
 
     x_diff = x - xbar
-    y_diff = y - ybar
+    y_diff = y - np.expand_dims(ybar, axis=1)
 
-    x_var = x_diff @ x_diff.T
+    x_var = np.dot(x_diff, x_diff.T)
 
-    if x_var != 0:
-        b = (x_diff @ y_diff.T) / x_var
+    if x_var == 0:
+        b = np.zeros(y.shape[0])
+    else:
+        b = np.dot(x_diff, y_diff.T) / x_var
 
     a = ybar - b * xbar
 
-    y_fit = a + b * x
-    return y_fit, [a.item(), b.item()]
+    y_fit = np.expand_dims(a, axis=1) + np.expand_dims(b, axis=1) * x
+    return y_fit.T, [a, b]
 
 
 def discrete_uniform_sampler(upper_value):
