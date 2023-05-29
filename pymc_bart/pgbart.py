@@ -515,7 +515,7 @@ def fast_mean(ari: npt.NDArray[np.float_]) -> Union[float, npt.NDArray[np.float_
 @njit
 def fast_linear_fit(
     x: npt.NDArray[np.float_], y: npt.NDArray[np.float_]
-) -> Tuple[npt.NDArray[np.float_], List[float]]:
+) -> Tuple[npt.NDArray[np.float_], List[npt.NDArray[np.float_]]]:
     n = len(x)
 
     xbar = np.sum(x) / n
@@ -534,7 +534,7 @@ def fast_linear_fit(
     a = ybar - b * xbar
 
     y_fit = np.expand_dims(a, axis=1) + np.expand_dims(b, axis=1) * x
-    return y_fit.T, [a.item(), b.item()]
+    return y_fit.T, [a, b]
 
 
 def discrete_uniform_sampler(upper_value):
