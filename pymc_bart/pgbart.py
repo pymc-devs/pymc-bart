@@ -467,7 +467,6 @@ def get_split_value(available_splitting_values):
     if available_splitting_values.size > 0:
         idx_selected_splitting_values = discrete_uniform_sampler(len(available_splitting_values))
         split_value = available_splitting_values[idx_selected_splitting_values]
-
     return split_value
 
 
