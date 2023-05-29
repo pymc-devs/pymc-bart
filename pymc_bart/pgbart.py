@@ -534,7 +534,7 @@ def fast_linear_fit(
     a = ybar - b * xbar
 
     y_fit = np.expand_dims(a, axis=1) + np.expand_dims(b, axis=1) * x
-    return y_fit.T, [a, b]
+    return y_fit.T, [a.item(), b.item()]
 
 
 def discrete_uniform_sampler(upper_value):
