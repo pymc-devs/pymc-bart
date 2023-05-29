@@ -408,8 +408,10 @@ def grow_tree(
 
     index_selected_predictor = ssv.rvs()
     selected_predictor = available_predictors[index_selected_predictor]
-    available_splitting_values = X[idx_data_points, selected_predictor]
-    split_value = get_split_value(available_splitting_values, idx_data_points, missing_data)
+    idx_data_points, available_splitting_values = filter_missing_values(
+        X[idx_data_points, selected_predictor], idx_data_points, missing_data
+    )
+    split_value = get_split_value(available_splitting_values)
 
     if split_value is None:
         return None
@@ -452,13 +454,15 @@ def get_new_idx_data_points(available_splitting_values, split_value, idx_data_po
     return idx_data_points[split_idx], idx_data_points[~split_idx]
 
 
-def get_split_value(available_splitting_values, idx_data_points, missing_data):
+def filter_missing_values(available_splitting_values, idx_data_points, missing_data):
     if missing_data:
-        idx_data_points = idx_data_points[~np.isnan(available_splitting_values)]
-        available_splitting_values = available_splitting_values[
-            ~np.isnan(available_splitting_values)
-        ]
+        mask = ~np.isnan(available_splitting_values)
+        idx_data_points = idx_data_points[mask]
+        available_splitting_values = available_splitting_values[mask]
+    return idx_data_points, available_splitting_values
 
+
+def get_split_value(available_splitting_values):
     split_value = None
     if available_splitting_values.size > 0:
         idx_selected_splitting_values = discrete_uniform_sampler(len(available_splitting_values))
