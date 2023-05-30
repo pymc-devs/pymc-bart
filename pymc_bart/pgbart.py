@@ -54,6 +54,7 @@ class ParticleTree:
         missing_data,
         sum_trees,
         m,
+        response,
         normal,
         shape,
     ) -> bool:
@@ -73,6 +74,7 @@ class ParticleTree:
                     missing_data,
                     sum_trees,
                     m,
+                    response,
                     normal,
                     self.kfactor,
                     shape,
@@ -131,6 +133,7 @@ class PGBART(ArrayStepShared):
 
         self.missing_data = np.any(np.isnan(self.X))
         self.m = self.bart.m
+        self.response = self.bart.response
         shape = initial_values[value_bart.name].shape
         self.shape = 1 if len(shape) == 1 else shape[0]
 
@@ -160,6 +163,7 @@ class PGBART(ArrayStepShared):
             num_observations=self.num_observations,
             shape=self.shape,
         )
+
         self.normal = NormalSampler(mu_std, self.shape)
         self.uniform = UniformSampler(0, 1)
         self.uniform_kf = UniformSampler(0.33, 0.75, self.shape)
@@ -209,6 +213,7 @@ class PGBART(ArrayStepShared):
                         self.missing_data,
                         self.sum_trees,
                         self.m,
+                        self.response,
                         self.normal,
                         self.shape,
                     ):
@@ -393,6 +398,7 @@ def grow_tree(
     missing_data,
     sum_trees,
     m,
+    response,
     normal,
     kfactor,
     shape,
@@ -402,8 +408,10 @@ def grow_tree(
 
     index_selected_predictor = ssv.rvs()
     selected_predictor = available_predictors[index_selected_predictor]
-    available_splitting_values = X[idx_data_points, selected_predictor]
-    split_value = get_split_value(available_splitting_values, idx_data_points, missing_data)
+    idx_data_points, available_splitting_values = filter_missing_values(
+        X[idx_data_points, selected_predictor], idx_data_points, missing_data
+    )
+    split_value = get_split_value(available_splitting_values)
 
     if split_value is None:
         return None
@@ -415,18 +423,24 @@ def grow_tree(
         get_idx_right_child(index_leaf_node),
     )
 
+    if response == "mix":
+        response = "linear" if np.random.random() >= 0.5 else "constant"
+
     for idx in range(2):
         idx_data_point = new_idx_data_points[idx]
-        node_value = draw_leaf_value(
-            sum_trees[:, idx_data_point],
-            m,
-            normal.rvs() * kfactor,
-            shape,
+        node_value, linear_params = draw_leaf_value(
+            y_mu_pred=sum_trees[:, idx_data_point],
+            x_mu=X[idx_data_point, selected_predictor],
+            m=m,
+            norm=normal.rvs() * kfactor,
+            shape=shape,
+            response=response,
         )
 
         new_node = Node.new_leaf_node(
             value=node_value,
             idx_data_points=idx_data_point,
+            linear_params=linear_params,
         )
         tree.set_node(current_node_children[idx], new_node)
 
@@ -440,39 +454,52 @@ def get_new_idx_data_points(available_splitting_values, split_value, idx_data_po
     return idx_data_points[split_idx], idx_data_points[~split_idx]
 
 
-def get_split_value(available_splitting_values, idx_data_points, missing_data):
+def filter_missing_values(available_splitting_values, idx_data_points, missing_data):
     if missing_data:
-        idx_data_points = idx_data_points[~np.isnan(available_splitting_values)]
-        available_splitting_values = available_splitting_values[
-            ~np.isnan(available_splitting_values)
-        ]
+        mask = ~np.isnan(available_splitting_values)
+        idx_data_points = idx_data_points[mask]
+        available_splitting_values = available_splitting_values[mask]
+    return idx_data_points, available_splitting_values
 
+
+def get_split_value(available_splitting_values):
     split_value = None
     if available_splitting_values.size > 0:
         idx_selected_splitting_values = discrete_uniform_sampler(len(available_splitting_values))
         split_value = available_splitting_values[idx_selected_splitting_values]
-
     return split_value
 
 
-@njit
-def draw_leaf_value(y_mu_pred, m, norm, shape):
+def draw_leaf_value(
+    y_mu_pred: npt.NDArray[np.float_],
+    x_mu: npt.NDArray[np.float_],
+    m: int,
+    norm: npt.NDArray[np.float_],
+    shape: int,
+    response: str,
+) -> Tuple[npt.NDArray[np.float_], Optional[npt.NDArray[np.float_]]]:
     """Draw Gaussian distributed leaf values."""
+    linear_params = None
+    mu_mean = np.empty(shape)
     if y_mu_pred.size == 0:
-        return np.zeros(shape)
+        return np.zeros(shape), linear_params
 
     if y_mu_pred.size == 1:
         mu_mean = np.full(shape, y_mu_pred.item() / m)
     else:
-        mu_mean = fast_mean(y_mu_pred) / m
+        if response == "constant":
+            mu_mean = fast_mean(y_mu_pred) / m
+        if response == "linear":
+            y_fit, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred)
+            mu_mean = y_fit / m
 
-    return norm + mu_mean
+    draw = norm + mu_mean
+    return draw, linear_params
 
 
 @njit
-def fast_mean(ari):
+def fast_mean(ari: npt.NDArray[np.float_]) -> Union[float, npt.NDArray[np.float_]]:
     """Use Numba to speed up the computation of the mean."""
-
     if ari.ndim == 1:
         count = ari.shape[0]
         suma = 0
@@ -486,6 +513,31 @@ def fast_mean(ari):
             for i in range(count):
                 res[j] += ari[j, i]
         return res / count
+
+
+@njit
+def fast_linear_fit(
+    x: npt.NDArray[np.float_], y: npt.NDArray[np.float_]
+) -> Tuple[npt.NDArray[np.float_], List[npt.NDArray[np.float_]]]:
+    n = len(x)
+
+    xbar = np.sum(x) / n
+    ybar = np.sum(y, axis=1) / n
+
+    x_diff = x - xbar
+    y_diff = y - np.expand_dims(ybar, axis=1)
+
+    x_var = np.dot(x_diff, x_diff.T)
+
+    if x_var == 0:
+        b = np.zeros(y.shape[0])
+    else:
+        b = np.dot(x_diff, y_diff.T) / x_var
+
+    a = ybar - b * xbar
+
+    y_fit = np.expand_dims(a, axis=1) + np.expand_dims(b, axis=1) * x
+    return y_fit.T, [a, b]
 
 
 def discrete_uniform_sampler(upper_value):

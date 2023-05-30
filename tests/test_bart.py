@@ -40,13 +40,18 @@ def assert_moment_is_expected(model, expected, check_finite_logp=True):
         assert np.isfinite(logp_moment)
 
 
-def test_bart_vi():
+@pytest.mark.parametrize(
+    argnames="response",
+    argvalues=["constant", "linear"],
+    ids=["constant", "linear-response"],
+)
+def test_bart_vi(response):
     X = np.random.normal(0, 1, size=(250, 3))
     Y = np.random.normal(0, 1, size=250)
     X[:, 0] = np.random.normal(Y, 0.1)
 
     with pm.Model() as model:
-        mu = pmb.BART("mu", X, Y, m=10)
+        mu = pmb.BART("mu", X, Y, m=10, response=response)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y)
         idata = pm.sample(random_seed=3415)
@@ -60,25 +65,35 @@ def test_bart_vi():
         assert_almost_equal(var_imp.sum(), 1)
 
 
-def test_missing_data():
+@pytest.mark.parametrize(
+    argnames="response",
+    argvalues=["constant", "linear"],
+    ids=["constant", "linear-response"],
+)
+def test_missing_data(response):
     X = np.random.normal(0, 1, size=(50, 2))
     Y = np.random.normal(0, 1, size=50)
     X[10:20, 0] = np.nan
 
     with pm.Model() as model:
-        mu = pmb.BART("mu", X, Y, m=10)
+        mu = pmb.BART("mu", X, Y, m=10, response=response)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y)
         idata = pm.sample(tune=100, draws=100, chains=1, random_seed=3415)
 
 
-def test_shared_variable():
+@pytest.mark.parametrize(
+    argnames="response",
+    argvalues=["constant", "linear"],
+    ids=["constant", "linear-response"],
+)
+def test_shared_variable(response):
     X = np.random.normal(0, 1, size=(50, 2))
     Y = np.random.normal(0, 1, size=50)
 
     with pm.Model() as model:
         data_X = pm.MutableData("data_X", X)
-        mu = pmb.BART("mu", data_X, Y, m=2)
+        mu = pmb.BART("mu", data_X, Y, m=2, response=response)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y, shape=mu.shape)
         idata = pm.sample(tune=100, draws=100, chains=2, random_seed=3415)
@@ -90,12 +105,17 @@ def test_shared_variable():
     assert ppc2.posterior_predictive["y"].shape == (2, 100, 3)
 
 
-def test_shape():
+@pytest.mark.parametrize(
+    argnames="response",
+    argvalues=["constant", "linear"],
+    ids=["constant", "linear-response"],
+)
+def test_shape(response):
     X = np.random.normal(0, 1, size=(250, 3))
     Y = np.random.normal(0, 1, size=250)
 
     with pm.Model() as model:
-        w = pmb.BART("w", X, Y, m=2, shape=(2, 250))
+        w = pmb.BART("w", X, Y, m=2, response=response, shape=(2, 250))
         y = pm.Normal("y", w[0], pm.math.abs(w[1]), observed=Y)
         idata = pm.sample(random_seed=3415)
 
@@ -119,9 +139,13 @@ class TestUtils:
     def test_sample_posterior(self):
         all_trees = self.mu.owner.op.all_trees
         rng = np.random.default_rng(3)
-        pred_all = pmb.utils._sample_posterior(all_trees, X=self.X, rng=rng, size=2)
+        pred_all = pmb.utils._sample_posterior(
+            all_trees, X=self.X, m=self.mu.owner.op.m, rng=rng, size=2
+        )
         rng = np.random.default_rng(3)
-        pred_first = pmb.utils._sample_posterior(all_trees, X=self.X[:10], rng=rng)
+        pred_first = pmb.utils._sample_posterior(
+            all_trees, X=self.X[:10], m=self.mu.owner.op.m, rng=rng
+        )
 
         assert_almost_equal(pred_first[0], pred_all[0, :10], decimal=4)
         assert pred_all.shape == (2, 50, 1)

@@ -52,7 +52,7 @@ class BARTRV(RandomVariable):
             else:
                 return np.full(cls.Y.shape[0], cls.Y.mean())
         else:
-            return _sample_posterior(cls.all_trees, cls.X, rng=rng).squeeze().T
+            return _sample_posterior(cls.all_trees, cls.X, cls.m, rng=rng).squeeze().T
 
 
 bart = BARTRV()
@@ -72,6 +72,9 @@ class BART(Distribution):
         The response vector.
     m : int
         Number of trees
+    response : str
+        How the leaf_node values are computed. Available options are ``constant``, ``linear`` or
+        ``mix``. Defaults to ``constant``.
     alpha : float
         Control the prior probability over the depth of the trees. Even when it can takes values in
         the interval (0, 1), it is recommended to be in the interval (0, 0.5].
@@ -88,6 +91,7 @@ class BART(Distribution):
         Y: TensorLike,
         m: int = 50,
         alpha: float = 0.25,
+        response: str = "constant",
         split_prior: Optional[List[float]] = None,
         **kwargs,
     ):
@@ -110,6 +114,7 @@ class BART(Distribution):
                 X=X,
                 Y=Y,
                 m=m,
+                response=response,
                 alpha=alpha,
                 split_prior=split_prior,
             ),

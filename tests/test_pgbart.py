@@ -1,11 +1,16 @@
 from unittest import TestCase
-
+import pytest
 import numpy as np
 import pymc as pm
 
 import pymc_bart as pmb
-from pymc_bart.pgbart import (NormalSampler, UniformSampler,
-                              discrete_uniform_sampler, fast_mean)
+from pymc_bart.pgbart import (
+    NormalSampler,
+    UniformSampler,
+    discrete_uniform_sampler,
+    fast_mean,
+    fast_linear_fit,
+)
 
 
 class TestSystematic(TestCase):
@@ -24,7 +29,7 @@ class TestSystematic(TestCase):
         indices = step.systematic(normalized_weights)
 
         self.assertEqual(len(indices), len(normalized_weights))
-        self.assertEqual(indices.dtype, np.int)
+        self.assertEqual(indices.dtype, np.int_)
         self.assertTrue(all(i >= 0 and i < len(normalized_weights) for i in indices))
 
         normalized_weights = np.array([0, 0.25, 0.75])
@@ -38,6 +43,23 @@ def test_fast_mean():
 
     values = np.random.uniform(size=(2, 10))
     np.testing.assert_array_almost_equal(fast_mean(values), np.mean(values, 1))
+
+
+@pytest.mark.parametrize(
+    argnames="x,y,a_expected, b_expected",
+    argvalues=[
+        (np.array([1, 2, 3, 4, 5]), np.array([[1, 2, 3, 4, 5]]), 0.0, 1.0),
+        (np.array([1, 2, 3, 4, 5]), np.array([[1, 1, 1, 1, 1]]), 1.0, 0.0),
+    ],
+    ids=["1d-id", "1d-const"],
+)
+def test_fast_linear_fit(x, y, a_expected, b_expected):
+    y_fit, linear_params = fast_linear_fit(x, y)
+    assert linear_params[0] == a_expected
+    assert linear_params[1] == b_expected
+    np.testing.assert_almost_equal(
+        actual=y_fit, desired=np.atleast_2d(a_expected + x * b_expected).T
+    )
 
 
 def test_discrete_uniform():
