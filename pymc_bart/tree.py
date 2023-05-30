@@ -31,16 +31,18 @@ class Node:
     linear_params: Optional[List[float]] = None
     """
 
-    __slots__ = "value", "idx_split_variable", "idx_data_points", "linear_params"
+    __slots__ = "value", "nvalue", "idx_split_variable", "idx_data_points", "linear_params"
 
     def __init__(
         self,
         value: npt.NDArray[np.float_] = np.array([-1.0]),
+        nvalue: int = 0,
         idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
         linear_params: Optional[List[float]] = None,
     ) -> None:
         self.value = value
+        self.nvalue = nvalue
         self.idx_data_points = idx_data_points
         self.idx_split_variable = idx_split_variable
         self.linear_params = linear_params
@@ -49,12 +51,14 @@ class Node:
     def new_leaf_node(
         cls,
         value: npt.NDArray[np.float_],
+        nvalue: int = 0,
         idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
         linear_params: Optional[List[float]] = None,
     ) -> "Node":
         return cls(
             value=value,
+            nvalue=nvalue,
             idx_data_points=idx_data_points,
             idx_split_variable=idx_split_variable,
             linear_params=linear_params,
@@ -152,6 +156,7 @@ class Tree:
         tree: Dict[int, Node] = {
             k: Node(
                 value=v.value,
+                nvalue=v.nvalue,
                 idx_data_points=v.idx_data_points,
                 idx_split_variable=v.idx_split_variable,
                 linear_params=v.linear_params,
@@ -186,6 +191,7 @@ class Tree:
         tree: Dict[int, Node] = {
             k: Node(
                 value=v.value,
+                nvalue=v.nvalue,
                 idx_data_points=None,
                 idx_split_variable=v.idx_split_variable,
                 linear_params=v.linear_params,
@@ -274,8 +280,12 @@ class Tree:
 
         if excluded is not None and current_node.idx_split_variable in excluded:
             leaf_values: List[npt.NDArray[np.float_]] = []
-            self._traverse_leaf_values(leaf_values, node_index)
-            return np.mean(leaf_values, axis=0)
+            leaf_n_values: List[int] = []
+            self._traverse_leaf_values(leaf_values, leaf_n_values, node_index)
+            return (
+                leaf_values[0].mean(axis=0) * leaf_n_values[0]
+                + leaf_values[1].mean(axis=0) * leaf_n_values[1]
+            )
 
         if x[current_node.idx_split_variable] <= current_node.value:
             next_node = get_idx_left_child(node_index)
@@ -286,7 +296,7 @@ class Tree:
         )
 
     def _traverse_leaf_values(
-        self, leaf_values: List[npt.NDArray[np.float_]], node_index: int
+        self, leaf_values: List[npt.NDArray[np.float_]], leaf_n_values: List[int], node_index: int
     ) -> None:
         """
         Traverse the tree appending leaf values starting from a particular node.
@@ -299,6 +309,7 @@ class Tree:
         node = self.get_node(node_index)
         if node.is_leaf_node():
             leaf_values.append(node.value)
+            leaf_n_values.append(node.nvalue)
         else:
-            self._traverse_leaf_values(leaf_values, get_idx_left_child(node_index))
-            self._traverse_leaf_values(leaf_values, get_idx_right_child(node_index))
+            self._traverse_leaf_values(leaf_values, leaf_n_values, get_idx_left_child(node_index))
+            self._traverse_leaf_values(leaf_values, leaf_n_values, get_idx_right_child(node_index))
