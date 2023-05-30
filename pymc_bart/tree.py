@@ -275,7 +275,9 @@ class Tree:
         if excluded is not None and current_node.idx_split_variable in excluded:
             leaf_values: List[npt.NDArray[np.float_]] = []
             self._traverse_leaf_values(leaf_values, node_index)
-            return np.mean(leaf_values, axis=0)
+            left = leaf_values[0]
+            right = leaf_values[1]
+            return left.mean(axis=0) * len(left) + right.mean(axis=0) * len(right)
 
         if x[current_node.idx_split_variable] <= current_node.value:
             next_node = get_idx_left_child(node_index)
