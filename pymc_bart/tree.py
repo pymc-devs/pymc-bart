@@ -280,9 +280,12 @@ class Tree:
 
         if excluded is not None and current_node.idx_split_variable in excluded:
             leaf_values: List[npt.NDArray[np.float_]] = []
-            leaf_n_values : List[int] = []
+            leaf_n_values: List[int] = []
             self._traverse_leaf_values(leaf_values, leaf_n_values, node_index)
-            return leaf_values[0].mean(axis=0) * leaf_n_values[0] + leaf_values[1].mean(axis=0) * leaf_n_values[1]
+            return (
+                leaf_values[0].mean(axis=0) * leaf_n_values[0]
+                + leaf_values[1].mean(axis=0) * leaf_n_values[1]
+            )
 
         if x[current_node.idx_split_variable] <= current_node.value:
             next_node = get_idx_left_child(node_index)
@@ -293,7 +296,7 @@ class Tree:
         )
 
     def _traverse_leaf_values(
-        self, leaf_values: List[npt.NDArray[np.float_]], leaf_n_values:List[int], node_index: int
+        self, leaf_values: List[npt.NDArray[np.float_]], leaf_n_values: List[int], node_index: int
     ) -> None:
         """
         Traverse the tree appending leaf values starting from a particular node.

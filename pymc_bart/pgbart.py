@@ -147,7 +147,7 @@ class PGBART(ArrayStepShared):
         if y_unique.size == 2 and np.all(y_unique == [0, 1]):
             mu_std = 3 / self.m**0.5
         else:
-            mu_std = self.bart.Y.std() / self.m**0.5
+            mu_std = 0.5 * self.bart.Y.std() / self.m**0.5
 
         self.num_observations = self.X.shape[0]
         self.num_variates = self.X.shape[1]
