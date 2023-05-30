@@ -439,6 +439,7 @@ def grow_tree(
 
         new_node = Node.new_leaf_node(
             value=node_value,
+            nvalue=len(idx_data_point),
             idx_data_points=idx_data_point,
             linear_params=linear_params,
         )
