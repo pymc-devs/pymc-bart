@@ -52,7 +52,11 @@ class BARTRV(RandomVariable):
             else:
                 return np.full(cls.Y.shape[0], cls.Y.mean())
         else:
-            return _sample_posterior(cls.all_trees, cls.X, cls.m, rng=rng).squeeze().T
+            if size is not None:
+                shape = size[0]
+            else:
+                shape = 1
+            return _sample_posterior(cls.all_trees, cls.X, cls.m, rng=rng, shape=shape).squeeze().T
 
 
 bart = BARTRV()

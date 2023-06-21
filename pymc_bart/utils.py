@@ -24,7 +24,8 @@ def _sample_posterior(
     m: int,
     rng: np.random.Generator,
     size: Optional[Union[int, Tuple[int, ...]]] = None,
-    excluded: Optional[npt.NDArray[np.int_]] = None,
+    excluded: Optional[List[int]] = None,
+    shape: int = 1,
 ) -> npt.NDArray[np.float_]:
     """
     Generate samples from the BART-posterior.
@@ -60,13 +61,12 @@ def _sample_posterior(
         flatten_size *= s
 
     idx = rng.integers(0, len(stacked_trees), size=flatten_size)
-    shape = stacked_trees[0][0].predict(x=X[0], m=m).size
 
     pred = np.zeros((flatten_size, X.shape[0], shape))
 
     for ind, p in enumerate(pred):
         for tree in stacked_trees[idx[ind]]:
-            p += np.vstack([tree.predict(x=x, m=m, excluded=excluded) for x in X])
+            p += np.vstack([tree.predict(x=x, m=m, excluded=excluded, shape=shape) for x in X])
     pred.reshape((*size_iter, shape, -1))
     return pred
 
@@ -133,21 +133,36 @@ def plot_convergence(
     return ax
 
 
-def plot_dependence(
+def plot_dependence(*args, kind="pdp", **kwargs):  # pylint: disable=unused-argument
+    """
+    Partial dependence or individual conditional expectation plot.
+    """
+    if kind == "pdp":
+        warnings.warn(
+            "This function has been deprecated. Use plot_pd instead.",
+            FutureWarning,
+        )
+    elif kind == "ice":
+        warnings.warn(
+            "This function has been deprecated. Use plot_ice instead.",
+            FutureWarning,
+        )
+
+
+def plot_ice(
     bartrv: Variable,
     X: npt.NDArray[np.float_],
     Y: Optional[npt.NDArray[np.float_]] = None,
-    kind: str = "pdp",
     xs_interval: str = "linear",
     xs_values: Optional[Union[int, List[float]]] = None,
     var_idx: Optional[List[int]] = None,
     var_discrete: Optional[List[int]] = None,
     func: Optional[Callable] = None,
+    centered: Optional[bool] = True,
     samples: int = 50,
     instances: int = 10,
     random_seed: Optional[int] = None,
     sharey: bool = True,
-    rug: bool = True,
     smooth: bool = True,
     grid: str = "long",
     color="C0",
@@ -156,9 +171,9 @@ def plot_dependence(
     figsize: Optional[Tuple[float, float]] = None,
     smooth_kwargs: Optional[Dict[str, Any]] = None,
     ax: Optional[plt.Axes] = None,
-):
+) -> List[plt.Axes]:
     """
-    Partial dependence or individual conditional expectation plot.
+    Individual conditional expectation plot.
 
     Parameters
     ----------
@@ -168,9 +183,6 @@ def plot_dependence(
         The covariate matrix.
     Y : Optional[npt.NDArray[np.float_]], by default None.
         The response vector.
-    kind : str
-        Whether to plor a partial dependence plot ("pdp") or an individual conditional expectation
-        plot ("ice"). Defaults to pdp.
     xs_interval : str
         Method used to compute the values X used to evaluate the predicted function. "linear",
         evenly spaced values in the range of X. "quantiles", the evaluation is done at the specified
@@ -187,10 +199,13 @@ def plot_dependence(
         List of the indices of the covariate treated as discrete.
     func : Optional[Callable], by default None.
         Arbitrary function to apply to the predictions. Defaults to the identity function.
+    centered : bool
+        If True the result is centered around the partial response evaluated at the lowest value in
+        ``xs_interval``. Defaults to True.
     samples : int
         Number of posterior samples used in the predictions. Defaults to 50
     instances : int
-        Number of instances of X to plot. Only relevant if ice ``kind="ice"`` plots.
+        Number of instances of X to plot. Defaults to 10.
     random_seed : Optional[int], by default None.
         Seed used to sample from the posterior. Defaults to None.
     sharey : bool
@@ -223,15 +238,347 @@ def plot_dependence(
     -------
     axes: matplotlib axes
     """
+    all_trees = bartrv.owner.op.all_trees
     m: int = bartrv.owner.op.m
+    rng = np.random.default_rng(random_seed)
 
-    if kind not in ["pdp", "ice"]:
-        raise ValueError(f"kind={kind} is not suported. Available option are 'pdp' or 'ice'")
+    if func is None:
+        func = lambda x: x
 
+    (
+        X,
+        x_labels,
+        y_label,
+        indices,
+        var_idx,
+        var_discrete,
+        xs_interval,
+        xs_values,
+    ) = _prepare_plot_data(X, Y, xs_interval, xs_values, var_idx, var_discrete)
+
+    fig, axes, shape = _get_axes(bartrv, var_idx, grid, sharey, figsize, ax)
+
+    instances_ary = rng.choice(range(X.shape[0]), replace=False, size=instances)
+    idx_s = list(range(X.shape[0]))
+
+    count = 0
+    for var in range(len(var_idx)):
+        indices_mi = indices[:]
+        indices_mi.remove(var)
+        y_pred = []
+        for instance in instances_ary:
+            fake_X = X[idx_s]
+            fake_X[:, indices_mi] = X[:, indices_mi][instance]
+            y_pred.append(
+                np.mean(
+                    _sample_posterior(all_trees, X=fake_X, m=m, rng=rng, size=samples, shape=shape),
+                    0,
+                )
+            )
+
+        new_x = fake_X[:, var]
+        p_d = np.array(y_pred)
+
+        for s_i in range(shape):
+            if centered:
+                p_di = func(p_d[:, :, s_i]) - func(p_d[:, :, s_i][:, 0][:, None])
+            else:
+                p_di = func(p_d[:, :, s_i])
+            if var in var_discrete:
+                axes[count].plot(new_x, p_di.mean(0), "o", color=color_mean)
+                axes[count].plot(new_x, p_di, ".", color=color, alpha=alpha)
+            else:
+                if smooth:
+                    x_data, y_data = _smooth_mean(new_x, p_di, "ice", smooth_kwargs)
+                    axes[count].plot(x_data, y_data.mean(1), color=color_mean)
+                    axes[count].plot(x_data, y_data, color=color, alpha=alpha)
+                else:
+                    idx = np.argsort(new_x)
+                    axes[count].plot(new_x[idx], p_di.mean(0)[idx], color=color_mean)
+                    axes[count].plot(new_x[idx], p_di.T[idx], color=color, alpha=alpha)
+                axes[count].set_xlabel(x_labels[var])
+
+            count += 1
+
+    fig.text(-0.05, 0.5, y_label, va="center", rotation="vertical", fontsize=15)
+
+    return axes
+
+
+def plot_pdp(
+    bartrv: Variable,
+    X: npt.NDArray[np.float_],
+    Y: Optional[npt.NDArray[np.float_]] = None,
+    xs_interval: str = "linear",
+    xs_values: Optional[Union[int, List[float]]] = None,
+    var_idx: Optional[List[int]] = None,
+    var_discrete: Optional[List[int]] = None,
+    func: Optional[Callable] = None,
+    samples: int = 200,
+    random_seed: Optional[int] = None,
+    sharey: bool = True,
+    smooth: bool = True,
+    grid: str = "long",
+    color="C0",
+    color_mean: str = "C0",
+    alpha: float = 0.1,
+    figsize: Optional[Tuple[float, float]] = None,
+    smooth_kwargs: Optional[Dict[str, Any]] = None,
+    ax: Optional[plt.Axes] = None,
+) -> List[plt.Axes]:
+    """
+    Partial dependence plot.
+
+    Parameters
+    ----------
+    bartrv : BART Random Variable
+        BART variable once the model that include it has been fitted.
+    X : npt.NDArray[np.float_]
+        The covariate matrix.
+    Y : Optional[npt.NDArray[np.float_]], by default None.
+        The response vector.
+    xs_interval : str
+        Method used to compute the values X used to evaluate the predicted function. "linear",
+        evenly spaced values in the range of X. "quantiles", the evaluation is done at the specified
+        quantiles of X. "insample", the evaluation is done at the values of X.
+        For discrete variables these options are ommited.
+    xs_values : Optional[Union[int, List[float]]], by default None.
+        Values of X used to evaluate the predicted function. If ``xs_interval="linear"`` number of
+        points in the evenly spaced grid. If ``xs_interval="quantiles"``quantile or sequence of
+        quantiles to compute, which must be between 0 and 1 inclusive.
+        Ignored when ``xs_interval="insample"``.
+    var_idx : Optional[List[int]], by default None.
+        List of the indices of the covariate for which to compute the pdp or ice.
+    var_discrete : Optional[List[int]], by default None.
+        List of the indices of the covariate treated as discrete.
+    func : Optional[Callable], by default None.
+        Arbitrary function to apply to the predictions. Defaults to the identity function.
+    samples : int
+        Number of posterior samples used in the predictions. Defaults to 400
+    random_seed : Optional[int], by default None.
+        Seed used to sample from the posterior. Defaults to None.
+    sharey : bool
+        Controls sharing of properties among y-axes. Defaults to True.
+    smooth : bool
+        If True the result will be smoothed by first computing a linear interpolation of the data
+        over a regular grid and then applying the Savitzky-Golay filter to the interpolated data.
+        Defaults to True.
+    grid : str or tuple
+        How to arrange the subplots. Defaults to "long", one subplot below the other.
+        Other options are "wide", one subplot next to eachother or a tuple indicating the number of
+        rows and columns.
+    color : matplotlib valid color
+        Color used to plot the pdp or ice. Defaults to "C0"
+    color_mean : matplotlib valid color
+        Color used to plot the mean pdp or ice. Defaults to "C0",
+    alpha : float
+        Transparency level, should in the interval [0, 1].
+    figsize : tuple
+        Figure size. If None it will be defined automatically.
+    smooth_kwargs : dict
+        Additional keywords modifying the Savitzky-Golay filter.
+        See scipy.signal.savgol_filter() for details.
+    ax : axes
+        Matplotlib axes.
+
+    Returns
+    -------
+    axes: matplotlib axes
+    """
+    all_trees: list = bartrv.owner.op.all_trees
+    m: int = bartrv.owner.op.m
+    rng = np.random.default_rng(random_seed)
+
+    if func is None:
+        func = lambda x: x
+
+    (
+        X,
+        x_labels,
+        y_label,
+        indices,
+        var_idx,
+        var_discrete,
+        xs_interval,
+        xs_values,
+    ) = _prepare_plot_data(X, Y, xs_interval, xs_values, var_idx, var_discrete)
+
+    fig, axes, shape = _get_axes(bartrv, var_idx, grid, sharey, figsize, ax)
+
+    count = 0
+    for var in range(len(var_idx)):
+        excluded = indices[:]
+        excluded.remove(var)
+        fake_X, new_x = _create_pdp_data(X, xs_interval, var, xs_values, var_discrete)
+        p_d = _sample_posterior(
+            all_trees, X=fake_X, m=m, rng=rng, size=samples, excluded=excluded, shape=shape
+        )
+
+        for s_i in range(shape):
+            p_di = func(p_d[:, :, s_i])
+            if var in var_discrete:
+                y_means = p_di.mean(0)
+                hdi = az.hdi(p_di)
+                axes[count].errorbar(
+                    new_x,
+                    y_means,
+                    (y_means - hdi[:, 0], hdi[:, 1] - y_means),
+                    fmt=".",
+                    color=color,
+                )
+            else:
+                az.plot_hdi(
+                    new_x,
+                    p_di,
+                    smooth=smooth,
+                    fill_kwargs={"alpha": alpha, "color": color},
+                    ax=axes[count],
+                )
+                if smooth:
+                    x_data, y_data = _smooth_mean(new_x, p_di, "pdp", smooth_kwargs)
+                    axes[count].plot(x_data, y_data, color=color_mean)
+                else:
+                    axes[count].plot(new_x, p_di.mean(0), color=color_mean)
+                axes[count].set_xlabel(x_labels[var])
+
+            count += 1
+
+    fig.text(-0.05, 0.5, y_label, va="center", rotation="vertical", fontsize=15)
+
+    return axes
+
+
+def _get_axes(
+    bartrv: Variable,
+    var_idx: List[int],
+    grid: str = "long",
+    sharey: bool = True,
+    figsize: Optional[Tuple[float, float]] = None,
+    ax: Optional[plt.Axes] = None,
+) -> Tuple[plt.Figure, List[plt.Axes], int]:
+    """
+    Create and return the figure and axes objects for plotting the variables.
+
+    Partial dependence plot.
+
+    Parameters
+    ----------
+    bartrv : BART Random Variable
+        BART variable once the model that include it has been fitted.
+    var_idx : Optional[List[int]], by default None.
+        List of the indices of the covariate for which to compute the pdp or ice.
+    var_discrete : Optional[List[int]], by default None.
+    grid : str or tuple
+        How to arrange the subplots. Defaults to "long", one subplot below the other.
+        Other options are "wide", one subplot next to each other or a tuple indicating the number of
+        rows and columns.
+    sharey : bool
+        Controls sharing of properties among y-axes. Defaults to True.
+    figsize : tuple
+        Figure size. If None it will be defined automatically.
+    ax : axes
+        Matplotlib axes.
+
+
+    Returns
+    -------
+    Tuple[plt.Figure, List[plt.Axes], int]
+        A tuple containing the figure object, list of axes objects, and the shape value.
+    """
+    if bartrv.ndim == 1:  # type: ignore
+        shape = 1
+    else:
+        shape = bartrv.eval().shape[0]
+
+    n_plots = len(var_idx) * shape
+
+    if ax is None:
+        if grid == "long":
+            fig, axes = plt.subplots(n_plots, sharey=sharey, figsize=figsize)
+            if n_plots == 1:
+                axes = [axes]
+        elif grid == "wide":
+            fig, axes = plt.subplots(1, n_plots, sharey=sharey, figsize=figsize)
+            if n_plots == 1:
+                axes = [axes]
+        elif isinstance(grid, tuple):
+            grid_size = grid[0] * grid[1]
+            if n_plots > grid_size:
+                warnings.warn(
+                    """The grid is smaller than the number of available variables to plot.
+                    Automatically adjusting the grid size."""
+                )
+                grid = (n_plots // grid[1] + (n_plots % grid[1] > 0), grid[1])
+
+            fig, axes = plt.subplots(*grid, sharey=sharey, figsize=figsize)
+            axes = np.ravel(axes)
+
+            for i in range(n_plots, len(axes)):
+                fig.delaxes(axes[i])
+            axes = axes[:n_plots]
+    else:
+        axes = [ax]
+        fig = ax.get_figure()
+
+    return fig, axes, shape
+
+
+def _prepare_plot_data(
+    X: npt.NDArray[np.float_],
+    Y: Optional[npt.NDArray[np.float_]] = None,
+    xs_interval: str = "linear",
+    xs_values: Optional[Union[int, List[float]]] = None,
+    var_idx: Optional[List[int]] = None,
+    var_discrete: Optional[List[int]] = None,
+) -> Tuple[
+    npt.NDArray[np.float_],
+    List[str],
+    str,
+    List[int],
+    List[int],
+    List[int],
+    str,
+    Union[int, None, List[float]],
+]:
+    """
+    Prepare data for plotting.
+
+    Parameters
+    ----------
+    X : PyTensor Variable, Pandas DataFrame or Numpy array
+        Input data.
+    Y : array-like
+        Target data.
+    xs_interval : str
+        Interval for x-axis. Available options are 'insample', 'linear' or 'quantiles'.
+    xs_values : int or list
+        Number of points for 'linear' or list of quantiles for 'quantiles'.
+    var_idx : None or list
+        Indices of variables to plot.
+    var_discrete : None or list
+        Indices of discrete variables.
+
+    Returns
+    -------
+    X : Numpy array
+        Input data.
+    x_labels : list
+        Names of variables.
+    y_label : str
+        Name of target variable.
+    var_idx: list
+        Indices of variables to plot.
+    var_discrete : list
+        Indices of discrete variables.
+    xs_interval : str
+        Interval for x-axis.
+    xs_values : int or list
+        Number of points for 'linear' or list of quantiles for 'quantiles'.
+    """
     if xs_interval not in ["insample", "linear", "quantiles"]:
         raise ValueError(
             f"""{xs_interval} is not suported.
-                          Available option are 'insample', 'linear' or 'quantiles'"""
+                        Available option are 'insample', 'linear' or 'quantiles'"""
         )
 
     if isinstance(X, Variable):
@@ -244,15 +591,11 @@ def plot_dependence(
         x_names = []
 
     if Y is not None and hasattr(Y, "name"):
-        y_label = f"Predicted {Y.name}"
+        y_label = f"Partial {Y.name}"
     else:
-        y_label = "Predicted Y"
+        y_label = "Partial Y"
 
-    rng = np.random.default_rng(random_seed)
-
-    num_covariates = X.shape[1]
-
-    indices = list(range(num_covariates))
+    indices = list(range(X.shape[1]))
 
     if var_idx is None:
         var_idx = indices
@@ -270,145 +613,89 @@ def plot_dependence(
     if xs_interval == "quantiles" and xs_values is None:
         xs_values = [0.05, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.95]
 
-    if kind == "ice":
-        instances_ary = rng.choice(range(X.shape[0]), replace=False, size=instances)
+    return X, x_labels, y_label, indices, var_idx, var_discrete, xs_interval, xs_values
 
-    new_y = []
-    new_x_target = []
-    y_mins = []
 
-    new_X = np.zeros_like(X)
-    idx_s = list(range(X.shape[0]))
-    all_trees = bartrv.owner.op.all_trees
-    for i in var_idx:
-        indices_mi = indices[:]
-        indices_mi.pop(i)
-        y_pred = []
-        if kind == "pdp":
-            if i in var_discrete:
-                new_x_i = np.unique(X[:, i])
-            else:
-                if xs_interval == "linear" and isinstance(xs_values, int):
-                    new_x_i = np.linspace(np.nanmin(X[:, i]), np.nanmax(X[:, i]), xs_values)
-                elif xs_interval == "quantiles" and isinstance(xs_values, list):
-                    new_x_i = np.quantile(X[:, i], q=xs_values)
-                elif xs_interval == "insample":
-                    new_x_i = X[:, i]
+def _create_pdp_data(
+    X: npt.NDArray[np.float_],
+    xs_interval: str,
+    var: int,
+    xs_values: Optional[Union[int, List[float]]] = None,
+    var_discrete: Optional[List[int]] = None,
+) -> Tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]:
+    """
+    Create data for partial dependence plot.
 
-            for x_i in new_x_i:
-                new_X[:, indices_mi] = X[:, indices_mi]
-                new_X[:, i] = x_i
-                y_pred.append(
-                    np.mean(_sample_posterior(all_trees, X=new_X, m=m, rng=rng, size=samples), 1)
-                )
-            new_x_target.append(new_x_i)
-        else:
-            for instance in instances_ary:
-                new_X = X[idx_s]
-                new_X[:, indices_mi] = X[:, indices_mi][instance]
-                y_pred.append(
-                    np.mean(_sample_posterior(all_trees, X=new_X, m=m, rng=rng, size=samples), 0)
-                )
-            new_x_target.append(new_X[:, i])
-        y_mins.append(np.min(y_pred))
-        new_y.append(np.array(y_pred).T)
+    Parameters
+    ----------
+    X : Numpy array
+        Input data.
+    xs_interval : str
+        Interval for x-axis. Available options are 'insample', 'linear' or 'quantiles'.
+    xs_values : int or list
+        Number of points for 'linear' or list of quantiles for 'quantiles'.
+    var : int
+        Index of variable of interest
+    var_discrete : None or list
+        Indices of discrete variables.
 
-    if func is not None:
-        new_y = [func(nyi) for nyi in new_y]
-    shape = 1
-    new_y_ary = np.array(new_y)
-    if new_y_ary[0].ndim == 3:
-        shape = new_y_ary[0].shape[0]
-    if ax is None:
-        if grid == "long":
-            fig, axes = plt.subplots(len(var_idx) * shape, sharey=sharey, figsize=figsize)
-        elif grid == "wide":
-            fig, axes = plt.subplots(1, len(var_idx) * shape, sharey=sharey, figsize=figsize)
-        elif isinstance(grid, tuple):
-            fig, axes = plt.subplots(grid[0], grid[1], sharey=sharey, figsize=figsize)
-            grid_size = grid[0] * grid[1]
-            n_plots = new_y_ary.squeeze().shape[0]
-            if n_plots > grid_size:
-                warnings.warn("The grid is smaller than the number of available variables to plot")
-            elif n_plots < grid_size:
-                for i in range(n_plots, grid[0] * grid[1]):
-                    fig.delaxes(axes.flatten()[i])
-                axes = axes.flatten()[:n_plots]
-        axes = np.ravel(axes)
+    Returns
+    -------
+    Tuple[npt.NDArray[np.float_], npt.NDArray[np.float_]]
+        A tuple containing a 2D array for the fake_X data and 1D array for new_x data.
+    """
+    if xs_interval == "insample":
+        return X, X[:, var]
     else:
-        axes = [ax]
-        fig = ax.get_figure()
-
-    x_idx = 0
-    y_idx = 0
-    for ax in axes:  # pylint: disable=redefined-argument-from-local
-        nyi = new_y_ary[x_idx][y_idx]
-        nxi = new_x_target[x_idx]
-        var = var_idx[x_idx]
-
-        ax.set_xlabel(x_labels[x_idx])
-        x_idx += 1
-        if x_idx == len(var_idx):
-            x_idx = 0
-            y_idx += 1
-
-        if var in var_discrete:
-            if kind == "pdp":
-                y_means = nyi.mean(0)
-                hdi = az.hdi(nyi)
-                ax.errorbar(
-                    nxi,
-                    y_means,
-                    (y_means - hdi[:, 0], hdi[:, 1] - y_means),
-                    fmt=".",
-                    color=color,
-                )
-            else:
-                ax.plot(nxi, nyi, ".", color=color, alpha=alpha)
-                ax.plot(nxi, nyi.mean(1), "o", color=color_mean)
-            ax.set_xticks(nxi)
-        elif smooth:
-            if smooth_kwargs is None:
-                smooth_kwargs = {}
-            smooth_kwargs.setdefault("window_length", 55)
-            smooth_kwargs.setdefault("polyorder", 2)
-            x_data = np.linspace(np.nanmin(nxi), np.nanmax(nxi), 200)
-            x_data[0] = (x_data[0] + x_data[1]) / 2
-            if kind == "pdp":
-                interp = griddata(nxi, nyi.mean(0), x_data)
-            else:
-                interp = griddata(nxi, nyi, x_data)
-
-            y_data = savgol_filter(interp, axis=0, **smooth_kwargs)
-
-            if kind == "pdp":
-                az.plot_hdi(nxi, nyi, color=color, fill_kwargs={"alpha": alpha}, ax=ax)
-                ax.plot(x_data, y_data, color=color_mean)
-            else:
-                ax.plot(x_data, y_data.mean(1), color=color_mean)
-                ax.plot(x_data, y_data, color=color, alpha=alpha)
-
+        if var_discrete is not None and var in var_discrete:
+            new_x = np.unique(X[:, var])
         else:
-            idx = np.argsort(nxi)
-            if kind == "pdp":
-                az.plot_hdi(
-                    nxi,
-                    nyi,
-                    smooth=smooth,
-                    fill_kwargs={"alpha": alpha, "color": color},
-                    ax=ax,
-                )
-                ax.plot(nxi[idx], nyi[idx].mean(0), color=color)
-            else:
-                ax.plot(nxi[idx], nyi[idx], color=color, alpha=alpha)
-                ax.plot(nxi[idx], nyi[idx].mean(1), color=color_mean)
+            if xs_interval == "linear" and isinstance(xs_values, int):
+                new_x = np.linspace(np.nanmin(X[:, var]), np.nanmax(X[:, var]), xs_values)
+            elif xs_interval == "quantiles" and isinstance(xs_values, list):
+                new_x = np.quantile(X[:, var], q=xs_values)
 
-        if rug:
-            lower = np.min(y_mins)
-            ax.plot(X[:, var], np.full_like(X[:, var], lower), "k|")
+        return np.tile(new_x[:, None], X.shape[1]), new_x
 
-    fig.text(-0.05, 0.5, y_label, va="center", rotation="vertical", fontsize=15)
-    return axes
+
+def _smooth_mean(
+    new_x: npt.NDArray[np.float_],
+    p_di: npt.NDArray[np.float_],
+    kind: str = "pdp",
+    smooth_kwargs: Optional[Dict[str, Any]] = None,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Smooth the mean data for plotting.
+
+    Parameters
+    ----------
+    new_x : np.ndarray
+        The x-axis data.
+    p_di : np.ndarray
+        The distribution of partial dependence from which to comptue the smoothed mean.
+    kind : str, optional
+        The type of plot. Possible values are "pdp" or "ice".
+    smooth_kwargs : Optional[Dict[str, Any]], optional
+        Additional keyword arguments for the smoothing function. Defaults to None.
+
+    Returns
+    -------
+    Tuple[np.ndarray, np.ndarray]
+        A tuple containing a grid for the x-axis data and the corresponding smoothed y-axis data.
+
+    """
+    if smooth_kwargs is None:
+        smooth_kwargs = {}
+    smooth_kwargs.setdefault("window_length", 55)
+    smooth_kwargs.setdefault("polyorder", 2)
+    x_data = np.linspace(np.nanmin(new_x), np.nanmax(new_x), 200)
+    x_data[0] = (x_data[0] + x_data[1]) / 2
+    if kind == "pdp":
+        interp = griddata(new_x, p_di.mean(0), x_data)
+    else:
+        interp = griddata(new_x, p_di.T, x_data)
+    y_data = savgol_filter(interp, axis=0, **smooth_kwargs)
+    return x_data, y_data
 
 
 def plot_variable_importance(
@@ -443,6 +730,7 @@ def plot_variable_importance(
         Number of predictions used to compute correlation for subsets of variables. Defaults to 100
     random_seed : Optional[int]
         random_seed used to sample from the posterior. Defaults to None.
+
     Returns
     -------
     idxs: indexes of the covariates from higher to lower relative importance
@@ -451,6 +739,11 @@ def plot_variable_importance(
     _, axes = plt.subplots(2, 1, figsize=figsize)
 
     m: int = bartrv.owner.op.m
+
+    if bartrv.ndim == 1:  # type: ignore
+        shape = 1
+    else:
+        shape = bartrv.eval().shape[0]
 
     if hasattr(X, "columns") and hasattr(X, "values"):
         labels = X.columns
@@ -466,7 +759,7 @@ def plot_variable_importance(
 
     ticks = np.arange(len(var_imp), dtype=int)
     idxs = np.argsort(var_imp)
-    subsets = [idxs[:-i] for i in range(1, len(idxs))]
+    subsets = [idxs[:-i].tolist() for i in range(1, len(idxs))]
     subsets.append(None)  # type: ignore
 
     if sort_vars:
@@ -481,13 +774,21 @@ def plot_variable_importance(
 
     all_trees = bartrv.owner.op.all_trees
 
-    predicted_all = _sample_posterior(all_trees, X=X, m=m, rng=rng, size=samples, excluded=None)
+    predicted_all = _sample_posterior(
+        all_trees, X=X, m=m, rng=rng, size=samples, excluded=None, shape=shape
+    )
 
     ev_mean = np.zeros(len(var_imp))
     ev_hdi = np.zeros((len(var_imp), 2))
     for idx, subset in enumerate(subsets):
         predicted_subset = _sample_posterior(
-            all_trees=all_trees, X=X, m=m, rng=rng, size=samples, excluded=subset
+            all_trees=all_trees,
+            X=X,
+            m=m,
+            rng=rng,
+            size=samples,
+            excluded=subset,
+            shape=shape,
         )
         pearson = np.zeros(samples)
         for j in range(samples):

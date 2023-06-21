@@ -156,19 +156,35 @@ class TestUtils:
         [
             {},
             {
-                "kind": "pdp",
                 "samples": 2,
                 "xs_interval": "quantiles",
                 "xs_values": [0.25, 0.5, 0.75],
                 "var_discrete": [3],
             },
-            {"kind": "ice", "instances": 2},
-            {"var_idx": [0], "rug": False, "smooth": False, "color": "k"},
+            {"instances": 2},
+            {"var_idx": [0], "smooth": False, "color": "k"},
+            {"grid": (1, 2), "sharey": "none", "alpha": 1},
+        ],
+    )
+    def test_ice(self, kwargs):
+        pmb.plot_ice(self.mu, X=self.X, Y=self.Y, **kwargs)
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {},
+            {
+                "samples": 2,
+                "xs_interval": "quantiles",
+                "xs_values": [0.25, 0.5, 0.75],
+                "var_discrete": [3],
+            },
+            {"var_idx": [0], "smooth": False, "color": "k"},
             {"grid": (1, 2), "sharey": "none", "alpha": 1},
         ],
     )
     def test_pdp(self, kwargs):
-        pmb.plot_dependence(self.mu, X=self.X, Y=self.Y, **kwargs)
+        pmb.plot_pdp(self.mu, X=self.X, Y=self.Y, **kwargs)
 
     @pytest.mark.parametrize(
         "kwargs",
@@ -186,10 +202,10 @@ class TestUtils:
         X_names = ["norm1", "norm2", "binom"]
         X_pd = pd.DataFrame(self.X, columns=X_names)
         Y_pd = pd.Series(self.Y, name="response")
-        axes = pmb.plot_dependence(self.mu, X=X_pd, Y=Y_pd)
+        axes = pmb.plot_pdp(self.mu, X=X_pd, Y=Y_pd)
 
         figure = axes[0].figure
-        assert figure.texts[0].get_text() == "Predicted response"
+        assert figure.texts[0].get_text() == "Partial response"
         assert_array_equal([ax.get_xlabel() for ax in axes], X_names)
 
 

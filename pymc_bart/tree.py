@@ -140,7 +140,11 @@ class Tree:
     ) -> "Tree":
         return cls(
             tree_structure={
-                0: Node.new_leaf_node(value=leaf_node_value, idx_data_points=idx_data_points)
+                0: Node.new_leaf_node(
+                    value=leaf_node_value,
+                    nvalue=len(idx_data_points) if idx_data_points is not None else 0,
+                    idx_data_points=idx_data_points,
+                )
             },
             idx_leaf_nodes=[0],
             output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
@@ -215,7 +219,11 @@ class Tree:
         return output.T
 
     def predict(
-        self, x: npt.NDArray[np.float_], m: int, excluded: Optional[List[int]] = None
+        self,
+        x: npt.NDArray[np.float_],
+        m: int,
+        excluded: Optional[List[int]] = None,
+        shape: int = 1,
     ) -> npt.NDArray[np.float_]:
         """
         Predict output of tree for an (un)observed point x.
@@ -236,23 +244,22 @@ class Tree:
         """
         if excluded is None:
             excluded = []
-        return self._traverse_tree(x=x, m=m, node_index=0, split_variable=-1, excluded=excluded)
+        return self._traverse_tree(x=x, m=m, excluded=excluded, shape=shape)
 
     def _traverse_tree(
         self,
         x: npt.NDArray[np.float_],
         m: int,
-        node_index: int,
-        split_variable: int = -1,
         excluded: Optional[List[int]] = None,
+        shape: int = 1,
     ) -> npt.NDArray[np.float_]:
         """
-        Traverse the tree starting from a particular node given an unobserved point.
+        Traverse the tree starting from the root node given an (un)observed point.
 
         Parameters
         ----------
         x : npt.NDArray[np.float_]
-            Unobserved point
+            (Un)observed point
         m : int
             Number of trees
         node_index : int
@@ -267,33 +274,37 @@ class Tree:
         npt.NDArray[np.float_]
             Leaf node value or mean of leaf node values
         """
-        current_node = self.get_node(node_index)
-        if current_node.is_leaf_node():
-            if current_node.linear_params is None:
-                return np.array(current_node.value)
+        stack = [(0, 1.0)]  # (node_index, prop) initial state
+        p_d = np.zeros(shape)
+        while stack:
+            node_index, weight = stack.pop()
+            node = self.get_node(node_index)
+            if node.is_leaf_node():
+                params = node.linear_params
+                if params is None:
+                    p_d += weight * node.value
+                else:
+                    # this produce nonsensical results
+                    p_d += weight * ((params[0] + params[1] * x[node.idx_split_variable]) / m)
+                    # this produce reasonable result
+                    # p_d += weight * node.value.mean()
+            else:
+                if excluded is not None and node.idx_split_variable in excluded:
+                    left_node_index, right_node_index = get_idx_left_child(
+                        node_index
+                    ), get_idx_right_child(node_index)
+                    prop_nvalue_left = self.get_node(left_node_index).nvalue / node.nvalue
+                    stack.append((left_node_index, weight * prop_nvalue_left))
+                    stack.append((right_node_index, weight * (1 - prop_nvalue_left)))
+                else:
+                    next_node = (
+                        get_idx_left_child(node_index)
+                        if x[node.idx_split_variable] <= node.value
+                        else get_idx_right_child(node_index)
+                    )
+                    stack.append((next_node, weight))
 
-            x = x[split_variable].item()
-            y_x = current_node.linear_params[0] + current_node.linear_params[1] * x
-            return np.array(y_x / m)
-
-        split_variable = current_node.idx_split_variable
-
-        if excluded is not None and current_node.idx_split_variable in excluded:
-            leaf_values: List[npt.NDArray[np.float_]] = []
-            leaf_n_values: List[int] = []
-            self._traverse_leaf_values(leaf_values, leaf_n_values, node_index)
-            return (
-                leaf_values[0].mean(axis=0) * leaf_n_values[0]
-                + leaf_values[1].mean(axis=0) * leaf_n_values[1]
-            )
-
-        if x[current_node.idx_split_variable] <= current_node.value:
-            next_node = get_idx_left_child(node_index)
-        else:
-            next_node = get_idx_right_child(node_index)
-        return self._traverse_tree(
-            x=x, m=m, node_index=next_node, split_variable=split_variable, excluded=excluded
-        )
+        return p_d
 
     def _traverse_leaf_values(
         self, leaf_values: List[npt.NDArray[np.float_]], leaf_n_values: List[int], node_index: int
