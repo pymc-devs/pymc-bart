@@ -491,8 +491,7 @@ def draw_leaf_value(
         if response == "constant":
             mu_mean = fast_mean(y_mu_pred) / m
         if response == "linear":
-            y_fit, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred)
-            mu_mean = y_fit / m
+            mu_mean, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred, m=m)
 
     draw = norm + mu_mean
     return draw, linear_params
@@ -518,9 +517,12 @@ def fast_mean(ari: npt.NDArray[np.float_]) -> Union[float, npt.NDArray[np.float_
 
 @njit
 def fast_linear_fit(
-    x: npt.NDArray[np.float_], y: npt.NDArray[np.float_]
+    x: npt.NDArray[np.float_],
+    y: npt.NDArray[np.float_],
+    m: int,
 ) -> Tuple[npt.NDArray[np.float_], List[npt.NDArray[np.float_]]]:
     n = len(x)
+    y = y / m
 
     xbar = np.sum(x) / n
     ybar = np.sum(y, axis=1) / n

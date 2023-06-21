@@ -21,7 +21,6 @@ TensorLike = Union[npt.NDArray[np.float_], pt.TensorVariable]
 def _sample_posterior(
     all_trees: List[List[Tree]],
     X: TensorLike,
-    m: int,
     rng: np.random.Generator,
     size: Optional[Union[int, Tuple[int, ...]]] = None,
     excluded: Optional[List[int]] = None,
@@ -37,8 +36,6 @@ def _sample_posterior(
     X : tensor-like
         A covariate matrix. Use the same used to fit BART for in-sample predictions or a new one for
         out-of-sample predictions.
-    m : int
-        Number of trees
     rng : NumPy RandomGenerator
     size : int or tuple
         Number of samples.
@@ -66,7 +63,7 @@ def _sample_posterior(
 
     for ind, p in enumerate(pred):
         for tree in stacked_trees[idx[ind]]:
-            p += np.vstack([tree.predict(x=x, m=m, excluded=excluded, shape=shape) for x in X])
+            p += np.vstack([tree.predict(x=x, excluded=excluded, shape=shape) for x in X])
     pred.reshape((*size_iter, shape, -1))
     return pred
 
@@ -239,7 +236,6 @@ def plot_ice(
     axes: matplotlib axes
     """
     all_trees = bartrv.owner.op.all_trees
-    m: int = bartrv.owner.op.m
     rng = np.random.default_rng(random_seed)
 
     if func is None:
@@ -271,7 +267,7 @@ def plot_ice(
             fake_X[:, indices_mi] = X[:, indices_mi][instance]
             y_pred.append(
                 np.mean(
-                    _sample_posterior(all_trees, X=fake_X, m=m, rng=rng, size=samples, shape=shape),
+                    _sample_posterior(all_trees, X=fake_X, rng=rng, size=samples, shape=shape),
                     0,
                 )
             )
@@ -386,7 +382,6 @@ def plot_pdp(
     axes: matplotlib axes
     """
     all_trees: list = bartrv.owner.op.all_trees
-    m: int = bartrv.owner.op.m
     rng = np.random.default_rng(random_seed)
 
     if func is None:
@@ -411,7 +406,7 @@ def plot_pdp(
         excluded.remove(var)
         fake_X, new_x = _create_pdp_data(X, xs_interval, var, xs_values, var_discrete)
         p_d = _sample_posterior(
-            all_trees, X=fake_X, m=m, rng=rng, size=samples, excluded=excluded, shape=shape
+            all_trees, X=fake_X, rng=rng, size=samples, excluded=excluded, shape=shape
         )
 
         for s_i in range(shape):
@@ -738,8 +733,6 @@ def plot_variable_importance(
     """
     _, axes = plt.subplots(2, 1, figsize=figsize)
 
-    m: int = bartrv.owner.op.m
-
     if bartrv.ndim == 1:  # type: ignore
         shape = 1
     else:
@@ -775,7 +768,7 @@ def plot_variable_importance(
     all_trees = bartrv.owner.op.all_trees
 
     predicted_all = _sample_posterior(
-        all_trees, X=X, m=m, rng=rng, size=samples, excluded=None, shape=shape
+        all_trees, X=X, rng=rng, size=samples, excluded=None, shape=shape
     )
 
     ev_mean = np.zeros(len(var_imp))
@@ -784,7 +777,6 @@ def plot_variable_importance(
         predicted_subset = _sample_posterior(
             all_trees=all_trees,
             X=X,
-            m=m,
             rng=rng,
             size=samples,
             excluded=subset,
