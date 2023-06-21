@@ -56,7 +56,7 @@ class BARTRV(RandomVariable):
                 shape = size[0]
             else:
                 shape = 1
-            return _sample_posterior(cls.all_trees, cls.X, cls.m, rng=rng, shape=shape).squeeze().T
+            return _sample_posterior(cls.all_trees, cls.X, rng=rng, shape=shape).squeeze().T
 
 
 bart = BARTRV()

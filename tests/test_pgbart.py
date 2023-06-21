@@ -54,7 +54,7 @@ def test_fast_mean():
     ids=["1d-id", "1d-const"],
 )
 def test_fast_linear_fit(x, y, a_expected, b_expected):
-    y_fit, linear_params = fast_linear_fit(x, y)
+    y_fit, linear_params = fast_linear_fit(x, y, m=1)
     assert linear_params[0] == a_expected
     assert linear_params[1] == b_expected
     np.testing.assert_almost_equal(

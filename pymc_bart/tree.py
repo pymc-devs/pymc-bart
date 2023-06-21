@@ -221,7 +221,6 @@ class Tree:
     def predict(
         self,
         x: npt.NDArray[np.float_],
-        m: int,
         excluded: Optional[List[int]] = None,
         shape: int = 1,
     ) -> npt.NDArray[np.float_]:
@@ -232,8 +231,6 @@ class Tree:
         ----------
         x : npt.NDArray[np.float_]
             Unobserved point
-        m : int
-            Number of trees
         excluded: Optional[List[int]]
             Indexes of the variables to exclude when computing predictions
 
@@ -244,12 +241,11 @@ class Tree:
         """
         if excluded is None:
             excluded = []
-        return self._traverse_tree(x=x, m=m, excluded=excluded, shape=shape)
+        return self._traverse_tree(x=x, excluded=excluded, shape=shape)
 
     def _traverse_tree(
         self,
         x: npt.NDArray[np.float_],
-        m: int,
         excluded: Optional[List[int]] = None,
         shape: int = 1,
     ) -> npt.NDArray[np.float_]:
@@ -260,8 +256,6 @@ class Tree:
         ----------
         x : npt.NDArray[np.float_]
             (Un)observed point
-        m : int
-            Number of trees
         node_index : int
             Index of the node to start the traversal from
         split_variable : int
@@ -274,7 +268,7 @@ class Tree:
         npt.NDArray[np.float_]
             Leaf node value or mean of leaf node values
         """
-        stack = [(0, 1.0)]  # (node_index, prop) initial state
+        stack = [(0, 1.0)]  # (node_index, weight) initial state
         p_d = np.zeros(shape)
         while stack:
             node_index, weight = stack.pop()
@@ -285,7 +279,7 @@ class Tree:
                     p_d += weight * node.value
                 else:
                     # this produce nonsensical results
-                    p_d += weight * ((params[0] + params[1] * x[node.idx_split_variable]) / m)
+                    p_d += weight * (params[0] + params[1] * x[node.idx_split_variable])
                     # this produce reasonable result
                     # p_d += weight * node.value.mean()
             else:
