@@ -12,6 +12,7 @@ from pytensor.tensor.var import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
 from scipy.stats import norm, pearsonr
+from xarray import concat
 
 from .tree import Tree
 
@@ -742,6 +743,12 @@ def plot_variable_importance(
         labels = X.columns
         X = X.values
 
+    n_draws = idata["posterior"].dims["draw"]
+    half = n_draws // 2
+    f_half = idata["sample_stats"]["variable_inclusion"].sel(draw=slice(0, half - 1))
+    s_half = idata["sample_stats"]["variable_inclusion"].sel(draw=slice(half, n_draws))
+
+    var_imp_chains = concat([f_half, s_half], dim="chain", join="override").mean(("draw")).values
     var_imp = idata["sample_stats"]["variable_inclusion"].mean(("chain", "draw")).values
     if labels is None:
         labels_ary = np.arange(len(var_imp))
@@ -759,7 +766,16 @@ def plot_variable_importance(
         indices = idxs[::-1]
     else:
         indices = np.arange(len(var_imp))
-    axes[0].plot((var_imp / var_imp.sum())[indices], "o-")
+
+    chains_mean = (var_imp / var_imp.sum())[indices]
+    chains_hdi = az.hdi((var_imp_chains.T / var_imp_chains.sum(axis=1)).T)[indices]
+
+    axes[0].errorbar(
+        ticks,
+        chains_mean,
+        np.array((chains_mean - chains_hdi[:, 0], chains_hdi[:, 1] - chains_mean)),
+        color="C0",
+    )
     axes[0].set_xticks(ticks)
     axes[0].set_xticklabels(labels_ary[indices])
     axes[0].set_xlabel("covariables")
@@ -790,8 +806,9 @@ def plot_variable_importance(
         ev_mean[idx] = np.mean(pearson)
         ev_hdi[idx] = az.hdi(pearson)
 
-    axes[1].errorbar(ticks, ev_mean, np.array((ev_mean - ev_hdi[:, 0], ev_hdi[:, 1] - ev_mean)))
-
+    axes[1].errorbar(
+        ticks, ev_mean, np.array((ev_mean - ev_hdi[:, 0], ev_hdi[:, 1] - ev_mean)), color="C0"
+    )
     axes[1].axhline(ev_mean[-1], ls="--", color="0.5")
     axes[1].set_xticks(ticks)
     axes[1].set_xticklabels(ticks + 1)
