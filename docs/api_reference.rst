@@ -13,4 +13,4 @@ methods in the current release of PyMC-BART.
 =============================
 
 .. automodule:: pymc_bart
-   :members: BART, PGBART, plot_dependence, plot_variable_importance, predict
+   :members: BART, PGBART, plot_pdp, plot_variable_importance, plot_convergence
