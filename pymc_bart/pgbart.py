@@ -31,18 +31,16 @@ from pymc_bart.tree import Node, Tree, get_idx_left_child, get_idx_right_child, 
 class ParticleTree:
     """Particle tree."""
 
-    __slots__ = "tree", "expansion_nodes", "log_weight", "kfactor"
+    __slots__ = "tree", "expansion_nodes", "log_weight"
 
-    def __init__(self, tree: Tree, kfactor: float = 0.75):
+    def __init__(self, tree: Tree):
         self.tree: Tree = tree.copy()
         self.expansion_nodes: List[int] = [0]
         self.log_weight: float = 0
-        self.kfactor: float = kfactor
 
     def copy(self) -> "ParticleTree":
         p = ParticleTree(self.tree)
         p.expansion_nodes = self.expansion_nodes.copy()
-        p.kfactor = self.kfactor
         return p
 
     def sample_tree(
@@ -53,6 +51,7 @@ class ParticleTree:
         X,
         missing_data,
         sum_trees,
+        leaf_sd,
         m,
         response,
         normal,
@@ -73,10 +72,10 @@ class ParticleTree:
                     X,
                     missing_data,
                     sum_trees,
+                    leaf_sd,
                     m,
                     response,
                     normal,
-                    self.kfactor,
                     shape,
                 )
                 if idx_new_nodes is not None:
@@ -95,7 +94,7 @@ class PGBART(ArrayStepShared):
     vars: list
         List of value variables for sampler
     num_particles : tuple
-        Number of particles. Defaults to 20
+        Number of particles. Defaults to 10
     batch : int or tuple
         Number of trees fitted per step. Defaults to  "auto", which is the 10% of the `m` trees
         during tuning and after tuning. If a tuple is passed the first element is the batch size
@@ -112,7 +111,7 @@ class PGBART(ArrayStepShared):
     def __init__(
         self,
         vars=None,  # pylint: disable=redefined-builtin
-        num_particles: int = 20,
+        num_particles: int = 10,
         batch: Tuple[float, float] = (0.1, 0.1),
         model: Optional[Model] = None,
     ):
@@ -141,17 +140,20 @@ class PGBART(ArrayStepShared):
             self.alpha_vec = self.bart.split_prior
         else:
             self.alpha_vec = np.ones(self.X.shape[1], dtype=np.int32)
-        init_mean = self.bart.Y.mean()
-        # if data is binary
-        y_unique = np.unique(self.bart.Y)
-        if y_unique.size == 2 and np.all(y_unique == [0, 1]):
-            mu_std = 3 / self.m**0.5
-        else:
-            mu_std = self.bart.Y.std() / self.m**0.5
 
+        init_mean = self.bart.Y.mean()
         self.num_observations = self.X.shape[0]
         self.num_variates = self.X.shape[1]
         self.available_predictors = list(range(self.num_variates))
+
+        # if data is binary
+        y_unique = np.unique(self.bart.Y)
+        if y_unique.size == 2 and np.all(y_unique == [0, 1]):
+            self.leaf_sd = 3 / self.m**0.5
+        else:
+            self.leaf_sd = self.bart.Y.std() / self.m**0.5
+
+        self.running_sd = RunningSd(shape)
 
         self.sum_trees = np.full((self.shape, self.bart.Y.shape[0]), init_mean).astype(
             config.floatX
@@ -164,10 +166,9 @@ class PGBART(ArrayStepShared):
             shape=self.shape,
         )
 
-        self.normal = NormalSampler(mu_std, self.shape)
+        self.normal = NormalSampler(1, self.shape)
         self.uniform = UniformSampler(0, 1)
-        self.uniform_kf = UniformSampler(0.33, 0.75, self.shape)
-        self.prior_prob_leaf_node = compute_prior_probability(self.bart.alpha)
+        self.prior_prob_leaf_node = compute_prior_probability(self.bart.alpha, self.bart.beta)
         self.ssv = SampleSplittingVariable(self.alpha_vec)
 
         self.tune = True
@@ -212,6 +213,7 @@ class PGBART(ArrayStepShared):
                         self.X,
                         self.missing_data,
                         self.sum_trees,
+                        self.leaf_sd,
                         self.m,
                         self.response,
                         self.normal,
@@ -235,7 +237,8 @@ class PGBART(ArrayStepShared):
                 particles, normalized_weights
             )
             # Update the sum of trees
-            self.sum_trees = self.sum_trees_noi + new_tree._predict()
+            new = new_tree._predict()
+            self.sum_trees = self.sum_trees_noi + new
             # To reduce memory usage, we trim the tree
             self.all_trees[tree_id] = new_tree.trim()
 
@@ -243,12 +246,26 @@ class PGBART(ArrayStepShared):
                 # Update the splitting variable and the splitting variable sampler
                 if self.iter > self.m:
                     self.ssv = SampleSplittingVariable(self.alpha_vec)
+
                 for index in new_tree.get_split_variables():
                     self.alpha_vec[index] += 1
+
+                if self.iter > 2:
+                    self.leaf_sd = self.running_sd.update(new)
+                else:
+                    self.running_sd.update(new)
+
             else:
                 # update the variable inclusion
                 for index in new_tree.get_split_variables():
                     variable_inclusion[index] += 1
+
+            # if self.iter > 1:
+            #     self.leaf_sd = self.rs.update_std(new)
+            # else:
+            #     self.rs.update_std(new)
+            # if self.iter % 1000 == 0:
+            #     print(self.leaf_sd)
 
         if not self.tune:
             self.bart.all_trees.append(self.all_trees)
@@ -320,10 +337,7 @@ class PGBART(ArrayStepShared):
         self.update_weight(p0)
         particles: List[ParticleTree] = [p0]
 
-        particles.extend(
-            ParticleTree(self.a_tree, self.uniform_kf.rvs() if self.tune else p0.kfactor)
-            for _ in self.indices
-        )
+        particles.extend(ParticleTree(self.a_tree) for _ in self.indices)
         return particles
 
     def update_weight(self, particle: ParticleTree) -> None:
@@ -344,6 +358,30 @@ class PGBART(ArrayStepShared):
         return Competence.INCOMPATIBLE
 
 
+class RunningSd:
+    def __init__(self, shape):
+        self.count = 0  # number of data points
+        self.mean = np.zeros(shape)  # running mean
+        self.m2 = np.zeros(shape)  # running second moment
+
+    def update(self, new_value):
+        self.count = self.count + 1
+        self.mean, self.m2, std = _update(self.count, self.mean, self.m2, new_value)
+        print(fast_mean(std))
+        return fast_mean(std)
+
+
+@njit
+def _update(count, mean, m2, new_value):
+    delta = new_value - mean
+    mean += delta / count
+    delta2 = new_value - mean
+    m2 += delta * delta2
+
+    std = (m2 / count) ** 0.5
+    return mean, m2, std
+
+
 class SampleSplittingVariable:
     def __init__(self, alpha_vec: npt.NDArray[np.float_]) -> None:
         """
@@ -362,30 +400,26 @@ class SampleSplittingVariable:
         return self.enu[-1]
 
 
-def compute_prior_probability(alpha) -> List[float]:
+def compute_prior_probability(alpha: int, beta: int) -> List[float]:
     """
     Calculate the probability of the node being a leaf node (1 - p(being split node)).
-
-    Taken from equation 19 in [Rockova2018].
 
     Parameters
     ----------
     alpha : float
+    beta: float
 
     Returns
     -------
     list with probabilities for leaf nodes
-
-    References
-    ----------
-    .. [Rockova2018] Veronika Rockova, Enakshi Saha (2018). On the theory of BART.
-    arXiv, `link <https://arxiv.org/abs/1810.00787>`__
     """
     prior_leaf_prob: List[float] = [0]
-    depth = 1
-    while prior_leaf_prob[-1] < 1:
-        prior_leaf_prob.append(1 - alpha**depth)
+    depth = 0
+    while prior_leaf_prob[-1] < 0.9999:
+        prior_leaf_prob.append(1 - (alpha * ((1 + depth) ** (-beta))))
         depth += 1
+    prior_leaf_prob.append(1)
+
     return prior_leaf_prob
 
 
@@ -397,10 +431,10 @@ def grow_tree(
     X,
     missing_data,
     sum_trees,
+    leaf_sd,
     m,
     response,
     normal,
-    kfactor,
     shape,
 ):
     current_node = tree.get_node(index_leaf_node)
@@ -432,7 +466,7 @@ def grow_tree(
             y_mu_pred=sum_trees[:, idx_data_point],
             x_mu=X[idx_data_point, selected_predictor],
             m=m,
-            norm=normal.rvs() * kfactor,
+            norm=normal.rvs() * leaf_sd,
             shape=shape,
             response=response,
         )
@@ -493,7 +527,7 @@ def draw_leaf_value(
         if response == "linear":
             mu_mean, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred, m=m)
 
-    draw = norm + mu_mean
+    draw = mu_mean + norm
     return draw, linear_params
 
 
