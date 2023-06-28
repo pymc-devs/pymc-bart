@@ -36,7 +36,7 @@ class BARTRV(RandomVariable):
 
     name: str = "BART"
     ndim_supp = 1
-    ndims_params: List[int] = [2, 1, 0, 0, 1]
+    ndims_params: List[int] = [2, 1, 0, 0, 0, 1]
     dtype: str = "floatX"
     _print_name: Tuple[str, str] = ("BART", "\\operatorname{BART}")
     all_trees = List[List[Tree]]
@@ -45,7 +45,9 @@ class BARTRV(RandomVariable):
         return dist_params[0].shape[:1]
 
     @classmethod
-    def rng_fn(cls, rng=None, X=None, Y=None, m=None, alpha=None, split_prior=None, size=None):
+    def rng_fn(
+        cls, rng=None, X=None, Y=None, m=None, alpha=None, beta=None, split_prior=None, size=None
+    ):
         if not cls.all_trees:
             if size is not None:
                 return np.full((size[0], cls.Y.shape[0]), cls.Y.mean())
@@ -94,7 +96,8 @@ class BART(Distribution):
         X: TensorLike,
         Y: TensorLike,
         m: int = 50,
-        alpha: float = 0.25,
+        alpha: float = 0.95,
+        beta: float = 2,
         response: str = "constant",
         split_prior: Optional[List[float]] = None,
         **kwargs,
@@ -120,6 +123,7 @@ class BART(Distribution):
                 m=m,
                 response=response,
                 alpha=alpha,
+                beta=beta,
                 split_prior=split_prior,
             ),
         )()
@@ -131,7 +135,7 @@ class BART(Distribution):
             return cls.get_moment(rv, size, *rv_inputs)
 
         cls.rv_op = bart_op
-        params = [X, Y, m, alpha, split_prior]
+        params = [X, Y, m, alpha, beta, split_prior]
         return super().__new__(cls, name, *params, **kwargs)
 
     @classmethod
