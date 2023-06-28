@@ -250,6 +250,7 @@ class PGBART(ArrayStepShared):
                 for index in new_tree.get_split_variables():
                     self.alpha_vec[index] += 1
 
+                # update standard deviation at leaf nodes
                 if self.iter > 2:
                     self.leaf_sd = self.running_sd.update(new)
                 else:
@@ -259,13 +260,6 @@ class PGBART(ArrayStepShared):
                 # update the variable inclusion
                 for index in new_tree.get_split_variables():
                     variable_inclusion[index] += 1
-
-            # if self.iter > 1:
-            #     self.leaf_sd = self.rs.update_std(new)
-            # else:
-            #     self.rs.update_std(new)
-            # if self.iter % 1000 == 0:
-            #     print(self.leaf_sd)
 
         if not self.tune:
             self.bart.all_trees.append(self.all_trees)
@@ -359,27 +353,31 @@ class PGBART(ArrayStepShared):
 
 
 class RunningSd:
-    def __init__(self, shape):
+    def __init__(self, shape: tuple) -> None:
         self.count = 0  # number of data points
         self.mean = np.zeros(shape)  # running mean
-        self.m2 = np.zeros(shape)  # running second moment
+        self.m_2 = np.zeros(shape)  # running second moment
 
-    def update(self, new_value):
+    def update(self, new_value: npt.NDArray[np.float_]) -> Union[float, npt.NDArray[np.float_]]:
         self.count = self.count + 1
-        self.mean, self.m2, std = _update(self.count, self.mean, self.m2, new_value)
-        print(fast_mean(std))
+        self.mean, self.m_2, std = _update(self.count, self.mean, self.m_2, new_value)
         return fast_mean(std)
 
 
 @njit
-def _update(count, mean, m2, new_value):
+def _update(
+    count: int,
+    mean: npt.NDArray[np.float_],
+    m_2: npt.NDArray[np.float_],
+    new_value: npt.NDArray[np.float_],
+) -> Tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], Union[float, npt.NDArray[np.float_]]]:
     delta = new_value - mean
     mean += delta / count
     delta2 = new_value - mean
-    m2 += delta * delta2
+    m_2 += delta * delta2
 
-    std = (m2 / count) ** 0.5
-    return mean, m2, std
+    std = (m_2 / count) ** 0.5
+    return mean, m_2, std
 
 
 class SampleSplittingVariable:
