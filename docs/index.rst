@@ -82,7 +82,7 @@ Contents
 .. toctree::
    :maxdepth: 2
 
-   examples/BART_introduction
+   examples
    api_reference
 
 Indices
