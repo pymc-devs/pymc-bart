@@ -65,7 +65,7 @@ bart = BARTRV()
 
 
 class BART(Distribution):
-    """
+    r"""
     Bayesian Additive Regression Tree distribution.
 
     Distribution representing a sum over trees
@@ -77,17 +77,26 @@ class BART(Distribution):
     Y : TensorLike
         The response vector.
     m : int
-        Number of trees
+        Number of trees.
     response : str
         How the leaf_node values are computed. Available options are ``constant``, ``linear`` or
         ``mix``. Defaults to ``constant``.
     alpha : float
-        Control the prior probability over the depth of the trees. Even when it can takes values in
-        the interval (0, 1), it is recommended to be in the interval (0, 0.5].
+        Controls the prior probability over the depth of the trees.
+        Should be in the (0, 1) interval.
+    beta : float
+        Controls the prior probability over the number of leaves of the trees.
+        Should be positive.
     split_prior : Optional[List[float]], default None.
         Each element of split_prior should be in the [0, 1] interval and the elements should sum to
         1. Otherwise they will be normalized.
         Defaults to 0, i.e. all covariates have the same prior probability to be selected.
+
+    Notes
+    -----
+    The parameters ``alpha`` and ``beta`` parametrize the probability that a node at
+    depth :math:`d \: (= 0, 1, 2,...)` is non-terminal, given by :math:`\alpha(1 + d)^{-\beta}`.
+    The default values are :math:`\alpha = 0.95` and :math:`\beta = 2`.
     """
 
     def __new__(
@@ -97,7 +106,7 @@ class BART(Distribution):
         Y: TensorLike,
         m: int = 50,
         alpha: float = 0.95,
-        beta: float = 2,
+        beta: float = 2.0,
         response: str = "constant",
         split_prior: Optional[List[float]] = None,
         **kwargs,
