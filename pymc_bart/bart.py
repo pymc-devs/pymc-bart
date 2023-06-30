@@ -93,7 +93,8 @@ class BART(Distribution):
     Notes
     -----
     The parameters ``alpha`` and ``beta`` parametrize the probability that a node at depth :math:`d \: (= 0, 1, 2,...)`
-    is non-terminal, given by :math:`\alpha(1 + d)^{-\beta}`. The default values are :math:`\alpha = 0.95` and :math:`\beta = 2`.
+    is non-terminal, given by :math:`\alpha(1 + d)^{-\beta}`.
+    The default values are :math:`\alpha = 0.95` and :math:`\beta = 2`.
     """
 
     def __new__(
