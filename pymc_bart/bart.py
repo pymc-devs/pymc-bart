@@ -109,6 +109,7 @@ class BART(Distribution):
         beta: float = 2.0,
         response: str = "constant",
         split_prior: Optional[List[float]] = None,
+        split_rules: Optional[List] = None,
         **kwargs,
     ):
         manager = Manager()
@@ -118,6 +119,9 @@ class BART(Distribution):
 
         if split_prior is None:
             split_prior = []
+
+        if split_rules is None:
+            split_rules = []
 
         bart_op = type(
             f"BART_{name}",
@@ -134,6 +138,7 @@ class BART(Distribution):
                 alpha=alpha,
                 beta=beta,
                 split_prior=split_prior,
+                split_rules=split_rules
             ),
         )()
 

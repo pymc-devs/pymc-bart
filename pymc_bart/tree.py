@@ -118,16 +118,19 @@ class Tree:
         "tree_structure",
         "output",
         "idx_leaf_nodes",
+        "split_rules"
     )
 
     def __init__(
         self,
         tree_structure: Dict[int, Node],
         output: npt.NDArray[np.float_],
+        split_rules: List[object],
         idx_leaf_nodes: Optional[List[int]] = None,
     ) -> None:
         self.tree_structure = tree_structure
         self.idx_leaf_nodes = idx_leaf_nodes
+        self.split_rules = split_rules
         self.output = output
 
     @classmethod
@@ -137,6 +140,7 @@ class Tree:
         idx_data_points: Optional[npt.NDArray[np.int_]],
         num_observations: int,
         shape: int,
+        split_rules: List[object]
     ) -> "Tree":
         return cls(
             tree_structure={
@@ -148,6 +152,7 @@ class Tree:
             },
             idx_leaf_nodes=[0],
             output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
+            split_rules=split_rules
         )
 
     def __getitem__(self, index) -> Node:
@@ -168,7 +173,7 @@ class Tree:
             for k, v in self.tree_structure.items()
         }
         idx_leaf_nodes = self.idx_leaf_nodes.copy() if self.idx_leaf_nodes is not None else None
-        return Tree(tree_structure=tree, idx_leaf_nodes=idx_leaf_nodes, output=self.output)
+        return Tree(tree_structure=tree, idx_leaf_nodes=idx_leaf_nodes, output=self.output, split_rules=self.split_rules)
 
     def get_node(self, index: int) -> Node:
         return self.tree_structure[index]
@@ -202,7 +207,7 @@ class Tree:
             )
             for k, v in self.tree_structure.items()
         }
-        return Tree(tree_structure=tree, idx_leaf_nodes=None, output=np.array([-1]))
+        return Tree(tree_structure=tree, idx_leaf_nodes=None, output=np.array([-1]), split_rules=self.split_rules)
 
     def get_split_variables(self) -> Generator[int, None, None]:
         for node in self.tree_structure.values():
@@ -293,7 +298,7 @@ class Tree:
                 else:
                     next_node = (
                         get_idx_left_child(node_index)
-                        if x[node.idx_split_variable] <= node.value
+                        if self.split_rules[node.idx_split_variable].decide(x[node.idx_split_variable],node.value)
                         else get_idx_right_child(node_index)
                     )
                     stack.append((next_node, weight))
