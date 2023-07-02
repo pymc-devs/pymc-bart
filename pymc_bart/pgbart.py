@@ -456,9 +456,10 @@ def grow_tree(
 
     if split_value is None:
         return None
-    new_idx_data_points = split_rule.get_new_idx_data_points(
-        available_splitting_values, split_value, idx_data_points
-    )
+
+    to_left = split_rule.divide(available_splitting_values, split_value)
+    new_idx_data_points = idx_data_points[to_left], idx_data_points[~to_left]
+    
     current_node_children = (
         get_idx_left_child(index_leaf_node),
         get_idx_right_child(index_leaf_node),

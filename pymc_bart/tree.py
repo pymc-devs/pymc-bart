@@ -246,11 +246,12 @@ class Tree:
         """
         if excluded is None:
             excluded = []
-        return self._traverse_tree(x=x, excluded=excluded, shape=shape)
+
+        return self._traverse_tree(X=x, excluded=excluded, shape=shape)
 
     def _traverse_tree(
         self,
-        x: npt.NDArray[np.float_],
+        X: npt.NDArray[np.float_],
         excluded: Optional[List[int]] = None,
         shape: int = 1,
     ) -> npt.NDArray[np.float_]:
@@ -259,8 +260,8 @@ class Tree:
 
         Parameters
         ----------
-        x : npt.NDArray[np.float_]
-            (Un)observed point
+        X : npt.NDArray[np.float_]
+            (Un)observed point(s)
         node_index : int
             Index of the node to start the traversal from
         split_variable : int
@@ -273,37 +274,41 @@ class Tree:
         npt.NDArray[np.float_]
             Leaf node value or mean of leaf node values
         """
-        stack = [(0, 1.0)]  # (node_index, weight) initial state
-        p_d = np.zeros(shape)
+
+        x_shape = (1,) if len(X.shape)==1 else X.shape[:-1]
+
+        stack = [(0, np.ones(x_shape)) ]  # (node_index, weight) initial state
+        p_d = np.zeros( shape + x_shape ) if isinstance(shape, tuple) else np.zeros( (shape,) + x_shape )
         while stack:
-            node_index, weight = stack.pop()
+            node_index, weights = stack.pop()
             node = self.get_node(node_index)
             if node.is_leaf_node():
                 params = node.linear_params
+                nd_dims = (...,)+(None,)*len(x_shape)
                 if params is None:
-                    p_d += weight * node.value
+                    p_d += weights * node.value[nd_dims]
                 else:
                     # this produce nonsensical results
-                    p_d += weight * (params[0] + params[1] * x[node.idx_split_variable])
+                    p_d += weights * (params[0][nd_dims] + params[1][nd_dims] * X[...,node.idx_split_variable])
                     # this produce reasonable result
                     # p_d += weight * node.value.mean()
             else:
+                left_node_index, right_node_index = get_idx_left_child(
+                    node_index
+                ), get_idx_right_child(node_index)
                 if excluded is not None and node.idx_split_variable in excluded:
-                    left_node_index, right_node_index = get_idx_left_child(
-                        node_index
-                    ), get_idx_right_child(node_index)
                     prop_nvalue_left = self.get_node(left_node_index).nvalue / node.nvalue
-                    stack.append((left_node_index, weight * prop_nvalue_left))
-                    stack.append((right_node_index, weight * (1 - prop_nvalue_left)))
+                    stack.append((left_node_index, weights * prop_nvalue_left))
+                    stack.append((right_node_index, weights * (1 - prop_nvalue_left)))
                 else:
-                    next_node = (
-                        get_idx_left_child(node_index)
-                        if self.split_rules[node.idx_split_variable].decide(x[node.idx_split_variable],node.value)
-                        else get_idx_right_child(node_index)
-                    )
-                    stack.append((next_node, weight))
+                    to_left = self.split_rules[node.idx_split_variable].divide(X[...,node.idx_split_variable],node.value).astype('float')
+                    stack.append((left_node_index, weights * to_left))
+                    stack.append((right_node_index, weights * (1 - to_left)))
+
+        if len(X.shape)==1: p_d = p_d[...,0]
 
         return p_d
+
 
     def _traverse_leaf_values(
         self, leaf_values: List[npt.NDArray[np.float_]], leaf_n_values: List[int], node_index: int
@@ -323,3 +328,5 @@ class Tree:
         else:
             self._traverse_leaf_values(leaf_values, leaf_n_values, get_idx_left_child(node_index))
             self._traverse_leaf_values(leaf_values, leaf_n_values, get_idx_right_child(node_index))
+
+

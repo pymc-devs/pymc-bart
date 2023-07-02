@@ -21,11 +21,6 @@ class ContinuousSplitRule:
     """
 
     @staticmethod
-    @njit
-    def decide(value, split_value):
-        return value <= split_value
-
-    @staticmethod
     def get_split_value(available_splitting_values):
         split_value = None
         if available_splitting_values.size > 1:
@@ -35,17 +30,11 @@ class ContinuousSplitRule:
 
     @staticmethod
     @njit
-    def get_new_idx_data_points(available_splitting_values, split_value, idx_data_points):
-        split_idx = available_splitting_values <= split_value
-        return idx_data_points[split_idx], idx_data_points[~split_idx]
+    def divide(available_splitting_values, split_value):
+        return available_splitting_values <= split_value
 
 class OneHotSplitRule:
     """Choose a single categorical value and branch on if the variable is that value or not"""
-
-    @staticmethod
-    @njit
-    def decide(value, split_value):
-        return value == split_value
 
     @staticmethod
     def get_split_value(available_splitting_values):
@@ -57,10 +46,8 @@ class OneHotSplitRule:
 
     @staticmethod
     @njit
-    def get_new_idx_data_points(available_splitting_values, split_value, idx_data_points):
-        split_idx = available_splitting_values == split_value
-        return idx_data_points[split_idx], idx_data_points[~split_idx]
-
+    def divide(available_splitting_values, split_value):
+        return available_splitting_values == split_value
 
 class SubsetSplitRule:
     """
@@ -69,14 +56,10 @@ class SubsetSplitRule:
     """
 
     @staticmethod
-    def decide(value, split_value):
-        return (value in split_value)
-
-    @staticmethod
     def get_split_value(available_splitting_values):
         split_value = None
         if available_splitting_values.size > 1 and not np.all(available_splitting_values==available_splitting_values[0]):
-            unique_values = np.unique(available_splitting_values)[:-1] # Remove last one so it always goes to right
+            unique_values = np.unique(available_splitting_values)[:-1] # Remove last one so it always goes to left
             while True:
                 sample = np.random.randint(0, 2, size=len(unique_values)).astype(bool)
                 if np.any(sample): break
@@ -84,6 +67,5 @@ class SubsetSplitRule:
         return split_value
 
     @staticmethod
-    def get_new_idx_data_points(available_splitting_values, split_value, idx_data_points):
-        split_idx = np.isin(available_splitting_values, split_value)
-        return idx_data_points[split_idx], idx_data_points[~split_idx]
+    def divide(available_splitting_values, split_value):
+        return np.isin(available_splitting_values, split_value)
