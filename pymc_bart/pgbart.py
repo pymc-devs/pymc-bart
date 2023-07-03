@@ -28,6 +28,7 @@ from pymc_bart.bart import BARTRV
 from pymc_bart.tree import Node, Tree, get_idx_left_child, get_idx_right_child, get_depth
 from pymc_bart.split_rules import ContinuousSplitRule
 
+
 class ParticleTree:
     """Particle tree."""
 
@@ -169,7 +170,7 @@ class PGBART(ArrayStepShared):
             idx_data_points=np.arange(self.num_observations, dtype="int32"),
             num_observations=self.num_observations,
             shape=self.shape,
-            split_rules = self.split_rules
+            split_rules=self.split_rules,
         )
 
         self.normal = NormalSampler(1, self.shape)
@@ -459,7 +460,7 @@ def grow_tree(
 
     to_left = split_rule.divide(available_splitting_values, split_value)
     new_idx_data_points = idx_data_points[to_left], idx_data_points[~to_left]
-    
+
     current_node_children = (
         get_idx_left_child(index_leaf_node),
         get_idx_right_child(index_leaf_node),
@@ -497,7 +498,6 @@ def filter_missing_values(available_splitting_values, idx_data_points, missing_d
         idx_data_points = idx_data_points[mask]
         available_splitting_values = available_splitting_values[mask]
     return idx_data_points, available_splitting_values
-
 
 
 def draw_leaf_value(

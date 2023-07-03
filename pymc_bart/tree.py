@@ -114,12 +114,7 @@ class Tree:
     idx_leaf_nodes :  List with the index of the leaf nodes of the tree.
     """
 
-    __slots__ = (
-        "tree_structure",
-        "output",
-        "idx_leaf_nodes",
-        "split_rules"
-    )
+    __slots__ = ("tree_structure", "output", "idx_leaf_nodes", "split_rules")
 
     def __init__(
         self,
@@ -140,7 +135,7 @@ class Tree:
         idx_data_points: Optional[npt.NDArray[np.int_]],
         num_observations: int,
         shape: int,
-        split_rules: List[object]
+        split_rules: List[object],
     ) -> "Tree":
         return cls(
             tree_structure={
@@ -152,7 +147,7 @@ class Tree:
             },
             idx_leaf_nodes=[0],
             output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
-            split_rules=split_rules
+            split_rules=split_rules,
         )
 
     def __getitem__(self, index) -> Node:
@@ -173,7 +168,12 @@ class Tree:
             for k, v in self.tree_structure.items()
         }
         idx_leaf_nodes = self.idx_leaf_nodes.copy() if self.idx_leaf_nodes is not None else None
-        return Tree(tree_structure=tree, idx_leaf_nodes=idx_leaf_nodes, output=self.output, split_rules=self.split_rules)
+        return Tree(
+            tree_structure=tree,
+            idx_leaf_nodes=idx_leaf_nodes,
+            output=self.output,
+            split_rules=self.split_rules,
+        )
 
     def get_node(self, index: int) -> Node:
         return self.tree_structure[index]
@@ -207,7 +207,12 @@ class Tree:
             )
             for k, v in self.tree_structure.items()
         }
-        return Tree(tree_structure=tree, idx_leaf_nodes=None, output=np.array([-1]), split_rules=self.split_rules)
+        return Tree(
+            tree_structure=tree,
+            idx_leaf_nodes=None,
+            output=np.array([-1]),
+            split_rules=self.split_rules,
+        )
 
     def get_split_variables(self) -> Generator[int, None, None]:
         for node in self.tree_structure.values():
@@ -275,21 +280,25 @@ class Tree:
             Leaf node value or mean of leaf node values
         """
 
-        x_shape = (1,) if len(X.shape)==1 else X.shape[:-1]
+        x_shape = (1,) if len(X.shape) == 1 else X.shape[:-1]
 
-        stack = [(0, np.ones(x_shape)) ]  # (node_index, weight) initial state
-        p_d = np.zeros( shape + x_shape ) if isinstance(shape, tuple) else np.zeros( (shape,) + x_shape )
+        stack = [(0, np.ones(x_shape))]  # (node_index, weight) initial state
+        p_d = (
+            np.zeros(shape + x_shape) if isinstance(shape, tuple) else np.zeros((shape,) + x_shape)
+        )
         while stack:
             node_index, weights = stack.pop()
             node = self.get_node(node_index)
             if node.is_leaf_node():
                 params = node.linear_params
-                nd_dims = (...,)+(None,)*len(x_shape)
+                nd_dims = (...,) + (None,) * len(x_shape)
                 if params is None:
                     p_d += weights * node.value[nd_dims]
                 else:
                     # this produce nonsensical results
-                    p_d += weights * (params[0][nd_dims] + params[1][nd_dims] * X[...,node.idx_split_variable])
+                    p_d += weights * (
+                        params[0][nd_dims] + params[1][nd_dims] * X[..., node.idx_split_variable]
+                    )
                     # this produce reasonable result
                     # p_d += weight * node.value.mean()
             else:
@@ -301,14 +310,18 @@ class Tree:
                     stack.append((left_node_index, weights * prop_nvalue_left))
                     stack.append((right_node_index, weights * (1 - prop_nvalue_left)))
                 else:
-                    to_left = self.split_rules[node.idx_split_variable].divide(X[...,node.idx_split_variable],node.value).astype('float')
+                    to_left = (
+                        self.split_rules[node.idx_split_variable]
+                        .divide(X[..., node.idx_split_variable], node.value)
+                        .astype("float")
+                    )
                     stack.append((left_node_index, weights * to_left))
                     stack.append((right_node_index, weights * (1 - to_left)))
 
-        if len(X.shape)==1: p_d = p_d[...,0]
+        if len(X.shape) == 1:
+            p_d = p_d[..., 0]
 
         return p_d
-
 
     def _traverse_leaf_values(
         self, leaf_values: List[npt.NDArray[np.float_]], leaf_n_values: List[int], node_index: int
@@ -328,5 +341,3 @@ class Tree:
         else:
             self._traverse_leaf_values(leaf_values, leaf_n_values, get_idx_left_child(node_index))
             self._traverse_leaf_values(leaf_values, leaf_n_values, get_idx_right_child(node_index))
-
-

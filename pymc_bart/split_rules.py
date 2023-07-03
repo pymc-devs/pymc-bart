@@ -14,8 +14,26 @@
 
 from numba import njit
 import numpy as np
+from abc import abstractmethod
 
-class ContinuousSplitRule:
+
+class SplitRule:
+    """
+    Abstract template class for a split rule
+    """
+
+    @staticmethod
+    @abstractmethod
+    def get_split_value(available_splitting_values):
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def divide(available_splitting_values, split_value):
+        pass
+
+
+class ContinuousSplitRule(SplitRule):
     """
     Standard continuous split rule: pick a pivot value and split depending on if variable is smaller or greater than the value picked.
     """
@@ -24,7 +42,9 @@ class ContinuousSplitRule:
     def get_split_value(available_splitting_values):
         split_value = None
         if available_splitting_values.size > 1:
-            idx_selected_splitting_values = int(np.random.random() * len(available_splitting_values))
+            idx_selected_splitting_values = int(
+                np.random.random() * len(available_splitting_values)
+            )
             split_value = available_splitting_values[idx_selected_splitting_values]
         return split_value
 
@@ -33,14 +53,19 @@ class ContinuousSplitRule:
     def divide(available_splitting_values, split_value):
         return available_splitting_values <= split_value
 
-class OneHotSplitRule:
+
+class OneHotSplitRule(SplitRule):
     """Choose a single categorical value and branch on if the variable is that value or not"""
 
     @staticmethod
     def get_split_value(available_splitting_values):
         split_value = None
-        if available_splitting_values.size > 1 and not np.all(available_splitting_values==available_splitting_values[0]):
-            idx_selected_splitting_values = int(np.random.random() * len(available_splitting_values))
+        if available_splitting_values.size > 1 and not np.all(
+            available_splitting_values == available_splitting_values[0]
+        ):
+            idx_selected_splitting_values = int(
+                np.random.random() * len(available_splitting_values)
+            )
             split_value = available_splitting_values[idx_selected_splitting_values]
         return split_value
 
@@ -49,7 +74,8 @@ class OneHotSplitRule:
     def divide(available_splitting_values, split_value):
         return available_splitting_values == split_value
 
-class SubsetSplitRule:
+
+class SubsetSplitRule(SplitRule):
     """
     Choose a random subset of the categorical values and branch on if the value is within the chosen set.
     This is the approach taken in flexBART paper.
@@ -58,11 +84,16 @@ class SubsetSplitRule:
     @staticmethod
     def get_split_value(available_splitting_values):
         split_value = None
-        if available_splitting_values.size > 1 and not np.all(available_splitting_values==available_splitting_values[0]):
-            unique_values = np.unique(available_splitting_values)[:-1] # Remove last one so it always goes to left
+        if available_splitting_values.size > 1 and not np.all(
+            available_splitting_values == available_splitting_values[0]
+        ):
+            unique_values = np.unique(available_splitting_values)[
+                :-1
+            ]  # Remove last one so it always goes to left
             while True:
                 sample = np.random.randint(0, 2, size=len(unique_values)).astype(bool)
-                if np.any(sample): break
+                if np.any(sample):
+                    break
             split_value = unique_values[sample]
         return split_value
 
