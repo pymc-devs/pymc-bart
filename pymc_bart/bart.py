@@ -143,7 +143,7 @@ class BART(Distribution):
                 alpha=alpha,
                 beta=beta,
                 split_prior=split_prior,
-                split_rules=split_rules
+                split_rules=split_rules,
             ),
         )()
 

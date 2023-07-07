@@ -87,9 +87,7 @@ class SubsetSplitRule(SplitRule):
         if available_splitting_values.size > 1 and not np.all(
             available_splitting_values == available_splitting_values[0]
         ):
-            unique_values = np.unique(available_splitting_values)[
-                :-1
-            ]  # Remove last one so it always goes to left
+            unique_values = np.unique(available_splitting_values)
             while True:
                 sample = np.random.randint(0, 2, size=len(unique_values)).astype(bool)
                 if np.any(sample):
