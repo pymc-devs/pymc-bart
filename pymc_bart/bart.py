@@ -40,7 +40,7 @@ class BARTRV(RandomVariable):
     ndims_params: List[int] = [2, 1, 0, 0, 0, 1]
     dtype: str = "floatX"
     _print_name: Tuple[str, str] = ("BART", "\\operatorname{BART}")
-    all_trees = List[List[Tree]]
+    all_trees = List[List[List[Tree]]]
 
     def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):
         return dist_params[0].shape[:1]
@@ -96,6 +96,15 @@ class BART(Distribution):
         List of SplitRule objects, one per column in input data.
         Allows using different split rules for different columns. Default is ContinuousSplitRule.
         Other options are OneHotSplitRule and SubsetSplitRule, both meant for categorical variables.
+    shape: : Optional[Tuple], default None
+        Specify the output shape. If shape is different from (len(X)) (the default), train a
+        separate tree for each value in other dimensions.
+    separate_trees : Optional[bool], default False
+        When training multiple trees (by setting a shape parameter), the default behavior is to
+        learn a joint tree structure and only have different leaf values for each.
+        This flag forces a fully separate tree structure to be trained instead.
+        This is unnecessary in many cases and is considerably slower, multiplying
+        run-time roughly by number of dimensions.
 
     Notes
     -----
@@ -115,6 +124,7 @@ class BART(Distribution):
         response: str = "constant",
         split_prior: Optional[List[float]] = None,
         split_rules: Optional[SplitRule] = None,
+        separate_trees: Optional[bool] = False,
         **kwargs,
     ):
         manager = Manager()
@@ -141,6 +151,7 @@ class BART(Distribution):
                 beta=beta,
                 split_prior=split_prior,
                 split_rules=split_rules,
+                separate_trees=separate_trees,
             ),
         )()
 
