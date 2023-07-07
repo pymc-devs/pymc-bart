@@ -125,9 +125,6 @@ class BART(Distribution):
         if split_prior is None:
             split_prior = []
 
-        if split_rules is None:
-            split_rules = []
-
         bart_op = type(
             f"BART_{name}",
             (BARTRV,),

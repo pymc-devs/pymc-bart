@@ -13,11 +13,12 @@
 #   limitations under the License.
 
 from functools import lru_cache
-from typing import Dict, Generator, List, Optional
+from typing import Dict, Generator, List, Optional, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
 from pytensor import config
+from .split_rules import SplitRule
 
 
 class Node:
@@ -39,7 +40,7 @@ class Node:
         nvalue: int = 0,
         idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
-        linear_params: Optional[List[float]] = None,
+        linear_params: Optional[List[npt.NDArray[np.float_]]] = None,
     ) -> None:
         self.value = value
         self.nvalue = nvalue
@@ -54,7 +55,7 @@ class Node:
         nvalue: int = 0,
         idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
-        linear_params: Optional[List[float]] = None,
+        linear_params: Optional[List[npt.NDArray[np.float_]]] = None,
     ) -> "Node":
         return cls(
             value=value,
@@ -120,7 +121,7 @@ class Tree:
         self,
         tree_structure: Dict[int, Node],
         output: npt.NDArray[np.float_],
-        split_rules: List[object],
+        split_rules: List[SplitRule],
         idx_leaf_nodes: Optional[List[int]] = None,
     ) -> None:
         self.tree_structure = tree_structure
@@ -135,7 +136,7 @@ class Tree:
         idx_data_points: Optional[npt.NDArray[np.int_]],
         num_observations: int,
         shape: int,
-        split_rules: List[object],
+        split_rules: List[SplitRule],
     ) -> "Tree":
         return cls(
             tree_structure={
@@ -258,7 +259,7 @@ class Tree:
         self,
         X: npt.NDArray[np.float_],
         excluded: Optional[List[int]] = None,
-        shape: int = 1,
+        shape: Union[int, Tuple[int, ...]] = 1,
     ) -> npt.NDArray[np.float_]:
         """
         Traverse the tree starting from the root node given an (un)observed point.
