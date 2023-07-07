@@ -217,3 +217,30 @@ def test_bart_moment(size, expected):
     with pm.Model() as model:
         pmb.BART("x", X=X, Y=Y, size=size)
     assert_moment_is_expected(model, expected)
+
+
+@pytest.mark.parametrize(
+    argnames="separate_trees,split_rule",
+    argvalues=[
+        (False,pmb.ContinuousSplitRule),
+        (False,pmb.OneHotSplitRule),
+        (False,pmb.SubsetSplitRule),
+        (True,pmb.ContinuousSplitRule)
+    ],
+    ids=["continuous", "one-hot", "subset", "separate-trees"],
+)
+def test_categorical_model(separate_trees,split_rule):
+
+    Y = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
+    X = np.concatenate([Y[:, None], np.random.randint(0, 6, size=(9, 4))], axis=1)
+
+    with pm.Model() as model:
+        lo = pmb.BART("logodds", X, Y, m=2, shape=(3, 9),
+            split_rules=[split_rule]*5,
+            separate_trees=separate_trees)
+        y = pm.Categorical("y", p=pm.math.softmax(lo.T, axis=-1), observed=Y)
+        idata = pm.sample(random_seed=3415, tune=300, draws=300)
+        idata = pm.sample_posterior_predictive(idata, predictions=True, extend_inferencedata=True)
+
+    # Fit should be good enough so right category is selected over 50% of time
+    assert (idata.predictions.y.median(["chain", "draw"]) == Y).all()
