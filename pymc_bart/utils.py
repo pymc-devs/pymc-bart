@@ -64,7 +64,7 @@ def _sample_posterior(
 
     for ind, p in enumerate(pred):
         for tree in stacked_trees[idx[ind]]:
-            p += np.vstack([tree.predict(x=x, excluded=excluded, shape=shape) for x in X])
+            p += tree.predict(x=X, excluded=excluded, shape=shape).T
     pred.reshape((*size_iter, shape, -1))
     return pred
 

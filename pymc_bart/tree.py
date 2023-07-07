@@ -13,11 +13,12 @@
 #   limitations under the License.
 
 from functools import lru_cache
-from typing import Dict, Generator, List, Optional
+from typing import Dict, Generator, List, Optional, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
 from pytensor import config
+from .split_rules import SplitRule
 
 
 class Node:
@@ -39,7 +40,7 @@ class Node:
         nvalue: int = 0,
         idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
-        linear_params: Optional[List[float]] = None,
+        linear_params: Optional[List[npt.NDArray[np.float_]]] = None,
     ) -> None:
         self.value = value
         self.nvalue = nvalue
@@ -54,7 +55,7 @@ class Node:
         nvalue: int = 0,
         idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
-        linear_params: Optional[List[float]] = None,
+        linear_params: Optional[List[npt.NDArray[np.float_]]] = None,
     ) -> "Node":
         return cls(
             value=value,
@@ -114,20 +115,18 @@ class Tree:
     idx_leaf_nodes :  List with the index of the leaf nodes of the tree.
     """
 
-    __slots__ = (
-        "tree_structure",
-        "output",
-        "idx_leaf_nodes",
-    )
+    __slots__ = ("tree_structure", "output", "idx_leaf_nodes", "split_rules")
 
     def __init__(
         self,
         tree_structure: Dict[int, Node],
         output: npt.NDArray[np.float_],
+        split_rules: List[SplitRule],
         idx_leaf_nodes: Optional[List[int]] = None,
     ) -> None:
         self.tree_structure = tree_structure
         self.idx_leaf_nodes = idx_leaf_nodes
+        self.split_rules = split_rules
         self.output = output
 
     @classmethod
@@ -137,6 +136,7 @@ class Tree:
         idx_data_points: Optional[npt.NDArray[np.int_]],
         num_observations: int,
         shape: int,
+        split_rules: List[SplitRule],
     ) -> "Tree":
         return cls(
             tree_structure={
@@ -148,6 +148,7 @@ class Tree:
             },
             idx_leaf_nodes=[0],
             output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
+            split_rules=split_rules,
         )
 
     def __getitem__(self, index) -> Node:
@@ -168,7 +169,12 @@ class Tree:
             for k, v in self.tree_structure.items()
         }
         idx_leaf_nodes = self.idx_leaf_nodes.copy() if self.idx_leaf_nodes is not None else None
-        return Tree(tree_structure=tree, idx_leaf_nodes=idx_leaf_nodes, output=self.output)
+        return Tree(
+            tree_structure=tree,
+            idx_leaf_nodes=idx_leaf_nodes,
+            output=self.output,
+            split_rules=self.split_rules,
+        )
 
     def get_node(self, index: int) -> Node:
         return self.tree_structure[index]
@@ -202,7 +208,12 @@ class Tree:
             )
             for k, v in self.tree_structure.items()
         }
-        return Tree(tree_structure=tree, idx_leaf_nodes=None, output=np.array([-1]))
+        return Tree(
+            tree_structure=tree,
+            idx_leaf_nodes=None,
+            output=np.array([-1]),
+            split_rules=self.split_rules,
+        )
 
     def get_split_variables(self) -> Generator[int, None, None]:
         for node in self.tree_structure.values():
@@ -241,21 +252,22 @@ class Tree:
         """
         if excluded is None:
             excluded = []
-        return self._traverse_tree(x=x, excluded=excluded, shape=shape)
+
+        return self._traverse_tree(X=x, excluded=excluded, shape=shape)
 
     def _traverse_tree(
         self,
-        x: npt.NDArray[np.float_],
+        X: npt.NDArray[np.float_],
         excluded: Optional[List[int]] = None,
-        shape: int = 1,
+        shape: Union[int, Tuple[int, ...]] = 1,
     ) -> npt.NDArray[np.float_]:
         """
         Traverse the tree starting from the root node given an (un)observed point.
 
         Parameters
         ----------
-        x : npt.NDArray[np.float_]
-            (Un)observed point
+        X : npt.NDArray[np.float_]
+            (Un)observed point(s)
         node_index : int
             Index of the node to start the traversal from
         split_variable : int
@@ -268,35 +280,47 @@ class Tree:
         npt.NDArray[np.float_]
             Leaf node value or mean of leaf node values
         """
-        stack = [(0, 1.0)]  # (node_index, weight) initial state
-        p_d = np.zeros(shape)
+
+        x_shape = (1,) if len(X.shape) == 1 else X.shape[:-1]
+
+        stack = [(0, np.ones(x_shape))]  # (node_index, weight) initial state
+        p_d = (
+            np.zeros(shape + x_shape) if isinstance(shape, tuple) else np.zeros((shape,) + x_shape)
+        )
         while stack:
-            node_index, weight = stack.pop()
+            node_index, weights = stack.pop()
             node = self.get_node(node_index)
             if node.is_leaf_node():
                 params = node.linear_params
+                nd_dims = (...,) + (None,) * len(x_shape)
                 if params is None:
-                    p_d += weight * node.value
+                    p_d += weights * node.value[nd_dims]
                 else:
                     # this produce nonsensical results
-                    p_d += weight * (params[0] + params[1] * x[node.idx_split_variable])
+                    p_d += weights * (
+                        params[0][nd_dims] + params[1][nd_dims] * X[..., node.idx_split_variable]
+                    )
                     # this produce reasonable result
                     # p_d += weight * node.value.mean()
             else:
+                left_node_index, right_node_index = get_idx_left_child(
+                    node_index
+                ), get_idx_right_child(node_index)
                 if excluded is not None and node.idx_split_variable in excluded:
-                    left_node_index, right_node_index = get_idx_left_child(
-                        node_index
-                    ), get_idx_right_child(node_index)
                     prop_nvalue_left = self.get_node(left_node_index).nvalue / node.nvalue
-                    stack.append((left_node_index, weight * prop_nvalue_left))
-                    stack.append((right_node_index, weight * (1 - prop_nvalue_left)))
+                    stack.append((left_node_index, weights * prop_nvalue_left))
+                    stack.append((right_node_index, weights * (1 - prop_nvalue_left)))
                 else:
-                    next_node = (
-                        get_idx_left_child(node_index)
-                        if x[node.idx_split_variable] <= node.value
-                        else get_idx_right_child(node_index)
+                    to_left = (
+                        self.split_rules[node.idx_split_variable]
+                        .divide(X[..., node.idx_split_variable], node.value)
+                        .astype("float")
                     )
-                    stack.append((next_node, weight))
+                    stack.append((left_node_index, weights * to_left))
+                    stack.append((right_node_index, weights * (1 - to_left)))
+
+        if len(X.shape) == 1:
+            p_d = p_d[..., 0]
 
         return p_d
 

@@ -15,6 +15,7 @@ import pymc as pm
 
 from pymc_bart.bart import BART
 from pymc_bart.pgbart import PGBART
+from pymc_bart.split_rules import ContinuousSplitRule, OneHotSplitRule, SubsetSplitRule
 from pymc_bart.utils import (
     plot_convergence,
     plot_pdp,

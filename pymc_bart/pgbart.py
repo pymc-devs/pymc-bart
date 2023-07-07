@@ -26,6 +26,7 @@ from pytensor.tensor.var import Variable
 
 from pymc_bart.bart import BARTRV
 from pymc_bart.tree import Node, Tree, get_idx_left_child, get_idx_right_child, get_depth
+from pymc_bart.split_rules import ContinuousSplitRule
 
 
 class ParticleTree:
@@ -141,6 +142,11 @@ class PGBART(ArrayStepShared):
         else:
             self.alpha_vec = np.ones(self.X.shape[1], dtype=np.int32)
 
+        if self.bart.split_rules:
+            self.split_rules = self.bart.split_rules
+        else:
+            self.split_rules = [ContinuousSplitRule] * self.X.shape[1]
+
         init_mean = self.bart.Y.mean()
         self.num_observations = self.X.shape[0]
         self.num_variates = self.X.shape[1]
@@ -164,6 +170,7 @@ class PGBART(ArrayStepShared):
             idx_data_points=np.arange(self.num_observations, dtype="int32"),
             num_observations=self.num_observations,
             shape=self.shape,
+            split_rules=self.split_rules,
         )
 
         self.normal = NormalSampler(1, self.shape)
@@ -443,13 +450,17 @@ def grow_tree(
     idx_data_points, available_splitting_values = filter_missing_values(
         X[idx_data_points, selected_predictor], idx_data_points, missing_data
     )
-    split_value = get_split_value(available_splitting_values)
+
+    split_rule = tree.split_rules[selected_predictor]
+
+    split_value = split_rule.get_split_value(available_splitting_values)
 
     if split_value is None:
         return None
-    new_idx_data_points = get_new_idx_data_points(
-        available_splitting_values, split_value, idx_data_points
-    )
+
+    to_left = split_rule.divide(available_splitting_values, split_value)
+    new_idx_data_points = idx_data_points[to_left], idx_data_points[~to_left]
+
     current_node_children = (
         get_idx_left_child(index_leaf_node),
         get_idx_right_child(index_leaf_node),
@@ -481,26 +492,12 @@ def grow_tree(
     return current_node_children
 
 
-@njit
-def get_new_idx_data_points(available_splitting_values, split_value, idx_data_points):
-    split_idx = available_splitting_values <= split_value
-    return idx_data_points[split_idx], idx_data_points[~split_idx]
-
-
 def filter_missing_values(available_splitting_values, idx_data_points, missing_data):
     if missing_data:
         mask = ~np.isnan(available_splitting_values)
         idx_data_points = idx_data_points[mask]
         available_splitting_values = available_splitting_values[mask]
     return idx_data_points, available_splitting_values
-
-
-def get_split_value(available_splitting_values):
-    split_value = None
-    if available_splitting_values.size > 0:
-        idx_selected_splitting_values = discrete_uniform_sampler(len(available_splitting_values))
-        split_value = available_splitting_values[idx_selected_splitting_values]
-    return split_value
 
 
 def draw_leaf_value(
