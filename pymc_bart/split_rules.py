@@ -12,9 +12,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from abc import abstractmethod
 from numba import njit
 import numpy as np
-from abc import abstractmethod
 
 
 class SplitRule:
@@ -35,7 +35,8 @@ class SplitRule:
 
 class ContinuousSplitRule(SplitRule):
     """
-    Standard continuous split rule: pick a pivot value and split depending on if variable is smaller or greater than the value picked.
+    Standard continuous split rule: pick a pivot value and split
+    depending on if variable is smaller or greater than the value picked.
     """
 
     @staticmethod
@@ -77,8 +78,10 @@ class OneHotSplitRule(SplitRule):
 
 class SubsetSplitRule(SplitRule):
     """
-    Choose a random subset of the categorical values and branch on if the value is within the chosen set.
-    This is the approach taken by  Sameer K. Deshpande. flexBART: Flexible Bayesian regression trees with categorical predictors. arXiv, `link <https://arxiv.org/abs/2211.04459>`__
+    Choose a random subset of the categorical values and branch on belonging to that set.
+    This is the approach taken by  Sameer K. Deshpande.
+    flexBART: Flexible Bayesian regression trees with categorical predictors. arXiv,
+    `link <https://arxiv.org/abs/2211.04459>`__
     """
 
     @staticmethod

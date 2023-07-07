@@ -95,7 +95,7 @@ class BART(Distribution):
     split_rules : Optional[SplitRule], default None
         List of SplitRule objects, one per column in input data.
         Allows using different split rules for different columns. Default is ContinuousSplitRule.
-        Other options are OneHotSplitRule and SubsetSplitRule that both apply to categorical variables.
+        Other options are OneHotSplitRule and SubsetSplitRule, both meant for categorical variables.
 
     Notes
     -----
