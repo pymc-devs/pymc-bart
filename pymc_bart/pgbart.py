@@ -381,6 +381,8 @@ class PGBART(ArrayStepShared):
 
 
 class RunningSd:
+    """Welford's online algorithm for computing the variance/standard deviation"""
+
     def __init__(self, shape: tuple) -> None:
         self.count = 0  # number of data points
         self.mean = np.zeros(shape)  # running mean
@@ -429,6 +431,9 @@ class SampleSplittingVariable:
 def compute_prior_probability(alpha: int, beta: int) -> List[float]:
     """
     Calculate the probability of the node being a leaf node (1 - p(being split node)).
+
+    This is the recommend prior in Chipman Et al. BART: Bayesian additive regression trees,
+    `link <https://doi.org/10.1214/09-AOAS285>`__
 
     Parameters
     ----------

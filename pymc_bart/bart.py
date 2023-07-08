@@ -16,6 +16,7 @@
 
 from multiprocessing import Manager
 from typing import List, Optional, Tuple
+import warnings
 
 import numpy as np
 import numpy.typing as npt
@@ -81,7 +82,7 @@ class BART(Distribution):
         Number of trees.
     response : str
         How the leaf_node values are computed. Available options are ``constant``, ``linear`` or
-        ``mix``. Defaults to ``constant``.
+        ``mix``. Defaults to ``constant``. Options ``linear`` and ``mix`` are still experimental.
     alpha : float
         Controls the prior probability over the depth of the trees.
         Should be in the (0, 1) interval.
@@ -127,6 +128,11 @@ class BART(Distribution):
         separate_trees: Optional[bool] = False,
         **kwargs,
     ):
+        if response in ["linear", "mix"]:
+            warnings.warn(
+                "Options linear and mix are experimental and still not well tested\n"
+                + "Use with caution."
+            )
         manager = Manager()
         cls.all_trees = manager.list()
 
