@@ -65,10 +65,6 @@ class Node:
             linear_params=linear_params,
         )
 
-    @classmethod
-    def new_split_node(cls, split_value: npt.NDArray[np.float_], idx_split_variable: int) -> "Node":
-        return cls(value=split_value, idx_split_variable=idx_split_variable)
-
     def is_split_node(self) -> bool:
         return self.idx_split_variable >= 0
 
@@ -282,42 +278,42 @@ class Tree:
         """
 
         x_shape = (1,) if len(X.shape) == 1 else X.shape[:-1]
+        nd_dims = (...,) + (None,) * len(x_shape)
 
-        stack = [(0, np.ones(x_shape))]  # (node_index, weight) initial state
+        stack = [(0, np.ones(x_shape), 0)]  # (node_index, weight, idx_split_variable) initial state
         p_d = (
             np.zeros(shape + x_shape) if isinstance(shape, tuple) else np.zeros((shape,) + x_shape)
         )
         while stack:
-            node_index, weights = stack.pop()
+            node_index, weights, idx_split_variable = stack.pop()
             node = self.get_node(node_index)
             if node.is_leaf_node():
                 params = node.linear_params
-                nd_dims = (...,) + (None,) * len(x_shape)
                 if params is None:
                     p_d += weights * node.value[nd_dims]
                 else:
-                    # this produce nonsensical results
                     p_d += weights * (
-                        params[0][nd_dims] + params[1][nd_dims] * X[..., node.idx_split_variable]
+                        params[0][nd_dims] + params[1][nd_dims] * X[..., idx_split_variable]
                     )
-                    # this produce reasonable result
-                    # p_d += weight * node.value.mean()
             else:
                 left_node_index, right_node_index = get_idx_left_child(
                     node_index
                 ), get_idx_right_child(node_index)
+                idx_split_variable = node.idx_split_variable
                 if excluded is not None and node.idx_split_variable in excluded:
                     prop_nvalue_left = self.get_node(left_node_index).nvalue / node.nvalue
-                    stack.append((left_node_index, weights * prop_nvalue_left))
-                    stack.append((right_node_index, weights * (1 - prop_nvalue_left)))
+                    stack.append((left_node_index, weights * prop_nvalue_left, idx_split_variable))
+                    stack.append(
+                        (right_node_index, weights * (1 - prop_nvalue_left), idx_split_variable)
+                    )
                 else:
                     to_left = (
-                        self.split_rules[node.idx_split_variable]
-                        .divide(X[..., node.idx_split_variable], node.value)
+                        self.split_rules[idx_split_variable]
+                        .divide(X[..., idx_split_variable], node.value)
                         .astype("float")
                     )
-                    stack.append((left_node_index, weights * to_left))
-                    stack.append((right_node_index, weights * (1 - to_left)))
+                    stack.append((left_node_index, weights * to_left, idx_split_variable))
+                    stack.append((right_node_index, weights * (1 - to_left), idx_split_variable))
 
         if len(X.shape) == 1:
             p_d = p_d[..., 0]

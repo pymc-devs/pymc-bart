@@ -5,7 +5,7 @@ from pymc_bart.tree import Node, get_idx_left_child, get_idx_right_child, get_de
 
 def test_split_node():
     index = 5
-    split_node = Node.new_split_node(idx_split_variable=2, split_value=3.0)
+    split_node = Node(idx_split_variable=2, value=3.0)
     assert get_depth(index) == 2
     assert split_node.value == 3.0
     assert split_node.idx_split_variable == 2
