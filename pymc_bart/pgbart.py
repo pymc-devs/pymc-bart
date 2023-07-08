@@ -536,15 +536,14 @@ def draw_leaf_value(
         return np.zeros(shape), linear_params
 
     if y_mu_pred.size == 1:
-        mu_mean = np.full(shape, y_mu_pred.item() / m)
+        mu_mean = np.full(shape, y_mu_pred.item() / m) + norm
     else:
-        if response == "constant":
-            mu_mean = fast_mean(y_mu_pred) / m
-        if response == "linear":
-            mu_mean, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred, m=m)
+        if y_mu_pred.size < 3 or response == "constant":
+            mu_mean = fast_mean(y_mu_pred) / m + norm
+        else:
+            mu_mean, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred, m=m, norm=norm)
 
-    draw = mu_mean + norm
-    return draw, linear_params
+    return mu_mean, linear_params
 
 
 @njit
@@ -570,9 +569,10 @@ def fast_linear_fit(
     x: npt.NDArray[np.float_],
     y: npt.NDArray[np.float_],
     m: int,
+    norm: npt.NDArray[np.float_],
 ) -> Tuple[npt.NDArray[np.float_], List[npt.NDArray[np.float_]]]:
     n = len(x)
-    y = y / m
+    y = y / m + np.expand_dims(norm, axis=1)
 
     xbar = np.sum(x) / n
     ybar = np.sum(y, axis=1) / n
