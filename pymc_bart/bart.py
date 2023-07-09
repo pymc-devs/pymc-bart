@@ -16,6 +16,7 @@
 
 from multiprocessing import Manager
 from typing import List, Optional, Tuple
+import warnings
 
 import numpy as np
 import numpy.typing as npt
@@ -81,7 +82,7 @@ class BART(Distribution):
         Number of trees.
     response : str
         How the leaf_node values are computed. Available options are ``constant``, ``linear`` or
-        ``mix``. Defaults to ``constant``.
+        ``mix``. Defaults to ``constant``. Options ``linear`` and ``mix`` are still experimental.
     alpha : float
         Controls the prior probability over the depth of the trees.
         Should be in the (0, 1) interval.
@@ -111,6 +112,9 @@ class BART(Distribution):
     The parameters ``alpha`` and ``beta`` parametrize the probability that a node at
     depth :math:`d \: (= 0, 1, 2,...)` is non-terminal, given by :math:`\alpha(1 + d)^{-\beta}`.
     The default values are :math:`\alpha = 0.95` and :math:`\beta = 2`.
+
+    This is the recommend prior by Chipman Et al. BART: Bayesian additive regression trees,
+    `link <https://doi.org/10.1214/09-AOAS285>`__
     """
 
     def __new__(
@@ -127,6 +131,11 @@ class BART(Distribution):
         separate_trees: Optional[bool] = False,
         **kwargs,
     ):
+        if response in ["linear", "mix"]:
+            warnings.warn(
+                "Options linear and mix are experimental and still not well tested\n"
+                + "Use with caution."
+            )
         manager = Manager()
         cls.all_trees = manager.list()
 

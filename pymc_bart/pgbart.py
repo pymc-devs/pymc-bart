@@ -381,6 +381,8 @@ class PGBART(ArrayStepShared):
 
 
 class RunningSd:
+    """Welford's online algorithm for computing the variance/standard deviation"""
+
     def __init__(self, shape: tuple) -> None:
         self.count = 0  # number of data points
         self.mean = np.zeros(shape)  # running mean
