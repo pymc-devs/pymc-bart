@@ -296,11 +296,11 @@ class Tree:
                         params[0][nd_dims] + params[1][nd_dims] * X[..., idx_split_variable]
                     )
             else:
+                idx_split_variable = node.idx_split_variable
                 left_node_index, right_node_index = get_idx_left_child(
                     node_index
                 ), get_idx_right_child(node_index)
-                idx_split_variable = node.idx_split_variable
-                if excluded is not None and node.idx_split_variable in excluded:
+                if excluded is not None and idx_split_variable in excluded:
                     prop_nvalue_left = self.get_node(left_node_index).nvalue / node.nvalue
                     stack.append((left_node_index, weights * prop_nvalue_left, idx_split_variable))
                     stack.append(
