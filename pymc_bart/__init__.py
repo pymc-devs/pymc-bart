@@ -25,7 +25,7 @@ from pymc_bart.utils import (
 )
 
 __all__ = ["BART", "PGBART"]
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 
 pm.STEP_METHODS = list(pm.STEP_METHODS) + [PGBART]
