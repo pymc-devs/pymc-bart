@@ -160,6 +160,7 @@ class TestUtils:
             {"instances": 2},
             {"var_idx": [0], "smooth": False, "color": "k"},
             {"grid": (1, 2), "sharey": "none", "alpha": 1},
+            {"var_discrete": [0]}
         ],
     )
     def test_ice(self, kwargs):
@@ -177,6 +178,7 @@ class TestUtils:
             },
             {"var_idx": [0], "smooth": False, "color": "k"},
             {"grid": (1, 2), "sharey": "none", "alpha": 1},
+            {"var_discrete": [0]}
         ],
     )
     def test_pdp(self, kwargs):
