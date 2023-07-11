@@ -289,7 +289,7 @@ def plot_ice(
                 p_di = func(p_d[:, :, s_i])
             if var in var_discrete:
                 axes[count].plot(new_x, p_di.mean(0), "o", color=color_mean)
-                axes[count].plot(new_x, p_di, ".", color=color, alpha=alpha)
+                axes[count].plot(new_x, p_di.T, ".", color=color, alpha=alpha)
             else:
                 if smooth:
                     x_data, y_data = _smooth_mean(new_x, p_di, "ice", smooth_kwargs)
