@@ -14,9 +14,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import warnings
 from multiprocessing import Manager
 from typing import List, Optional, Tuple
-import warnings
 
 import numpy as np
 import numpy.typing as npt
@@ -26,9 +26,9 @@ from pymc.distributions.distribution import Distribution, _moment
 from pymc.logprob.abstract import _logprob
 from pytensor.tensor.random.op import RandomVariable
 
+from .split_rules import SplitRule
 from .tree import Tree
 from .utils import TensorLike, _sample_posterior
-from .split_rules import SplitRule
 
 __all__ = ["BART"]
 
@@ -93,7 +93,7 @@ class BART(Distribution):
         Each element of split_prior should be in the [0, 1] interval and the elements should sum to
         1. Otherwise they will be normalized.
         Defaults to 0, i.e. all covariates have the same prior probability to be selected.
-    split_rules : Optional[SplitRule], default None
+    split_rules : Optional[List[SplitRule]], default None
         List of SplitRule objects, one per column in input data.
         Allows using different split rules for different columns. Default is ContinuousSplitRule.
         Other options are OneHotSplitRule and SubsetSplitRule, both meant for categorical variables.
@@ -127,7 +127,7 @@ class BART(Distribution):
         beta: float = 2.0,
         response: str = "constant",
         split_prior: Optional[List[float]] = None,
-        split_rules: Optional[SplitRule] = None,
+        split_rules: Optional[List[SplitRule]] = None,
         separate_trees: Optional[bool] = False,
         **kwargs,
     ):
