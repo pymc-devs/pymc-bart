@@ -14,9 +14,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+import warnings
 from multiprocessing import Manager
 from typing import List, Optional, Tuple
-import warnings
 
 import numpy as np
 import numpy.typing as npt
@@ -26,9 +26,9 @@ from pymc.distributions.distribution import Distribution, _moment
 from pymc.logprob.abstract import _logprob
 from pytensor.tensor.random.op import RandomVariable
 
+from .split_rules import SplitRule
 from .tree import Tree
 from .utils import TensorLike, _sample_posterior
-from .split_rules import SplitRule
 
 __all__ = ["BART"]
 
@@ -47,7 +47,7 @@ class BARTRV(RandomVariable):
         return dist_params[0].shape[:1]
 
     @classmethod
-    def rng_fn(
+    def rng_fn(  # pylint: disable=W0237
         cls, rng=None, X=None, Y=None, m=None, alpha=None, beta=None, split_prior=None, size=None
     ):
         if not cls.all_trees:
@@ -147,21 +147,21 @@ class BART(Distribution):
         bart_op = type(
             f"BART_{name}",
             (BARTRV,),
-            dict(
-                name="BART",
-                all_trees=cls.all_trees,
-                inplace=False,
-                initval=Y.mean(),
-                X=X,
-                Y=Y,
-                m=m,
-                response=response,
-                alpha=alpha,
-                beta=beta,
-                split_prior=split_prior,
-                split_rules=split_rules,
-                separate_trees=separate_trees,
-            ),
+            {
+                "name": "BART",
+                "all_trees": cls.all_trees,
+                "inplace": False,
+                "initval": Y.mean(),
+                "X": X,
+                "Y": Y,
+                "m": m,
+                "response": response,
+                "alpha": alpha,
+                "beta": beta,
+                "split_prior": split_prior,
+                "split_rules": split_rules,
+                "separate_trees": separate_trees,
+            },
         )()
 
         Distribution.register(BARTRV)

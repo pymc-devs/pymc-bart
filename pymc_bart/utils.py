@@ -246,7 +246,11 @@ def plot_ice(
     rng = np.random.default_rng(random_seed)
 
     if func is None:
-        func = lambda x: x
+
+        def identity(x):
+            return x
+
+        func = identity
 
     (
         X,
@@ -392,7 +396,11 @@ def plot_pdp(
     rng = np.random.default_rng(random_seed)
 
     if func is None:
-        func = lambda x: x
+
+        def identity(x):
+            return x
+
+        func = identity
 
     (
         X,
