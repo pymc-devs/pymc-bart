@@ -357,7 +357,7 @@ def plot_pdp(
     func : Optional[Callable], by default None.
         Arbitrary function to apply to the predictions. Defaults to the identity function.
     samples : int
-        Number of posterior samples used in the predictions. Defaults to 400
+        Number of posterior samples used in the predictions. Defaults to 200
     random_seed : Optional[int], by default None.
         Seed used to sample from the posterior. Defaults to None.
     sharey : bool

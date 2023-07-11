@@ -18,6 +18,7 @@ from typing import Dict, Generator, List, Optional, Tuple, Union
 import numpy as np
 import numpy.typing as npt
 from pytensor import config
+
 from .split_rules import SplitRule
 
 
@@ -101,6 +102,10 @@ class Tree:
         of the tree itself.
     output: Optional[npt.NDArray[np.float_]]
         Array of shape number of observations, shape
+    split_rules : List[SplitRule]
+        List of SplitRule objects, one per column in input data.
+        Allows using different split rules for different columns. Default is ContinuousSplitRule.
+        Other options are OneHotSplitRule and SubsetSplitRule, both meant for categorical variables.
     idx_leaf_nodes : Optional[List[int]], by default None.
         Array with the index of the leaf nodes of the tree.
 
