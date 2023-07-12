@@ -47,7 +47,7 @@ class BARTRV(RandomVariable):
         return dist_params[0].shape[:1]
 
     @classmethod
-    def rng_fn(
+    def rng_fn(  # pylint: disable=W0237
         cls, rng=None, X=None, Y=None, m=None, alpha=None, beta=None, split_prior=None, size=None
     ):
         if not cls.all_trees:
@@ -147,21 +147,21 @@ class BART(Distribution):
         bart_op = type(
             f"BART_{name}",
             (BARTRV,),
-            dict(
-                name="BART",
-                all_trees=cls.all_trees,
-                inplace=False,
-                initval=Y.mean(),
-                X=X,
-                Y=Y,
-                m=m,
-                response=response,
-                alpha=alpha,
-                beta=beta,
-                split_prior=split_prior,
-                split_rules=split_rules,
-                separate_trees=separate_trees,
-            ),
+            {
+                "name": "BART",
+                "all_trees": cls.all_trees,
+                "inplace": False,
+                "initval": Y.mean(),
+                "X": X,
+                "Y": Y,
+                "m": m,
+                "response": response,
+                "alpha": alpha,
+                "beta": beta,
+                "split_prior": split_prior,
+                "split_rules": split_rules,
+                "separate_trees": separate_trees,
+            },
         )()
 
         Distribution.register(BARTRV)

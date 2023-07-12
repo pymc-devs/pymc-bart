@@ -3,6 +3,6 @@ click==8.0.4
 mypy>=1.1.1
 pandas-stubs==1.5.3.230304
 pre-commit
-pylint==2.10.2
+pylint==2.17.4
 pytest-cov>=2.6.1
 pytest>=4.4.0
