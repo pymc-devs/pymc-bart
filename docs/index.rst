@@ -33,22 +33,19 @@ PyMC-BART requires a working Python interpreter (3.8+). We recommend installing 
 
 Assuming a standard Python environment is installed on your machine, PyMC-BART itself can be installed either using pip or conda-forge.
 
-Using pip
-=========
+**Using pip**
 
 .. code-block:: bash
 
     pip install pymc-bart
 
-Using conda-forge
-=================
+**Using conda-forge**
 
 .. code-block:: bash
 
      conda install -c conda-forge pymc-bart 
 
-Development
-===========
+**Development**
 
 Alternatively, if you want the bleeding edge version of the package you can install from GitHub:
 
