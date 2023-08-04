@@ -43,7 +43,9 @@ class BARTRV(RandomVariable):
     _print_name: Tuple[str, str] = ("BART", "\\operatorname{BART}")
     all_trees = List[List[List[Tree]]]
 
-    def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):
+    def _supp_shape_from_params(
+        self, dist_params, rep_param_idx=1, param_shapes=None
+    ):  # pylint: disable=arguments-renamed
         return dist_params[0].shape[:1]
 
     @classmethod
@@ -141,8 +143,7 @@ class BART(Distribution):
 
         X, Y = preprocess_xy(X, Y)
 
-        if split_prior is None:
-            split_prior = []
+        split_prior = np.array([]) if split_prior is None else np.asarray(split_prior)
 
         bart_op = type(
             f"BART_{name}",
