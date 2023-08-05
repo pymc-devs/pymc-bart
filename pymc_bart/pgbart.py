@@ -146,7 +146,7 @@ class PGBART(ArrayStepShared):
         self.leaves_shape = self.shape if not self.bart.separate_trees else 1
 
         if self.bart.split_prior.size == 0:
-            self.alpha_vec = np.ones(self.X.shape[1], dtype=np.int32)
+            self.alpha_vec = np.ones(self.X.shape[1])
         else:
             self.alpha_vec = self.bart.split_prior
 
