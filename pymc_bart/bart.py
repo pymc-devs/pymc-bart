@@ -128,7 +128,7 @@ class BART(Distribution):
         alpha: float = 0.95,
         beta: float = 2.0,
         response: str = "constant",
-        split_prior: Optional[List[float]] = None,
+        split_prior: Optional[npt.NDArray[np.float_]] = None,
         split_rules: Optional[List[SplitRule]] = None,
         separate_trees: Optional[bool] = False,
         **kwargs,
