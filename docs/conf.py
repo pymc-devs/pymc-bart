@@ -1,6 +1,5 @@
 import os, sys
 from pathlib import Path
-from sphinx.application import Sphinx
 
 # -- Project information -----------------------------------------------------
 project = "PyMC-BART"
@@ -76,13 +75,13 @@ html_context = {
 
 
 html_favicon = "../_static/PyMC.ico"
-html_logo = "../_static/PyMC.png"
+html_logo = "logos/pymc_bart.png"
 html_title = "PyMC-BART"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["../_static"]
+html_static_path = ["../_static", "logos"]
 html_extra_path = ["../_thumbnails"]
 templates_path = ["../_templates"]
 html_sidebars = {
