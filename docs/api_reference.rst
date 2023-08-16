@@ -13,4 +13,4 @@ methods in the current release of PyMC-BART.
 =============================
 
 .. automodule:: pymc_bart
-   :members: BART, PGBART, plot_pdp, plot_variable_importance, plot_convergence, ContinuousSplitRule, OneHotSplitRule, SubsetSplitRule
+   :members: BART, PGBART, plot_pdp, plot_ice, plot_variable_importance, plot_convergence, ContinuousSplitRule, OneHotSplitRule, SubsetSplitRule
