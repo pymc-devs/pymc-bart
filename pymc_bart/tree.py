@@ -21,7 +21,6 @@ from pytensor import config
 
 from .split_rules import SplitRule
 
-
 class Node:
     """Node of a binary tree.
 
@@ -295,7 +294,7 @@ class Tree:
             if node.is_leaf_node():
                 params = node.linear_params
                 if params is None:
-                    p_d += weights * node.value[nd_dims]
+                    p_d += weights * node.value#[nd_dims]
                 else:
                     p_d += weights * (
                         params[0][nd_dims] + params[1][nd_dims] * X[..., idx_split_variable]

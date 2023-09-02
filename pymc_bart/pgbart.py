@@ -25,9 +25,11 @@ from pytensor import function as pytensor_function
 from pytensor.tensor.var import Variable
 
 from pymc_bart.bart import BARTRV
-from pymc_bart.tree import Node, Tree, get_idx_left_child, get_idx_right_child, get_depth
+#from pymc_bart.tree import Node, Tree, get_idx_left_child, get_idx_right_child, get_depth
+from node import Node, Tree, get_idx_left_child, get_idx_right_child, get_depth
 from pymc_bart.split_rules import ContinuousSplitRule
 
+from copy import copy
 
 class ParticleTree:
     """Particle tree."""
@@ -482,7 +484,7 @@ def grow_tree(
         return None
 
     to_left = split_rule.divide(available_splitting_values, split_value)
-    new_idx_data_points = idx_data_points[to_left], idx_data_points[~to_left]
+    new_idx_data_points = np.asarray(idx_data_points)[to_left], np.asarray(idx_data_points)[~to_left]
 
     current_node_children = (
         get_idx_left_child(index_leaf_node),

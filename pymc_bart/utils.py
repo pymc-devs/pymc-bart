@@ -14,7 +14,8 @@ from scipy.signal import savgol_filter
 from scipy.stats import norm, pearsonr
 from xarray import concat
 
-from .tree import Tree
+#from .tree import Tree
+from .node import Tree
 
 TensorLike = Union[npt.NDArray[np.float_], pt.TensorVariable]
 

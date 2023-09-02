@@ -27,7 +27,8 @@ from pymc.logprob.abstract import _logprob
 from pytensor.tensor.random.op import RandomVariable
 
 from .split_rules import SplitRule
-from .tree import Tree
+#from .tree import Tree
+from .node import Tree
 from .utils import TensorLike, _sample_posterior
 
 __all__ = ["BART"]
