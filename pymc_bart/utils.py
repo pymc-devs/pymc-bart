@@ -536,7 +536,7 @@ def _get_axes(
             fig = ax[0].get_figure()
         else:
             axes = [ax]
-            fig = ax.get_figure()
+            fig = ax.get_figure()  # type: ignore
 
     return fig, axes, shape
 
@@ -718,7 +718,7 @@ def plot_variable_importance(
     figsize: Optional[Tuple[float, float]] = None,
     samples: int = 100,
     random_seed: Optional[int] = None,
-) -> Tuple[npt.NDArray[np.int_], List[plt.axes]]:
+) -> Tuple[npt.NDArray[np.int_], List[plt.Axes]]:
     """
     Estimates variable importance from the BART-posterior.
 
