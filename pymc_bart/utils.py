@@ -157,7 +157,7 @@ def plot_ice(
     bartrv: Variable,
     X: npt.NDArray[np.float_],
     Y: Optional[npt.NDArray[np.float_]] = None,
-    xs_interval: str = "linear",
+    xs_interval: str = "quantiles",
     xs_values: Optional[Union[int, List[float]]] = None,
     var_idx: Optional[List[int]] = None,
     var_discrete: Optional[List[int]] = None,
@@ -303,7 +303,7 @@ def plot_ice(
                     idx = np.argsort(new_x)
                     axes[count].plot(new_x[idx], p_di.mean(0)[idx], color=color_mean)
                     axes[count].plot(new_x[idx], p_di.T[idx], color=color, alpha=alpha)
-                axes[count].set_xlabel(x_labels[var])
+            axes[count].set_xlabel(x_labels[var])
 
             count += 1
 
@@ -316,7 +316,7 @@ def plot_pdp(
     bartrv: Variable,
     X: npt.NDArray[np.float_],
     Y: Optional[npt.NDArray[np.float_]] = None,
-    xs_interval: str = "linear",
+    xs_interval: str = "quantiles",
     xs_values: Optional[Union[int, List[float]]] = None,
     var_idx: Optional[List[int]] = None,
     var_discrete: Optional[List[int]] = None,
@@ -423,35 +423,39 @@ def plot_pdp(
         p_d = _sample_posterior(
             all_trees, X=fake_X, rng=rng, size=samples, excluded=excluded, shape=shape
         )
-        new_x = fake_X[:, var]
-        for s_i in range(shape):
-            p_di = func(p_d[:, :, s_i])
-            if var in var_discrete:
-                y_means = p_di.mean(0)
-                hdi = az.hdi(p_di)
-                axes[count].errorbar(
-                    new_x,
-                    y_means,
-                    (y_means - hdi[:, 0], hdi[:, 1] - y_means),
-                    fmt=".",
-                    color=color,
-                )
-            else:
-                az.plot_hdi(
-                    new_x,
-                    p_di,
-                    smooth=smooth,
-                    fill_kwargs={"alpha": alpha, "color": color},
-                    ax=axes[count],
-                )
-                if smooth:
-                    x_data, y_data = _smooth_mean(new_x, p_di, "pdp", smooth_kwargs)
-                    axes[count].plot(x_data, y_data, color=color_mean)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="hdi currently interprets 2d data")
+            new_x = fake_X[:, var]
+            for s_i in range(shape):
+                p_di = func(p_d[:, :, s_i])
+                if var in var_discrete:
+                    _, idx_uni = np.unique(new_x, return_index=True)
+                    y_means = p_di.mean(0)[idx_uni]
+                    hdi = az.hdi(p_di)[idx_uni]
+                    axes[count].errorbar(
+                        new_x[idx_uni],
+                        y_means,
+                        (y_means - hdi[:, 0], hdi[:, 1] - y_means),
+                        fmt=".",
+                        color=color,
+                    )
+                    axes[count].set_xticks(new_x[idx_uni])
                 else:
-                    axes[count].plot(new_x, p_di.mean(0), color=color_mean)
+                    az.plot_hdi(
+                        new_x,
+                        p_di,
+                        smooth=smooth,
+                        fill_kwargs={"alpha": alpha, "color": color},
+                        ax=axes[count],
+                    )
+                    if smooth:
+                        x_data, y_data = _smooth_mean(new_x, p_di, "pdp", smooth_kwargs)
+                        axes[count].plot(x_data, y_data, color=color_mean)
+                    else:
+                        axes[count].plot(new_x, p_di.mean(0), color=color_mean)
                 axes[count].set_xlabel(x_labels[var])
 
-            count += 1
+                count += 1
 
     fig.text(-0.05, 0.5, y_label, va="center", rotation="vertical", fontsize=15)
 
@@ -527,8 +531,12 @@ def _get_axes(
                 fig.delaxes(axes[i])
             axes = axes[:n_plots]
     else:
-        axes = [ax]
-        fig = ax.get_figure()
+        if isinstance(ax, np.ndarray): 
+            axes = ax
+            fig = ax[0].get_figure()
+        else:
+            axes = [ax]
+            fig = ax.get_figure()
 
     return fig, axes, shape
 
@@ -536,7 +544,7 @@ def _get_axes(
 def _prepare_plot_data(
     X: npt.NDArray[np.float_],
     Y: Optional[npt.NDArray[np.float_]] = None,
-    xs_interval: str = "linear",
+    xs_interval: str = "quantiles",
     xs_values: Optional[Union[int, List[float]]] = None,
     var_idx: Optional[List[int]] = None,
     var_discrete: Optional[List[int]] = None,
