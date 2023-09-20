@@ -96,10 +96,10 @@ class PGBART(ArrayStepShared):
         List of value variables for sampler
     num_particles : tuple
         Number of particles. Defaults to 10
-    batch : int or tuple
-        Number of trees fitted per step. Defaults to  "auto", which is the 10% of the `m` trees
-        during tuning and after tuning. If a tuple is passed the first element is the batch size
-        during tuning and the second the batch size after tuning.
+    batch : tuple
+        Number of trees fitted per step. The first element is the batch size during tuning and the
+        second the batch size after tuning.  Defaults to  (0.1, 0.1), meaning 10% of the `m` trees
+        during tuning and after tuning.
     model: PyMC Model
         Optional model for sampling step. Defaults to None (taken from context).
     """
