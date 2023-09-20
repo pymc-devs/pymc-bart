@@ -531,7 +531,7 @@ def _get_axes(
                 fig.delaxes(axes[i])
             axes = axes[:n_plots]
     else:
-        if isinstance(ax, np.ndarray): 
+        if isinstance(ax, np.ndarray):
             axes = ax
             fig = ax[0].get_figure()
         else:
