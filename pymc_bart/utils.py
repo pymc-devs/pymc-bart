@@ -143,7 +143,7 @@ def plot_dependence(*args, kind="pdp", **kwargs):  # pylint: disable=unused-argu
     """
     if kind == "pdp":
         warnings.warn(
-            "This function has been deprecated. Use plot_pd instead.",
+            "This function has been deprecated. Use plot_pdp instead.",
             FutureWarning,
         )
     elif kind == "ice":
