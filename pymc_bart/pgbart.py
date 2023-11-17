@@ -155,6 +155,11 @@ class PGBART(ArrayStepShared):
         else:
             self.split_rules = [ContinuousSplitRule] * self.X.shape[1]
 
+            jittered = np.random.normal(self.X, self.X.std(axis=0) / 12)
+            min_values = np.min(self.X, axis=0)
+            max_values = np.max(self.X, axis=0)
+            self.X = np.clip(jittered, min_values, max_values)
+
         init_mean = self.bart.Y.mean()
         self.num_observations = self.X.shape[0]
         self.num_variates = self.X.shape[1]

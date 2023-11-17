@@ -25,6 +25,7 @@ from pandas import DataFrame, Series
 from pymc.distributions.distribution import Distribution, _moment
 from pymc.logprob.abstract import _logprob
 from pytensor.tensor.random.op import RandomVariable
+from pytensor.tensor.var import Variable
 
 from .split_rules import SplitRule
 from .tree import Tree
@@ -92,9 +93,8 @@ class BART(Distribution):
         Controls the prior probability over the number of leaves of the trees.
         Should be positive.
     split_prior : Optional[List[float]], default None.
-        Each element of split_prior should be in the [0, 1] interval and the elements should sum to
-        1. Otherwise they will be normalized.
-        Defaults to 0, i.e. all covariates have the same prior probability to be selected.
+        List of positive numbers, one per column in input data.
+        Defaults to None, all covariates have the same prior probability to be selected.
     split_rules : Optional[List[SplitRule]], default None
         List of SplitRule objects, one per column in input data.
         Allows using different split rules for different columns. Default is ContinuousSplitRule.
