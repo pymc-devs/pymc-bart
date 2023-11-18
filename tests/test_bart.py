@@ -98,7 +98,7 @@ def test_shared_variable(response):
         y = pm.Normal("y", mu, sigma, observed=Y, shape=mu.shape)
         idata = pm.sample(tune=100, draws=100, chains=2, random_seed=3415)
         ppc = pm.sample_posterior_predictive(idata)
-        new_X = pm.set_data({"data_X": X[:3]})
+        pm.set_data({"data_X": X[:3]})
         ppc2 = pm.sample_posterior_predictive(idata)
 
     assert ppc.posterior_predictive["y"].shape == (2, 100, 50)
@@ -160,7 +160,7 @@ class TestUtils:
             {"instances": 2},
             {"var_idx": [0], "smooth": False, "color": "k"},
             {"grid": (1, 2), "sharey": "none", "alpha": 1},
-            {"var_discrete": [0]}
+            {"var_discrete": [0]},
         ],
     )
     def test_ice(self, kwargs):
@@ -178,7 +178,7 @@ class TestUtils:
             },
             {"var_idx": [0], "smooth": False, "color": "k"},
             {"grid": (1, 2), "sharey": "none", "alpha": 1},
-            {"var_discrete": [0]}
+            {"var_discrete": [0]},
         ],
     )
     def test_pdp(self, kwargs):
@@ -224,22 +224,28 @@ def test_bart_moment(size, expected):
 @pytest.mark.parametrize(
     argnames="separate_trees,split_rule",
     argvalues=[
-        (False,pmb.ContinuousSplitRule),
-        (False,pmb.OneHotSplitRule),
-        (False,pmb.SubsetSplitRule),
-        (True,pmb.ContinuousSplitRule)
+        (False, pmb.ContinuousSplitRule),
+        (False, pmb.OneHotSplitRule),
+        (False, pmb.SubsetSplitRule),
+        (True, pmb.ContinuousSplitRule),
     ],
     ids=["continuous", "one-hot", "subset", "separate-trees"],
 )
-def test_categorical_model(separate_trees,split_rule):
+def test_categorical_model(separate_trees, split_rule):
 
     Y = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
     X = np.concatenate([Y[:, None], np.random.randint(0, 6, size=(9, 4))], axis=1)
 
     with pm.Model() as model:
-        lo = pmb.BART("logodds", X, Y, m=2, shape=(3, 9),
-            split_rules=[split_rule]*5,
-            separate_trees=separate_trees)
+        lo = pmb.BART(
+            "logodds",
+            X,
+            Y,
+            m=2,
+            shape=(3, 9),
+            split_rules=[split_rule] * 5,
+            separate_trees=separate_trees,
+        )
         y = pm.Categorical("y", p=pm.math.softmax(lo.T, axis=-1), observed=Y)
         idata = pm.sample(random_seed=3415, tune=300, draws=300)
         idata = pm.sample_posterior_predictive(idata, predictions=True, extend_inferencedata=True)
