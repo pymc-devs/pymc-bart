@@ -38,13 +38,13 @@ exclude_patterns = [
 if os.path.exists("examples"):
     external_docs = os.listdir("examples")
     for doc in external_docs:
-        file = Path("examples", doc) 
+        file = Path("examples", doc)
         if os.path.exists(file):
             os.remove(file)
 
-os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/case_studies/BART_introduction.ipynb -P examples")
-os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/case_studies/BART_quantile_regression.ipynb -P examples")
-os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/case_studies/bart_heteroscedasticity.ipynb -P examples")
+os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/bart/bart_introduction.ipynb -P examples")
+os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/bart/bart_quantile_regression.ipynb -P examples")
+os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/bart/bart_heteroscedasticity.ipynb -P examples")
 os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/references.bib -P examples")
 
 # bibtex config
