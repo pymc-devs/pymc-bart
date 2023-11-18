@@ -25,7 +25,6 @@ from pandas import DataFrame, Series
 from pymc.distributions.distribution import Distribution, _moment
 from pymc.logprob.abstract import _logprob
 from pytensor.tensor.random.op import RandomVariable
-from pytensor.tensor.var import Variable
 
 from .split_rules import SplitRule
 from .tree import Tree
