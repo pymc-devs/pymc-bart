@@ -155,10 +155,9 @@ class PGBART(ArrayStepShared):
         else:
             self.split_rules = [ContinuousSplitRule] * self.X.shape[1]
 
-            jittered = np.random.normal(self.X, self.X.std(axis=0) / 12)
-            min_values = np.min(self.X, axis=0)
-            max_values = np.max(self.X, axis=0)
-            self.X = np.clip(jittered, min_values, max_values)
+        for idx, rule in enumerate(self.split_rules):
+            if rule is ContinuousSplitRule:
+                self.X[:, idx] = jitter_duplicated(self.X[:, idx], np.std(self.X[:, idx]))
 
         init_mean = self.bart.Y.mean()
         self.num_observations = self.X.shape[0]
@@ -691,6 +690,22 @@ def inverse_cdf(
             a_weight += normalized_weights[idx]
         new_indices[i] = idx
     return new_indices
+
+
+@njit
+def jitter_duplicated(array: npt.NDArray[np.float_], std: float) -> npt.NDArray[np.float_]:
+    """
+    Jitter duplicated values.
+    """
+    seen = []
+    for idx, num in enumerate(array):
+        if num in seen:
+            new_num = num + np.random.normal(0, std / 12)
+            array[idx] = new_num
+        else:
+            seen.append(num)
+
+    return array
 
 
 def logp(point, out_vars, vars, shared):  # pylint: disable=redefined-builtin

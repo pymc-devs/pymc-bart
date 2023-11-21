@@ -79,7 +79,7 @@ class OneHotSplitRule(SplitRule):
 class SubsetSplitRule(SplitRule):
     """
     Choose a random subset of the categorical values and branch on belonging to that set.
-    This is the approach taken by  Sameer K. Deshpande.
+    This is the approach taken by Sameer K. Deshpande.
     flexBART: Flexible Bayesian regression trees with categorical predictors. arXiv,
     `link <https://arxiv.org/abs/2211.04459>`__
     """
