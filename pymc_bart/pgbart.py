@@ -700,8 +700,7 @@ def jitter_duplicated(array: npt.NDArray[np.float_], std: float) -> npt.NDArray[
     seen = []
     for idx, num in enumerate(array):
         if num in seen:
-            new_num = num + np.random.normal(0, std / 12)
-            array[idx] = new_num
+            array[idx] = num + np.random.normal(0, std / 12)
         else:
             seen.append(num)
 
