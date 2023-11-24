@@ -62,7 +62,9 @@ html_theme = "pymc_sphinx_theme"
 html_theme_options = {
     "secondary_sidebar_items": ["page-toc", "edit-this-page", "sourcelink", "donate"],
     "navbar_start": ["navbar-logo"],
+    "icon_links": [{"name": "GitHub", "url": "https://github.com/pymc-devs/pymc-bart", "icon": "fa-brands fa-github"}]
 }
+
 version = os.environ.get("READTHEDOCS_VERSION", "")
 version = version if "." in version else "main"
 html_context = {
