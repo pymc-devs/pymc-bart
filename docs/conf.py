@@ -62,7 +62,12 @@ html_theme = "pymc_sphinx_theme"
 html_theme_options = {
     "secondary_sidebar_items": ["page-toc", "edit-this-page", "sourcelink", "donate"],
     "navbar_start": ["navbar-logo"],
-    "icon_links": [{"name": "GitHub", "url": "https://github.com/pymc-devs/pymc-bart", "icon": "fa-brands fa-github"}]
+    "icon_links": [
+        { "url": "https://github.com/pymc-devs/pymc-bart", "icon": "fa-brands fa-github", "name": "GitHub" },
+        { "url": "https://twitter.com/pymc_devs/", "icon": "fa-brands fa-twitter", "name": "Twitter" },
+        { "url": "https://www.youtube.com/c/PyMCDevelopers", "icon": "fa-brands fa-youtube", "name": "YouTube" },
+        { "url": "https://discourse.pymc.io", "icon": "fa-brands fa-discourse", "name": "Discourse" },
+                   ]
 }
 
 version = os.environ.get("READTHEDOCS_VERSION", "")
