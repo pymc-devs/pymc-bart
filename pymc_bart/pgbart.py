@@ -697,14 +697,22 @@ def jitter_duplicated(array: npt.NDArray[np.float_], std: float) -> npt.NDArray[
     """
     Jitter duplicated values.
     """
-    seen = []
-    for idx, num in enumerate(array):
-        if num in seen:
-            array[idx] = num + np.random.normal(0, std / 12)
-        else:
-            seen.append(num)
+    if are_whole_number(array):
+        seen = []
+        for idx, num in enumerate(array):
+            if num in seen:
+                array[idx] = num + np.random.normal(0, std / 12)
+            else:
+                seen.append(num)
 
     return array
+
+
+@njit
+def are_whole_number(array: npt.NDArray[np.float_]) -> np.bool_:
+    """Check if all values in array are whole numbers"""
+    new_array = np.mod(array, 1)
+    return np.all(new_array == 0)
 
 
 def logp(point, out_vars, vars, shared):  # pylint: disable=redefined-builtin
