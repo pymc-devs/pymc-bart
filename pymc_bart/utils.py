@@ -705,7 +705,7 @@ def plot_variable_importance(
     samples: int = 100,
     random_seed: Optional[int] = None,
     ax: Optional[plt.Axes] = None,
-) -> Tuple[List[int], List[plt.Axes]]:
+) -> Tuple[List[int], Union[List[plt.Axes], Any]]:
     """
     Estimates variable importance from the BART-posterior.
 
