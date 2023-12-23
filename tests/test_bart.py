@@ -153,8 +153,6 @@ class TestUtils:
             {},
             {
                 "samples": 2,
-                "xs_interval": "quantiles",
-                "xs_values": [0.25, 0.5, 0.75],
                 "var_discrete": [3],
             },
             {"instances": 2},
