@@ -27,7 +27,13 @@ from pytensor.tensor.var import Variable
 
 from pymc_bart.bart import BARTRV
 from pymc_bart.split_rules import ContinuousSplitRule
-from pymc_bart.tree import Node, Tree, get_depth, get_idx_left_child, get_idx_right_child
+from pymc_bart.tree import (
+    Node,
+    Tree,
+    get_depth,
+    get_idx_left_child,
+    get_idx_right_child,
+)
 
 
 class ParticleTree:
@@ -110,7 +116,7 @@ class PGBART(ArrayStepShared):
     generates_stats = True
     stats_dtypes = [{"variable_inclusion": object, "tune": bool}]
 
-    def __init__(
+    def __init__(  # noqa: PLR0915
         self,
         vars=None,  # pylint: disable=redefined-builtin
         num_particles: int = 10,
@@ -544,11 +550,10 @@ def draw_leaf_value(
 
     if y_mu_pred.size == 1:
         mu_mean = np.full(shape, y_mu_pred.item() / m) + norm
+    elif y_mu_pred.size < 3 or response == "constant":
+        mu_mean = fast_mean(y_mu_pred) / m + norm
     else:
-        if y_mu_pred.size < 3 or response == "constant":
-            mu_mean = fast_mean(y_mu_pred) / m + norm
-        else:
-            mu_mean, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred, m=m, norm=norm)
+        mu_mean, linear_params = fast_linear_fit(x=x_mu, y=y_mu_pred, m=m, norm=norm)
 
     return mu_mean, linear_params
 

@@ -279,15 +279,14 @@ def plot_ice(
             if var in var_discrete:
                 axes[count].plot(new_x, p_di.mean(0), "o", color=color_mean)
                 axes[count].plot(new_x, p_di.T, ".", color=color, alpha=alpha)
+            elif smooth:
+                x_data, y_data = _smooth_mean(new_x, p_di, "ice", smooth_kwargs)
+                axes[count].plot(x_data, y_data.mean(1), color=color_mean)
+                axes[count].plot(x_data, y_data, color=color, alpha=alpha)
             else:
-                if smooth:
-                    x_data, y_data = _smooth_mean(new_x, p_di, "ice", smooth_kwargs)
-                    axes[count].plot(x_data, y_data.mean(1), color=color_mean)
-                    axes[count].plot(x_data, y_data, color=color, alpha=alpha)
-                else:
-                    idx = np.argsort(new_x)
-                    axes[count].plot(new_x[idx], p_di.mean(0)[idx], color=color_mean)
-                    axes[count].plot(new_x[idx], p_di.T[idx], color=color, alpha=alpha)
+                idx = np.argsort(new_x)
+                axes[count].plot(new_x[idx], p_di.mean(0)[idx], color=color_mean)
+                axes[count].plot(new_x[idx], p_di.T[idx], color=color, alpha=alpha)
             axes[count].set_xlabel(x_labels[i_var])
 
             count += 1
@@ -515,13 +514,12 @@ def _get_axes(
             for i in range(n_plots, len(axes)):
                 fig.delaxes(axes[i])
             axes = axes[:n_plots]
+    elif isinstance(ax, np.ndarray):
+        axes = ax
+        fig = ax[0].get_figure()
     else:
-        if isinstance(ax, np.ndarray):
-            axes = ax
-            fig = ax[0].get_figure()
-        else:
-            axes = [ax]
-            fig = ax.get_figure()  # type: ignore
+        axes = [ax]
+        fig = ax.get_figure()  # type: ignore
 
     return fig, axes, shape
 
@@ -694,7 +692,7 @@ def _smooth_mean(
     return x_data, y_data
 
 
-def plot_variable_importance(
+def plot_variable_importance(  # noqa: PLR0915
     idata: az.InferenceData,
     bartrv: Variable,
     X: npt.NDArray[np.float_],

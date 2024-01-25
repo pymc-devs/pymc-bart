@@ -1,10 +1,7 @@
 [tool.pytest.ini_options]
 minversion = "6.0"
-xfail_strict=true
-addopts = [
-    "-vv",
-    "--color=yes",
-]
+xfail_strict = true
+addopts = ["-vv", "--color=yes"]
 
 [tool.ruff]
 line-length = 100
@@ -12,6 +9,13 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "PL", "UP", "W"]
 ignore-init-module-imports = true
+ignore = [
+  "PLR2004", # Checks for the use of unnamed numerical constants ("magic") values in comparisons.
+]
+
+[tool.ruff.lint.pylint]
+max-args = 19
+max-branches = 15
 
 [tool.ruff.extend-per-file-ignores]
 "docs/conf.py" = ["E501", "F541"]
