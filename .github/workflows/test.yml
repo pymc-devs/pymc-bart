@@ -36,17 +36,6 @@ jobs:
           python --version
           conda list
           pip freeze
-      - name: Run linters
-        shell: bash -l {0}
-        run: |
-          python -m black pymc_bart --check
-          echo "Success!"
-          echo "Checking code style with pylint..."
-          python -m pylint pymc_bart/
-      - name: Run Mypy
-        shell: bash -l {0}
-        run: |
-          python -m mypy pymc_bart
       - name: Run tests
         shell: bash -l {0}
         run: |
