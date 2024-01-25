@@ -13,8 +13,9 @@
 #   limitations under the License.
 
 from typing import List, Optional, Tuple, Union
-import numpy.typing as npt
+
 import numpy as np
+import numpy.typing as npt
 from numba import njit
 from pymc.model import Model, modelcontext
 from pymc.pytensorf import inputvars, join_nonshared_inputs, make_shared_replacements
@@ -25,8 +26,8 @@ from pytensor import function as pytensor_function
 from pytensor.tensor.var import Variable
 
 from pymc_bart.bart import BARTRV
-from pymc_bart.tree import Node, Tree, get_idx_left_child, get_idx_right_child, get_depth
 from pymc_bart.split_rules import ContinuousSplitRule
+from pymc_bart.tree import Node, Tree, get_depth, get_idx_left_child, get_idx_right_child
 
 
 class ParticleTree:

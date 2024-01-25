@@ -1,24 +1,18 @@
 repos:
-  - repo: local
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.14
     hooks:
-      - id: black
-        name: black
-        entry: black
-        language: system
-        types: [python]
-        files: ^pymc_bart/
-      - id: pylint
-        name: pylint
-        entry: pylint --rcfile=.pylintrc
-        language: system
-        types: [python]
-        files: ^pymc_bart/
+      - id: ruff
+        args: ["--fix", "--show-source"]
+      - id: ruff-format
+        args: ["--line-length=100"]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
       - id: mypy
-        name: mypy
-        entry: mypy
-        language: system
-        types: [python]
+        args: [--ignore-missing-imports]
         files: ^pymc_bart/
+        additional_dependencies: [numpy<1.25.0, pandas-stubs]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
     hooks:

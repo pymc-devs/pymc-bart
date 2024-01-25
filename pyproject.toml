@@ -6,8 +6,16 @@ addopts = [
     "--color=yes",
 ]
 
-[tool.black]
+[tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "W"]
+ignore-init-module-imports = true
+
+[tool.ruff.extend-per-file-ignores]
+"docs/conf.py" = ["E501"]
+"tests/test_*.py" = ["F841"]
 
 [tool.coverage.report]
 exclude_lines = [

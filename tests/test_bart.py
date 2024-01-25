@@ -1,7 +1,6 @@
 import numpy as np
 import pymc as pm
 import pytest
-from numpy.random import RandomState
 from numpy.testing import assert_almost_equal, assert_array_equal
 from pymc.initial_point import make_initial_point_fn
 from pymc.logprob.basic import joint_logp
@@ -230,7 +229,6 @@ def test_bart_moment(size, expected):
     ids=["continuous", "one-hot", "subset", "separate-trees"],
 )
 def test_categorical_model(separate_trees, split_rule):
-
     Y = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
     X = np.concatenate([Y[:, None], np.random.randint(0, 6, size=(9, 4))], axis=1)
 

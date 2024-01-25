@@ -836,8 +836,9 @@ def plot_variable_importance(
                 r_2 = np.zeros(samples)
                 for j in range(samples):
                     r_2[j] = (
-                        pearsonr(predicted_all[j].flatten(), predicted_subset[j].flatten())[0]
-                    ) ** 2
+                        (pearsonr(predicted_all[j].flatten(), predicted_subset[j].flatten())[0])
+                        ** 2
+                    )
                 mean_r_2 = np.mean(r_2, dtype=float)
                 # Identify the least important combination of variables
                 # based on the maximum mean squared Pearson correlation

@@ -9,7 +9,7 @@ assignees: ''
 
 ## Tell us about it
 
-The more specific the better. 
+The more specific the better.
 
 ## Thoughts on implementation
 
