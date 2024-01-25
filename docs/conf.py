@@ -120,14 +120,14 @@ html_sidebars = {
 
 # MyST config
 myst_enable_extensions = ["colon_fence", "deflist", "dollarmath", "amsmath", "substitution"]
-citation_code = """
+citation_code = f"""
 ```bibtex
-@incollection{citekey,
+@incollection{{citekey,
   author    = "<notebook authors, see above>",
   title     = "<notebook title>",
   editor    = "PyMC Team",
   booktitle = "PyMC examples",
-}
+}}
 ```
 """
 

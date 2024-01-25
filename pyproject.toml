@@ -14,7 +14,7 @@ select = ["E", "F", "I", "UP", "W"]
 ignore-init-module-imports = true
 
 [tool.ruff.extend-per-file-ignores]
-"docs/conf.py" = ["E501"]
+"docs/conf.py" = ["E501", "F541"]
 "tests/test_*.py" = ["F841"]
 
 [tool.coverage.report]
