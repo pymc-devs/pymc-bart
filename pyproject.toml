@@ -10,7 +10,7 @@ addopts = [
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "W"]
+select = ["E", "F", "I", "PL", "UP", "W"]
 ignore-init-module-imports = true
 
 [tool.ruff.extend-per-file-ignores]
