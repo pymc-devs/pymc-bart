@@ -78,6 +78,8 @@ pre-commit run --all-files
 
 **Once you commit something the pre-commit hook will run all the checks**!
 
+In particular, if the commited changed have linting errors, the commit will try to fix them. If successful,you need to add the changes again (for example, `git add -u`) and commit again. If not successful, you need to fix the errors manually and commit again.
+
 You can skip this (for example when is WIP) by adding a flag (`-n` means no-verify)
 
 ```bash
