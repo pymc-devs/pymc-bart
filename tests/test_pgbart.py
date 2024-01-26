@@ -1,15 +1,16 @@
 from unittest import TestCase
-import pytest
+
 import numpy as np
 import pymc as pm
+import pytest
 
 import pymc_bart as pmb
 from pymc_bart.pgbart import (
     NormalSampler,
     UniformSampler,
     discrete_uniform_sampler,
-    fast_mean,
     fast_linear_fit,
+    fast_mean,
 )
 
 

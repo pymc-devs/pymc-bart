@@ -13,7 +13,70 @@ and including useful supporting information.
 ## Contributing code
 Thanks for your interest in contributing code to pymc_bart!
 
-* If this is your first time contributing to a project on GitHub, please read through our step by step guide to contributing to pymc_bart
+**If this is your first time contributing to a project on GitHub, please read through our step by step guide to contributing to pymc_bart**
+
+### Feature Branch
+
+1. From the fork of the pymc_bart repository, create a new branch for your feature.
+
+```bash
+git checkout -b feature_branch_name
+```
+
+2. Make your changes to the code base.
+
+3.Add and commit your changes.
+
+```bash
+git add my_modified_file.py
+git commit -m "Added a new feature"
+```
+
+4. Push your changes to your fork of the pymc_bart repository.
+
+```bash
+git push origin feature_branch_name
+```
+
+### Code Style
+
+The repository has some code style checks in place. This will happen on every commit of a pull request. If you want to run the checks locally, you can do so by running the following command from the root of the repository:
+
+0. Create a virtual environment (optional, but strongly recommended)
+
+1. Install pre-commit
+
+```bash
+pip install pre-commit
+```
+
+2. Set up pre-commit
+
+```bash
+pre-commit install
+```
+
+3. Run the complete pre-commit hook to check specific files:
+
+```bash
+pre-commit run --files pymc_bart/tree.py
+```
+
+or all files:
+
+```bash
+pre-commit run --all-files
+```
+
+**Once you commit something the pre-commit hook will run all the checks**!
+
+You can skip this (for example when is WIP) by adding a flag (`-n` means no-verify)
+
+```bash
+git commit -m"my message" -n
+```
+
+**Remark:** One can, of course, install `ruff` in the Python environment to enable auto-format (for example in VS Code), but this is not strictly necessary. The specific versions of` ruff` and `mypy` must be only specified in `.pre-commit-config.yaml`. It should be the only source of truth! Hence, if you want to install them locally make sure you use the same versions (revisions `rev` in the config file) as in the config file.
 
 ### Adding new features
 If you are interested in adding a new feature to pymc_bart,

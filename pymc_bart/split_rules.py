@@ -13,8 +13,9 @@
 #   limitations under the License.
 
 from abc import abstractmethod
-from numba import njit
+
 import numpy as np
+from numba import njit
 
 
 class SplitRule:

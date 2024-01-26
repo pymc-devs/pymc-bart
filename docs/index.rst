@@ -43,7 +43,7 @@ Assuming a standard Python environment is installed on your machine, PyMC-BART i
 
 .. code-block:: bash
 
-     conda install -c conda-forge pymc-bart 
+     conda install -c conda-forge pymc-bart
 
 **Development**
 

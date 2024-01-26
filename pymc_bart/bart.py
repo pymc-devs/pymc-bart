@@ -43,9 +43,7 @@ class BARTRV(RandomVariable):
     _print_name: Tuple[str, str] = ("BART", "\\operatorname{BART}")
     all_trees = List[List[List[Tree]]]
 
-    def _supp_shape_from_params(
-        self, dist_params, rep_param_idx=1, param_shapes=None
-    ):  # pylint: disable=arguments-renamed
+    def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):  # pylint: disable=arguments-renamed
         return dist_params[0].shape[:1]
 
     @classmethod

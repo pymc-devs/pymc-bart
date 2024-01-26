@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 from pathlib import Path
 
 # -- Project information -----------------------------------------------------
@@ -42,10 +43,18 @@ if os.path.exists("examples"):
         if os.path.exists(file):
             os.remove(file)
 
-os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/bart/bart_introduction.ipynb -P examples")
-os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/bart/bart_quantile_regression.ipynb -P examples")
-os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/bart/bart_heteroscedasticity.ipynb -P examples")
-os.system("wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/references.bib -P examples")
+os.system(
+    "wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/bart/bart_introduction.ipynb -P examples"
+)
+os.system(
+    "wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/bart/bart_quantile_regression.ipynb -P examples"
+)
+os.system(
+    "wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/bart/bart_heteroscedasticity.ipynb -P examples"
+)
+os.system(
+    "wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/references.bib -P examples"
+)
 
 # bibtex config
 bibtex_bibfiles = ["examples/references.bib"]
@@ -63,11 +72,23 @@ html_theme_options = {
     "secondary_sidebar_items": ["page-toc", "edit-this-page", "sourcelink", "donate"],
     "navbar_start": ["navbar-logo"],
     "icon_links": [
-        { "url": "https://github.com/pymc-devs/pymc-bart", "icon": "fa-brands fa-github", "name": "GitHub" },
-        { "url": "https://twitter.com/pymc_devs/", "icon": "fa-brands fa-twitter", "name": "Twitter" },
-        { "url": "https://www.youtube.com/c/PyMCDevelopers", "icon": "fa-brands fa-youtube", "name": "YouTube" },
-        { "url": "https://discourse.pymc.io", "icon": "fa-brands fa-discourse", "name": "Discourse" },
-                   ]
+        {
+            "url": "https://github.com/pymc-devs/pymc-bart",
+            "icon": "fa-brands fa-github",
+            "name": "GitHub",
+        },
+        {
+            "url": "https://twitter.com/pymc_devs/",
+            "icon": "fa-brands fa-twitter",
+            "name": "Twitter",
+        },
+        {
+            "url": "https://www.youtube.com/c/PyMCDevelopers",
+            "icon": "fa-brands fa-youtube",
+            "name": "YouTube",
+        },
+        {"url": "https://discourse.pymc.io", "icon": "fa-brands fa-discourse", "name": "Discourse"},
+    ],
 }
 
 version = os.environ.get("READTHEDOCS_VERSION", "")

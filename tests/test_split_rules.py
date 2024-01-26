@@ -1,7 +1,7 @@
 import numpy as np
+import pytest
 
 from pymc_bart.split_rules import ContinuousSplitRule, OneHotSplitRule, SubsetSplitRule
-import pytest
 
 
 @pytest.mark.parametrize(
@@ -10,7 +10,6 @@ import pytest
     ids=["continuous", "one_hot", "subset"],
 )
 def test_split_rule(Rule):
-
     # Should return None if only one available value to pick from
     assert Rule.get_split_value(np.zeros(1)) is None
 
