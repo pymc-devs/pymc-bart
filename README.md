@@ -1,21 +1,32 @@
 
-# Bayesian Additive Regression Trees for Probabilistic programming with PyMC
+# Bayesian Additive Regression Trees for Probabilistic Programming with PyMC
 
 ![pymc-bart logo](docs/logos/pymc_bart.png)
 
 PyMC-BART extends [PyMC](https://github.com/pymc-devs/pymc) probabilistic programming framework to be able to define and solve models including a BART random variable. PyMC-BART also includes a few helpers function to aid with the interpretation of those models and perform variable selection.
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Contributions](#contributions)
+- [Code of Conduct](#code-of-conduct)
+- [Citation](#citation)
+- [License](#license)
+- [Donations](#donations)
+- [Sponsors](#sponsors)
+
 
 ## Installation
 
-PyMC-BART is available on Conda-Forge. To set up a suitable Conda environment, run
+PyMC-BART is available on Conda-Forge. If you magange your Python dependencies and environments with Conda, this is your best option. You may also perfer to install this way if you want an easy-to-use, isolated setup in a seperate environment. This helps avoid interfering with other projects or system-wide Python installations. To set up a suitable Conda environment, run:
 
 ```bash
 conda create --name=pymc-bart --channel=conda-forge pymc-bart
 conda activate pymc-bart
 ```
 
-Alternatively, it can be installed with
+Alternatively, you can use pip installation. This installation is generally perfered by users who use pip, Python's package installer. This is the best choice for users who are not using Conda or for those who want to install PyMC-BART into a virtual environment managed by venv or virtualenv. In this case, run:
 
 ```bash
 pip install pymc-bart
@@ -25,6 +36,21 @@ In case you want to upgrade to the bleeding edge version of the package you can 
 
 ```bash
 pip install git+https://github.com/pymc-devs/pymc-bart.git
+```
+
+## Usage
+
+Get started by using PyMC-BART to set up a BART model:
+
+```python
+import pymc as pm
+import pymc_bart as pmb
+
+X, y = ... # Your data replaces "..."
+with pm.Model() as model:
+    bart = pmb.BART('bart', X, y)
+    ...
+    idata = pm.sample()
 ```
 
 ## Contributions
