@@ -44,11 +44,11 @@ Get started by using PyMC-BART to set up a BART model:
 
 ```python
 import pymc as pm
-import pymc_bart as pbart
+import pymc_bart as pmb
 
 X, y = ... # Your data replaces "..."
 with pm.Model() as model:
-    bart = pbart.BART('bart', X, y)
+    bart = pmb.BART('bart', X, y)
     ...
     idata = pm.sample()
 ```
