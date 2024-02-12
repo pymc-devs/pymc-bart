@@ -49,6 +49,7 @@ import pymc_bart as pbart
 X, y = ... # Your data replaces "..."
 with pm.Model() as model:
     bart = pbart.BART('bart', X, y)
+    ...
     trace = pm.sample()
 ```
 
