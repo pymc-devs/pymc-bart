@@ -1,0 +1,42 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Quiroga"
+  given-names: "Miriana"
+- family-names: "Garay"
+  given-names: "Pablo"
+  orcid: "https://orcid.org/0000-0001-6604-0329"
+- family-names: "Loyola"
+  given-names: "Juan"
+  orcid: "https://orcid.org/0000-0002-9510-6785"
+- family-names: "Alonso"
+  given-names: "Juan"
+- family-names: "Martin"
+  given-names: "Osvaldo"
+  orcid: "https://orcid.org/0000-0001-7419-8978"
+title: "pymc-bart"
+version: 0.5.10
+doi: 10.5281/zenodo.10817896
+date-released: 2024-03-14
+url: "https://github.com/pymc-devs/pymc-bart"
+preferred-citation:
+  type: article
+  authors:
+- family-names: "Quiroga"
+  given-names: "Miriana"
+- family-names: "Garay"
+  given-names: "Pablo"
+  orcid: "https://orcid.org/0000-0001-6604-0329"
+- family-names: "Loyola"
+  given-names: "Juan"
+  orcid: "https://orcid.org/0000-0002-9510-6785"
+- family-names: "Alonso"
+  given-names: "Juan"
+- family-names: "Martin"
+  given-names: "Osvaldo"
+  orcid: "https://orcid.org/0000-0001-7419-8978"
+  doi: "10.48550/arXiv.2206.03619"
+  journal: "arxiv"
+  month: 8
+  title: "Bayesian additive regression trees for probabilistic programming"
+  year: 2023
