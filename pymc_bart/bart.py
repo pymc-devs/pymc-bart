@@ -22,7 +22,7 @@ import numpy as np
 import numpy.typing as npt
 import pytensor.tensor as pt
 from pandas import DataFrame, Series
-from pymc.distributions.distribution import Distribution, _moment
+from pymc.distributions.distribution import Distribution, _support_point
 from pymc.logprob.abstract import _logprob
 from pytensor.tensor.random.op import RandomVariable
 
@@ -164,7 +164,7 @@ class BART(Distribution):
 
         Distribution.register(BARTRV)
 
-        @_moment.register(BARTRV)
+        @_support_point.register(BARTRV)
         def get_moment(rv, size, *rv_inputs):
             return cls.get_moment(rv, size, *rv_inputs)
 
