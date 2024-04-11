@@ -23,7 +23,7 @@ from pymc.step_methods.arraystep import ArrayStepShared
 from pymc.step_methods.compound import Competence
 from pytensor import config
 from pytensor import function as pytensor_function
-from pytensor.tensor.var import Variable
+from pytensor.tensor.variable import Variable
 
 from pymc_bart.bart import BARTRV
 from pymc_bart.split_rules import ContinuousSplitRule
