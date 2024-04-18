@@ -36,7 +36,7 @@ __all__ = [
     "plot_pdp",
     "plot_variable_importance",
 ]
-__version__ = "0.5.11"
+__version__ = "0.5.12"
 
 
 pm.STEP_METHODS = list(pm.STEP_METHODS) + [PGBART]
