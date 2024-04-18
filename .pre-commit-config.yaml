@@ -12,7 +12,7 @@ ci:
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.3.3
+    rev: v0.3.7
     hooks:
       - id: ruff
         args: ["--fix", "--show-source"]
@@ -26,7 +26,7 @@ repos:
         files: ^pymc_bart/
         additional_dependencies: [numpy<1.25.0, pandas-stubs==1.5.3.230304]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v4.6.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
