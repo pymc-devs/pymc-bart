@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pytensor.tensor as pt
-from pytensor.tensor.var import Variable
+from pytensor.tensor.variable import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
 from scipy.stats import norm, pearsonr
