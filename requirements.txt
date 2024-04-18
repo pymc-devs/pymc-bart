@@ -1,5 +1,5 @@
-pymc>=5.0.0
-arviz
+pymc>=5.13.1
+arviz>=0.18.0
 numba
 matplotlib
 numpy
