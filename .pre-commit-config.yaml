@@ -24,7 +24,7 @@ repos:
       - id: mypy
         args: [--ignore-missing-imports]
         files: ^pymc_bart/
-        additional_dependencies: [numpy<1.25.0, pandas-stubs==1.5.3.230304]
+        additional_dependencies: [numpy, pandas-stubs]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
