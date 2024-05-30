@@ -53,6 +53,9 @@ os.system(
     "wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/bart/bart_heteroscedasticity.ipynb -P examples"
 )
 os.system(
+    "wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/bart/bart_categorical_hawks.ipynb -P examples"
+)
+os.system(
     "wget https://raw.githubusercontent.com/pymc-devs/pymc-examples/main/examples/references.bib -P examples"
 )
 
