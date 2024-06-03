@@ -8,4 +8,3 @@ Examples
   examples/bart_categorical_hawks
   examples/bart_heteroscedasticity
   examples/bart_quantile_regression
- 
