@@ -313,7 +313,7 @@ class PGBART(ArrayStepShared):
         return wei / wei.sum()
 
     def resample(
-        self, particles: List[ParticleTree], normalized_weights: npt.NDArray[np.float_]
+        self, particles: List[ParticleTree], normalized_weights: npt.NDArray[np.float64]
     ) -> List[ParticleTree]:
         """
         Use systematic resample for all but the first particle
@@ -335,7 +335,7 @@ class PGBART(ArrayStepShared):
         return particles
 
     def get_particle_tree(
-        self, particles: List[ParticleTree], normalized_weights: npt.NDArray[np.float_]
+        self, particles: List[ParticleTree], normalized_weights: npt.NDArray[np.float64]
     ) -> Tuple[ParticleTree, Tree]:
         """
         Sample a new particle and associated tree
@@ -347,7 +347,7 @@ class PGBART(ArrayStepShared):
 
         return new_particle, new_particle.tree
 
-    def systematic(self, normalized_weights: npt.NDArray[np.float_]) -> npt.NDArray[np.int_]:
+    def systematic(self, normalized_weights: npt.NDArray[np.float64]) -> npt.NDArray[np.int_]:
         """
         Systematic resampling.
 
@@ -399,7 +399,7 @@ class RunningSd:
         self.mean = np.zeros(shape)  # running mean
         self.m_2 = np.zeros(shape)  # running second moment
 
-    def update(self, new_value: npt.NDArray[np.float_]) -> Union[float, npt.NDArray[np.float_]]:
+    def update(self, new_value: npt.NDArray[np.float64]) -> Union[float, npt.NDArray[np.float64]]:
         self.count = self.count + 1
         self.mean, self.m_2, std = _update(self.count, self.mean, self.m_2, new_value)
         return fast_mean(std)
@@ -408,10 +408,10 @@ class RunningSd:
 @njit
 def _update(
     count: int,
-    mean: npt.NDArray[np.float_],
-    m_2: npt.NDArray[np.float_],
-    new_value: npt.NDArray[np.float_],
-) -> Tuple[npt.NDArray[np.float_], npt.NDArray[np.float_], Union[float, npt.NDArray[np.float_]]]:
+    mean: npt.NDArray[np.float64],
+    m_2: npt.NDArray[np.float64],
+    new_value: npt.NDArray[np.float64],
+) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], Union[float, npt.NDArray[np.float64]]]:
     delta = new_value - mean
     mean += delta / count
     delta2 = new_value - mean
@@ -422,7 +422,7 @@ def _update(
 
 
 class SampleSplittingVariable:
-    def __init__(self, alpha_vec: npt.NDArray[np.float_]) -> None:
+    def __init__(self, alpha_vec: npt.NDArray[np.float64]) -> None:
         """
         Sample splitting variables proportional to `alpha_vec`.
 
@@ -535,13 +535,13 @@ def filter_missing_values(available_splitting_values, idx_data_points, missing_d
 
 
 def draw_leaf_value(
-    y_mu_pred: npt.NDArray[np.float_],
-    x_mu: npt.NDArray[np.float_],
+    y_mu_pred: npt.NDArray[np.float64],
+    x_mu: npt.NDArray[np.float64],
     m: int,
-    norm: npt.NDArray[np.float_],
+    norm: npt.NDArray[np.float64],
     shape: int,
     response: str,
-) -> Tuple[npt.NDArray[np.float_], Optional[npt.NDArray[np.float_]]]:
+) -> Tuple[npt.NDArray[np.float64], Optional[npt.NDArray[np.float64]]]:
     """Draw Gaussian distributed leaf values."""
     linear_params = None
     mu_mean = np.empty(shape)
@@ -559,7 +559,7 @@ def draw_leaf_value(
 
 
 @njit
-def fast_mean(ari: npt.NDArray[np.float_]) -> Union[float, npt.NDArray[np.float_]]:
+def fast_mean(ari: npt.NDArray[np.float64]) -> Union[float, npt.NDArray[np.float64]]:
     """Use Numba to speed up the computation of the mean."""
     if ari.ndim == 1:
         count = ari.shape[0]
@@ -578,11 +578,11 @@ def fast_mean(ari: npt.NDArray[np.float_]) -> Union[float, npt.NDArray[np.float_
 
 @njit
 def fast_linear_fit(
-    x: npt.NDArray[np.float_],
-    y: npt.NDArray[np.float_],
+    x: npt.NDArray[np.float64],
+    y: npt.NDArray[np.float64],
     m: int,
-    norm: npt.NDArray[np.float_],
-) -> Tuple[npt.NDArray[np.float_], List[npt.NDArray[np.float_]]]:
+    norm: npt.NDArray[np.float64],
+) -> Tuple[npt.NDArray[np.float64], List[npt.NDArray[np.float64]]]:
     n = len(x)
     y = y / m + np.expand_dims(norm, axis=1)
 
@@ -666,17 +666,17 @@ class UniformSampler:
 
 @njit
 def inverse_cdf(
-    single_uniform: npt.NDArray[np.float_], normalized_weights: npt.NDArray[np.float_]
+    single_uniform: npt.NDArray[np.float64], normalized_weights: npt.NDArray[np.float64]
 ) -> npt.NDArray[np.int_]:
     """
     Inverse CDF algorithm for a finite distribution.
 
     Parameters
     ----------
-    single_uniform: npt.NDArray[np.float_]
+    single_uniform: npt.NDArray[np.float64]
         Ordered points in [0,1]
 
-    normalized_weights: npt.NDArray[np.float_])
+    normalized_weights: npt.NDArray[np.float64])
         Normalized weights
 
     Returns
@@ -699,7 +699,7 @@ def inverse_cdf(
 
 
 @njit
-def jitter_duplicated(array: npt.NDArray[np.float_], std: float) -> npt.NDArray[np.float_]:
+def jitter_duplicated(array: npt.NDArray[np.float64], std: float) -> npt.NDArray[np.float64]:
     """
     Jitter duplicated values.
     """
@@ -715,7 +715,7 @@ def jitter_duplicated(array: npt.NDArray[np.float_], std: float) -> npt.NDArray[
 
 
 @njit
-def are_whole_number(array: npt.NDArray[np.float_]) -> np.bool_:
+def are_whole_number(array: npt.NDArray[np.float64]) -> np.bool_:
     """Check if all values in array are whole numbers"""
     return np.all(np.mod(array[~np.isnan(array)], 1) == 0)
 

@@ -15,7 +15,7 @@ from scipy.stats import norm, pearsonr
 
 from .tree import Tree
 
-TensorLike = Union[npt.NDArray[np.float_], pt.TensorVariable]
+TensorLike = Union[npt.NDArray[np.float64], pt.TensorVariable]
 
 
 def _sample_posterior(
@@ -25,7 +25,7 @@ def _sample_posterior(
     size: Optional[Union[int, Tuple[int, ...]]] = None,
     excluded: Optional[List[int]] = None,
     shape: int = 1,
-) -> npt.NDArray[np.float_]:
+) -> npt.NDArray[np.float64]:
     """
     Generate samples from the BART-posterior.
 
@@ -153,8 +153,8 @@ def plot_dependence(*args, kind="pdp", **kwargs):  # pylint: disable=unused-argu
 
 def plot_ice(
     bartrv: Variable,
-    X: npt.NDArray[np.float_],
-    Y: Optional[npt.NDArray[np.float_]] = None,
+    X: npt.NDArray[np.float64],
+    Y: Optional[npt.NDArray[np.float64]] = None,
     var_idx: Optional[List[int]] = None,
     var_discrete: Optional[List[int]] = None,
     func: Optional[Callable] = None,
@@ -179,9 +179,9 @@ def plot_ice(
     ----------
     bartrv : BART Random Variable
         BART variable once the model that include it has been fitted.
-    X : npt.NDArray[np.float_]
+    X : npt.NDArray[np.float64]
         The covariate matrix.
-    Y : Optional[npt.NDArray[np.float_]], by default None.
+    Y : Optional[npt.NDArray[np.float64]], by default None.
         The response vector.
     var_idx : Optional[List[int]], by default None.
         List of the indices of the covariate for which to compute the pdp or ice.
@@ -298,8 +298,8 @@ def plot_ice(
 
 def plot_pdp(
     bartrv: Variable,
-    X: npt.NDArray[np.float_],
-    Y: Optional[npt.NDArray[np.float_]] = None,
+    X: npt.NDArray[np.float64],
+    Y: Optional[npt.NDArray[np.float64]] = None,
     xs_interval: str = "quantiles",
     xs_values: Optional[Union[int, List[float]]] = None,
     var_idx: Optional[List[int]] = None,
@@ -324,9 +324,9 @@ def plot_pdp(
     ----------
     bartrv : BART Random Variable
         BART variable once the model that include it has been fitted.
-    X : npt.NDArray[np.float_]
+    X : npt.NDArray[np.float64]
         The covariate matrix.
-    Y : Optional[npt.NDArray[np.float_]], by default None.
+    Y : Optional[npt.NDArray[np.float64]], by default None.
         The response vector.
     xs_interval : str
         Method used to compute the values X used to evaluate the predicted function. "linear",
@@ -525,14 +525,14 @@ def _get_axes(
 
 
 def _prepare_plot_data(
-    X: npt.NDArray[np.float_],
-    Y: Optional[npt.NDArray[np.float_]] = None,
+    X: npt.NDArray[np.float64],
+    Y: Optional[npt.NDArray[np.float64]] = None,
     xs_interval: str = "quantiles",
     xs_values: Optional[Union[int, List[float]]] = None,
     var_idx: Optional[List[int]] = None,
     var_discrete: Optional[List[int]] = None,
 ) -> Tuple[
-    npt.NDArray[np.float_],
+    npt.NDArray[np.float64],
     List[str],
     str,
     List[int],
@@ -618,10 +618,10 @@ def _prepare_plot_data(
 
 
 def _create_pdp_data(
-    X: npt.NDArray[np.float_],
+    X: npt.NDArray[np.float64],
     xs_interval: str,
     xs_values: Optional[Union[int, List[float]]] = None,
-) -> npt.NDArray[np.float_]:
+) -> npt.NDArray[np.float64]:
     """
     Create data for partial dependence plot.
 
@@ -636,7 +636,7 @@ def _create_pdp_data(
 
     Returns
     -------
-    npt.NDArray[np.float_]
+    npt.NDArray[np.float64]
         A 2D array for the fake_X data.
     """
     if xs_interval == "insample":
@@ -653,8 +653,8 @@ def _create_pdp_data(
 
 
 def _smooth_mean(
-    new_x: npt.NDArray[np.float_],
-    p_di: npt.NDArray[np.float_],
+    new_x: npt.NDArray[np.float64],
+    p_di: npt.NDArray[np.float64],
     kind: str = "pdp",
     smooth_kwargs: Optional[Dict[str, Any]] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -695,7 +695,7 @@ def _smooth_mean(
 def plot_variable_importance(  # noqa: PLR0915
     idata: az.InferenceData,
     bartrv: Variable,
-    X: npt.NDArray[np.float_],
+    X: npt.NDArray[np.float64],
     labels: Optional[List[str]] = None,
     method: str = "VI",
     figsize: Optional[Tuple[float, float]] = None,
@@ -713,7 +713,7 @@ def plot_variable_importance(  # noqa: PLR0915
         InferenceData containing a collection of BART_trees in sample_stats group
     bartrv : BART Random Variable
         BART variable once the model that include it has been fitted.
-    X : npt.NDArray[np.float_]
+    X : npt.NDArray[np.float64]
         The covariate matrix.
     labels : Optional[List[str]]
         List of the names of the covariates. If X is a DataFrame the names of the covariables will
