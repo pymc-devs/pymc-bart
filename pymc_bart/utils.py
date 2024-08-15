@@ -546,7 +546,7 @@ def _prepare_plot_data(
 
     Parameters
     ----------
-    X : PyTensor Variable, Pandas DataFrame or Numpy array
+    X : PyTensor Variable, Pandas DataFrame, Polars DataFrame or Numpy array
         Input data.
     Y : array-like
         Target data.
@@ -585,9 +585,9 @@ def _prepare_plot_data(
     if isinstance(X, Variable):
         X = X.eval()
 
-    if hasattr(X, "columns") and hasattr(X, "values"):
+    if hasattr(X, "columns") and hasattr(X, "to_numpy"):
         x_names = list(X.columns)
-        X = X.values
+        X = X.to_numpy()
     else:
         x_names = []
 
@@ -750,9 +750,9 @@ def plot_variable_importance(  # noqa: PLR0915
     else:
         shape = bartrv.eval().shape[0]
 
-    if hasattr(X, "columns") and hasattr(X, "values"):
+    if hasattr(X, "columns") and hasattr(X, "to_numpy"):
         labels = X.columns
-        X = X.values
+        X = X.to_numpy()
 
     n_vars = X.shape[1]
 

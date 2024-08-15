@@ -74,9 +74,9 @@ class BART(Distribution):
 
     Parameters
     ----------
-    X : TensorLike
+    X : PyTensor Variable, Pandas/Polars DataFrame or Numpy array
         The covariate matrix.
-    Y : TensorLike
+    Y : PyTensor Variable, Pandas/Polar DataFrame/Series,or Numpy array
         The response vector.
     m : int
         Number of trees.
@@ -203,6 +203,16 @@ def preprocess_xy(
         Y = Y.to_numpy()
     if isinstance(X, (Series, DataFrame)):
         X = X.to_numpy()
+
+    try:
+        import polars as pl
+
+        if isinstance(X, (pl.Series, pl.DataFrame)):
+            X = X.to_numpy()
+        if isinstance(Y, (pl.Series, pl.DataFrame)):
+            Y = Y.to_numpy()
+    except ImportError:
+        pass
 
     Y = Y.astype(float)
     X = X.astype(float)
