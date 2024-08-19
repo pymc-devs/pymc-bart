@@ -142,7 +142,7 @@ class PGBART(ArrayStepShared):
             self.Y = self.bart.Y.eval()
         else:
             self.Y = self.bart.Y
- 
+
 
         self.missing_data = np.any(np.isnan(self.X))
         self.m = self.bart.m
