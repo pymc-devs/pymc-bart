@@ -138,7 +138,7 @@ class PGBART(ArrayStepShared):
         else:
             self.X = self.bart.X
 
-       if isinstance(self.bart.Y, Variable):
+        if isinstance(self.bart.Y, Variable):
             self.Y = self.bart.Y.eval()
         else:
             self.Y = self.bart.Y
