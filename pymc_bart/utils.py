@@ -700,7 +700,6 @@ def plot_variable_importance(  # noqa: PLR0915
     labels: Optional[List[str]] = None,
     method: str = "VI",
     figsize: Optional[Tuple[float, float]] = None,
-    xlabel_angle: float = 0,
     samples: int = 50,
     random_seed: Optional[int] = None,
     plot_kwargs: Optional[Dict[str, Any]] = None,
@@ -728,9 +727,6 @@ def plot_variable_importance(  # noqa: PLR0915
         VI requieres less computation time.
     figsize : tuple
         Figure size. If None it will be defined automatically.
-    xlabel_angle : float
-        rotation angle of the x-axis labels. Defaults to 0. Use values like 45 for
-        long labels and/or many variables.
     samples : int
         Number of predictions used to compute correlation for subsets of variables. Defaults to 100
     random_seed : Optional[int]
@@ -898,7 +894,11 @@ def plot_variable_importance(  # noqa: PLR0915
         alpha=0.1,
         color=plot_kwargs.get("color_ref", "grey"),
     )
-    ax.set_xticks(ticks, new_labels, rotation=xlabel_angle)
+    ax.set_xticks(
+        ticks,
+        new_labels,
+        rotation=plot_kwargs.get("rotation", 0),
+    )
     ax.set_ylabel("R²", rotation=0, labelpad=12)
     ax.set_ylim(0, 1)
     ax.set_xlim(-0.5, n_vars - 0.5)
