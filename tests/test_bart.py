@@ -53,7 +53,7 @@ def test_bart_vi(response):
         mu = pmb.BART("mu", X, Y, m=10, response=response)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y)
-        idata = pm.sample(random_seed=3415)
+        idata = pm.sample(tune=200, draws=200, random_seed=3415)
         var_imp = (
             idata.sample_stats["variable_inclusion"]
             .stack(samples=("chain", "draw"))
@@ -77,8 +77,8 @@ def test_missing_data(response):
     with pm.Model() as model:
         mu = pmb.BART("mu", X, Y, m=10, response=response)
         sigma = pm.HalfNormal("sigma", 1)
-        y = pm.Normal("y", mu, sigma, observed=Y)
-        idata = pm.sample(tune=100, draws=100, chains=1, random_seed=3415)
+        pm.Normal("y", mu, sigma, observed=Y)
+        pm.sample(tune=100, draws=100, chains=1, random_seed=3415)
 
 
 @pytest.mark.parametrize(
@@ -116,7 +116,7 @@ def test_shape(response):
     with pm.Model() as model:
         w = pmb.BART("w", X, Y, m=2, response=response, shape=(2, 250))
         y = pm.Normal("y", w[0], pm.math.abs(w[1]), observed=Y)
-        idata = pm.sample(random_seed=3415)
+        idata = pm.sample(tune=50, draws=10, random_seed=3415)
 
     assert model.initial_point()["w"].shape == (2, 250)
     assert idata.posterior.coords["w_dim_0"].data.size == 2
@@ -133,7 +133,7 @@ class TestUtils:
         mu = pmb.BART("mu", X, Y, m=10)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y)
-        idata = pm.sample(random_seed=3415)
+        idata = pm.sample(tune=200, draws=200, random_seed=3415)
 
     def test_sample_posterior(self):
         all_trees = self.mu.owner.op.all_trees
