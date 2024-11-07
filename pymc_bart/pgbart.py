@@ -114,7 +114,10 @@ class PGBART(ArrayStepShared):
     name = "pgbart"
     default_blocked = False
     generates_stats = True
-    stats_dtypes = [{"variable_inclusion": object, "tune": bool}]
+    stats_dtypes_shapes: dict[str, tuple[type, list]] = {
+        "variable_inclusion": (object, []),
+        "tune": (bool, []),
+    }
 
     def __init__(  # noqa: PLR0915
         self,
@@ -227,7 +230,7 @@ class PGBART(ArrayStepShared):
     def astep(self, _):
         variable_inclusion = np.zeros(self.num_variates, dtype="int")
 
-        upper = min(self.lower + self.batch[~self.tune], self.m)
+        upper = min(self.lower + self.batch[not self.tune], self.m)
         tree_ids = range(self.lower, upper)
         self.lower = upper if upper < self.m else 0
 

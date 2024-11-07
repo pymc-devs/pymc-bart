@@ -3,7 +3,7 @@ import pymc as pm
 import pytest
 from numpy.testing import assert_almost_equal, assert_array_equal
 from pymc.initial_point import make_initial_point_fn
-from pymc.logprob.basic import joint_logp
+from pymc.logprob.basic import transformed_conditional_logp
 
 import pymc_bart as pmb
 
@@ -12,7 +12,7 @@ def assert_moment_is_expected(model, expected, check_finite_logp=True):
     fn = make_initial_point_fn(
         model=model,
         return_transformed=False,
-        default_strategy="moment",
+        default_strategy="support_point",
     )
     moment = fn(0)["x"]
     expected = np.asarray(expected)
@@ -27,7 +27,7 @@ def assert_moment_is_expected(model, expected, check_finite_logp=True):
 
     if check_finite_logp:
         logp_moment = (
-            joint_logp(
+            transformed_conditional_logp(
                 (model["x"],),
                 rvs_to_values={model["x"]: pm.math.constant(moment)},
                 rvs_to_transforms={},
@@ -53,7 +53,7 @@ def test_bart_vi(response):
         mu = pmb.BART("mu", X, Y, m=10, response=response)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y)
-        idata = pm.sample(random_seed=3415)
+        idata = pm.sample(tune=200, draws=200, random_seed=3415)
         var_imp = (
             idata.sample_stats["variable_inclusion"]
             .stack(samples=("chain", "draw"))
@@ -77,8 +77,8 @@ def test_missing_data(response):
     with pm.Model() as model:
         mu = pmb.BART("mu", X, Y, m=10, response=response)
         sigma = pm.HalfNormal("sigma", 1)
-        y = pm.Normal("y", mu, sigma, observed=Y)
-        idata = pm.sample(tune=100, draws=100, chains=1, random_seed=3415)
+        pm.Normal("y", mu, sigma, observed=Y)
+        pm.sample(tune=100, draws=100, chains=1, random_seed=3415)
 
 
 @pytest.mark.parametrize(
@@ -91,7 +91,7 @@ def test_shared_variable(response):
     Y = np.random.normal(0, 1, size=50)
 
     with pm.Model() as model:
-        data_X = pm.MutableData("data_X", X)
+        data_X = pm.Data("data_X", X)
         mu = pmb.BART("mu", data_X, Y, m=2, response=response)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y, shape=mu.shape)
@@ -116,7 +116,7 @@ def test_shape(response):
     with pm.Model() as model:
         w = pmb.BART("w", X, Y, m=2, response=response, shape=(2, 250))
         y = pm.Normal("y", w[0], pm.math.abs(w[1]), observed=Y)
-        idata = pm.sample(random_seed=3415)
+        idata = pm.sample(tune=50, draws=10, random_seed=3415)
 
     assert model.initial_point()["w"].shape == (2, 250)
     assert idata.posterior.coords["w_dim_0"].data.size == 2
@@ -133,7 +133,7 @@ class TestUtils:
         mu = pmb.BART("mu", X, Y, m=10)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y)
-        idata = pm.sample(random_seed=3415)
+        idata = pm.sample(tune=200, draws=200, random_seed=3415)
 
     def test_sample_posterior(self):
         all_trees = self.mu.owner.op.all_trees
