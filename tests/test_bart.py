@@ -3,7 +3,7 @@ import pymc as pm
 import pytest
 from numpy.testing import assert_almost_equal, assert_array_equal
 from pymc.initial_point import make_initial_point_fn
-from pymc.logprob.basic import joint_logp
+from pymc.logprob.basic import transformed_conditional_logp
 
 import pymc_bart as pmb
 
@@ -12,7 +12,7 @@ def assert_moment_is_expected(model, expected, check_finite_logp=True):
     fn = make_initial_point_fn(
         model=model,
         return_transformed=False,
-        default_strategy="moment",
+        default_strategy="support_point",
     )
     moment = fn(0)["x"]
     expected = np.asarray(expected)
@@ -27,7 +27,7 @@ def assert_moment_is_expected(model, expected, check_finite_logp=True):
 
     if check_finite_logp:
         logp_moment = (
-            joint_logp(
+            transformed_conditional_logp(
                 (model["x"],),
                 rvs_to_values={model["x"]: pm.math.constant(moment)},
                 rvs_to_transforms={},
@@ -91,7 +91,7 @@ def test_shared_variable(response):
     Y = np.random.normal(0, 1, size=50)
 
     with pm.Model() as model:
-        data_X = pm.MutableData("data_X", X)
+        data_X = pm.Data("data_X", X)
         mu = pmb.BART("mu", data_X, Y, m=2, response=response)
         sigma = pm.HalfNormal("sigma", 1)
         y = pm.Normal("y", mu, sigma, observed=Y, shape=mu.shape)

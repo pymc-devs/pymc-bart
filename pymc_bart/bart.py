@@ -37,8 +37,7 @@ class BARTRV(RandomVariable):
     """Base class for BART."""
 
     name: str = "BART"
-    ndim_supp = 1
-    ndims_params: List[int] = [2, 1, 0, 0, 0, 1]
+    signature = "(n,d),(n),(),(),(),(n)->(n)"
     dtype: str = "floatX"
     _print_name: Tuple[str, str] = ("BART", "\\operatorname{BART}")
     all_trees = List[List[List[Tree]]]
@@ -50,6 +49,8 @@ class BARTRV(RandomVariable):
     def rng_fn(  # pylint: disable=W0237
         cls, rng=None, X=None, Y=None, m=None, alpha=None, beta=None, split_prior=None, size=None
     ):
+        if not size:
+            size = None
         if not cls.all_trees:
             if size is not None:
                 return np.full((size[0], cls.Y.shape[0]), cls.Y.mean())
