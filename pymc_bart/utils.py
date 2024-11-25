@@ -492,7 +492,7 @@ def _create_figure_axes(
     n_plots = len(var_idx) * shape
 
     if ax is None:
-        axes = _get_axes(grid, n_plots, False, sharey, figsize)
+        fig, axes = _get_axes(grid, n_plots, False, sharey, figsize)
 
     elif isinstance(ax, np.ndarray):
         axes = ax
@@ -528,7 +528,7 @@ def _get_axes(grid, n_plots, sharex, sharey, figsize):
         for i in range(n_plots, len(axes)):
             fig.delaxes(axes[i])
         axes = axes[:n_plots]
-    return axes
+    return fig, axes
 
 
 def _prepare_plot_data(
@@ -958,7 +958,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
 def plot_variable_importance(
     vi_results: dict,
     X: npt.NDArray[np.float64],
-    labels: Optional[List[str]] = None,
+    labels=None,
     figsize=None,
     plot_kwargs: Optional[Dict[str, Any]] = None,
     ax: Optional[plt.Axes] = None,
@@ -1016,7 +1016,9 @@ def plot_variable_importance(
         _, ax = plt.subplots(1, 1, figsize=figsize)
 
     if labels is None:
-        labels = list(np.arange(n_vars).astype(str))
+        labels = np.arange(n_vars).astype(str)
+    else:
+        labels = np.asarray(labels)
 
     new_labels = ["+ " + ele if index != 0 else ele for index, ele in enumerate(labels[indices])]
 
@@ -1062,7 +1064,7 @@ def plot_scatter_submodels(vi_results, func=None, grid="long", axes=None):
     preds_all = vi_results["preds_all"]
 
     if axes is None:
-        axes = _get_axes(grid, len(indices), False, True, None)
+        _, axes = _get_axes(grid, len(indices), False, True, None)
 
     func = None
     if func is not None:

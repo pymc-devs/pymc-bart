@@ -24,6 +24,7 @@ from pymc_bart.utils import (
     plot_pdp,
     plot_scatter_submodels,
     plot_variable_importance,
+    plot_variable_inclusion,
 )
 
 __all__ = [
@@ -32,13 +33,14 @@ __all__ = [
     "ContinuousSplitRule",
     "OneHotSplitRule",
     "SubsetSplitRule",
+    "compute_variable_importance",
     "plot_convergence",
     "plot_dependence",
     "plot_ice",
     "plot_pdp",
-    "plot_variable_importance",
-    "compute_variable_importance",
     "plot_scatter_submodels",
+    "plot_variable_importance",
+    "plot_variable_inclusion",
 ]
 __version__ = "0.7.1"
 
