@@ -17,10 +17,12 @@ from pymc_bart.bart import BART
 from pymc_bart.pgbart import PGBART
 from pymc_bart.split_rules import ContinuousSplitRule, OneHotSplitRule, SubsetSplitRule
 from pymc_bart.utils import (
+    compute_variable_importance,
     plot_convergence,
     plot_dependence,
     plot_ice,
     plot_pdp,
+    plot_scatter_submodels,
     plot_variable_importance,
 )
 
@@ -35,6 +37,8 @@ __all__ = [
     "plot_ice",
     "plot_pdp",
     "plot_variable_importance",
+    "compute_variable_importance",
+    "plot_scatter_submodels",
 ]
 __version__ = "0.7.1"
 
