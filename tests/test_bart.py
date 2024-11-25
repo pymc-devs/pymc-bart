@@ -184,12 +184,17 @@ class TestUtils:
     @pytest.mark.parametrize(
         "kwargs",
         [
-            {},
+            {"samples": 50},
             {"labels": ["A", "B", "C"], "samples": 2, "figsize": (6, 6)},
         ],
     )
     def test_vi(self, kwargs):
-        pmb.plot_variable_importance(self.idata, X=self.X, bartrv=self.mu, **kwargs)
+        samples = kwargs.pop("samples")
+        vi_results = pmb.compute_variable_importance(
+            self.idata, bartrv=self.mu, X=self.X, samples=samples
+        )
+        pmb.plot_variable_importance(vi_results, X=self.X, **kwargs)
+        pmb.plot_scatter_submodels(vi_results)
 
     def test_pdp_pandas_labels(self):
         pd = pytest.importorskip("pandas")
