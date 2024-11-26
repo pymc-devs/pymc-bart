@@ -824,10 +824,14 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     else:
         shape = bartrv.eval().shape[0]
 
-    if hasattr(X, "columns") and hasattr(X, "to_numpy"):
-        X = X.to_numpy()
-
     n_vars = X.shape[1]
+
+    if hasattr(X, "columns") and hasattr(X, "to_numpy"):
+        labels = X.columns
+        X = X.to_numpy()
+    else:
+        labels = np.arange(n_vars).astype(str)
+
     r2_mean = np.zeros(n_vars)
     r2_hdi = np.zeros((n_vars, 2))
     preds = np.zeros((n_vars, samples, bartrv.eval().shape[0]))
@@ -947,6 +951,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
 
     vi_results = {
         "indices": indices,
+        "labels": labels[indices],
         "r2_mean": r2_mean,
         "r2_hdi": r2_hdi,
         "preds": preds,
@@ -957,7 +962,6 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
 
 def plot_variable_importance(
     vi_results: dict,
-    X: npt.NDArray[np.float64],
     labels=None,
     figsize=None,
     plot_kwargs: Optional[Dict[str, Any]] = None,
@@ -1008,19 +1012,13 @@ def plot_variable_importance(
     if figsize is None:
         figsize = (8, 3)
 
-    if hasattr(X, "columns") and hasattr(X, "to_numpy"):
-        labels = X.columns
-        X = X.to_numpy()
-
     if ax is None:
         _, ax = plt.subplots(1, 1, figsize=figsize)
 
     if labels is None:
-        labels = np.arange(n_vars).astype(str)
-    else:
-        labels = np.asarray(labels)
+        labels = vi_results["labels"]
 
-    new_labels = ["+ " + ele if index != 0 else ele for index, ele in enumerate(labels[indices])]
+    labels = ["+ " + ele if index != 0 else ele for index, ele in enumerate(labels)]
 
     r_2_ref = np.array([pearsonr2(preds_all[j], preds_all[j + 1]) for j in range(samples - 1)])
 
@@ -1048,7 +1046,7 @@ def plot_variable_importance(
     )
     ax.set_xticks(
         ticks,
-        new_labels,
+        labels,
         rotation=plot_kwargs.get("rotation", 0),
     )
     ax.set_ylabel("R²", rotation=0, labelpad=12)
@@ -1060,9 +1058,9 @@ def plot_variable_importance(
 
 def plot_scatter_submodels(
     vi_results: dict,
-    X: npt.NDArray[np.float64],
     func: Optional[Callable] = None,
     grid: str = "long",
+    labels=None,
     figsize: Optional[Tuple[float, float]] = None,
     plot_kwargs: Optional[Dict[str, Any]] = None,
     axes: Optional[plt.Axes] = None,
@@ -1074,14 +1072,14 @@ def plot_scatter_submodels(
     ----------
     vi_results: Dictionary
         Dictionary computed with `compute_variable_importance`
-    X : npt.NDArray[np.float64]
-        The covariate matrix.
     func : Optional[Callable], by default None.
         Arbitrary function to apply to the predictions. Defaults to the identity function.
     grid : str or tuple
         How to arrange the subplots. Defaults to "long", one subplot below the other.
         Other options are "wide", one subplot next to each other or a tuple indicating the number
         of rows and columns.
+    labels : Optional[List[str]]
+        List of the names of the covariates.
     plot_kwargs : dict
         Additional keyword arguments for the plot. Defaults to None.
         Valid keys are:
@@ -1097,7 +1095,6 @@ def plot_scatter_submodels(
     indices = vi_results["indices"]
     preds = vi_results["preds"]
     preds_all = vi_results["preds_all"]
-    n_vars = len(indices)
 
     if axes is None:
         _, axes = _get_axes(grid, len(indices), True, True, figsize)
@@ -1105,15 +1102,10 @@ def plot_scatter_submodels(
     if plot_kwargs is None:
         plot_kwargs = {}
 
-    if hasattr(X, "columns") and hasattr(X, "to_numpy"):
-        labels = X.columns
-
     if labels is None:
-        labels = np.arange(n_vars).astype(str)
-    else:
-        labels = np.asarray(labels)
+        labels = vi_results["labels"]
 
-    new_labels = ["+ " + ele if index != 0 else ele for index, ele in enumerate(labels[indices])]
+    labels = ["+ " + ele if index != 0 else ele for index, ele in enumerate(labels)]
 
     if func is not None:
         preds = func(preds)
@@ -1122,7 +1114,7 @@ def plot_scatter_submodels(
     min_ = min(np.min(preds), np.min(preds_all))
     max_ = max(np.max(preds), np.max(preds_all))
 
-    for pred, x_label, ax in zip(preds, new_labels, axes.ravel()):
+    for pred, x_label, ax in zip(preds, labels, axes.ravel()):
         ax.plot(
             pred,
             preds_all,
