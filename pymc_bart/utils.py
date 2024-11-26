@@ -1058,15 +1058,63 @@ def plot_variable_importance(
     return ax
 
 
-def plot_scatter_submodels(vi_results, func=None, grid="long", axes=None):
+def plot_scatter_submodels(
+    vi_results: dict,
+    X: npt.NDArray[np.float64],
+    func: Optional[Callable] = None,
+    grid: str = "long",
+    figsize: Optional[Tuple[float, float]] = None,
+    plot_kwargs: Optional[Dict[str, Any]] = None,
+    axes: Optional[plt.Axes] = None,
+):
+    """
+    Plot submodel's predictions against reference-model's predictions.
+
+    Parameters
+    ----------
+    vi_results: Dictionary
+        Dictionary computed with `compute_variable_importance`
+    X : npt.NDArray[np.float64]
+        The covariate matrix.
+    func : Optional[Callable], by default None.
+        Arbitrary function to apply to the predictions. Defaults to the identity function.
+    grid : str or tuple
+        How to arrange the subplots. Defaults to "long", one subplot below the other.
+        Other options are "wide", one subplot next to each other or a tuple indicating the number
+        of rows and columns.
+    plot_kwargs : dict
+        Additional keyword arguments for the plot. Defaults to None.
+        Valid keys are:
+        - color_ref: matplotlib valid color for the 45 degree line
+        - color_scatter: matplotlib valid color for the scatter plot
+    axes : axes
+        Matplotlib axes.
+
+    Returns
+    -------
+    axes: matplotlib axes
+    """
     indices = vi_results["indices"]
     preds = vi_results["preds"]
     preds_all = vi_results["preds_all"]
+    n_vars = len(indices)
 
     if axes is None:
-        _, axes = _get_axes(grid, len(indices), False, True, None)
+        _, axes = _get_axes(grid, len(indices), True, True, figsize)
 
-    func = None
+    if plot_kwargs is None:
+        plot_kwargs = {}
+
+    if hasattr(X, "columns") and hasattr(X, "to_numpy"):
+        labels = X.columns
+
+    if labels is None:
+        labels = np.arange(n_vars).astype(str)
+    else:
+        labels = np.asarray(labels)
+
+    new_labels = ["+ " + ele if index != 0 else ele for index, ele in enumerate(labels[indices])]
+
     if func is not None:
         preds = func(preds)
         preds_all = func(preds_all)
@@ -1074,9 +1122,22 @@ def plot_scatter_submodels(vi_results, func=None, grid="long", axes=None):
     min_ = min(np.min(preds), np.min(preds_all))
     max_ = max(np.max(preds), np.max(preds_all))
 
-    for pred, ax in zip(preds, axes.ravel()):
-        ax.plot(pred, preds_all, ".", color="C0", alpha=0.1)
-        ax.axline([min_, min_], [max_, max_], color="0.5")
+    for pred, x_label, ax in zip(preds, new_labels, axes.ravel()):
+        ax.plot(
+            pred,
+            preds_all,
+            marker=plot_kwargs.get("marker_scatter", "."),
+            ls="",
+            color=plot_kwargs.get("color_scatter", "C0"),
+            alpha=plot_kwargs.get("alpha_scatter", 0.1),
+        )
+        ax.set_xlabel(x_label)
+        ax.axline(
+            [min_, min_],
+            [max_, max_],
+            color=plot_kwargs.get("color_ref", "0.5"),
+            ls=plot_kwargs.get("ls_ref", "--"),
+        )
 
 
 def generate_sequences(n_vars, i_var, include):
