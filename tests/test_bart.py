@@ -193,8 +193,8 @@ class TestUtils:
         vi_results = pmb.compute_variable_importance(
             self.idata, bartrv=self.mu, X=self.X, samples=samples
         )
-        pmb.plot_variable_importance(vi_results, X=self.X, **kwargs)
-        pmb.plot_scatter_submodels(vi_results)
+        pmb.plot_variable_importance(vi_results, **kwargs)
+        pmb.plot_scatter_submodels(vi_results, **kwargs)
 
     def test_pdp_pandas_labels(self):
         pd = pytest.importorskip("pandas")
