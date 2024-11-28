@@ -16,7 +16,7 @@
 
 import warnings
 from multiprocessing import Manager
-from typing import List, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -39,8 +39,8 @@ class BARTRV(RandomVariable):
     name: str = "BART"
     signature = "(m,n),(m),(),(),() -> (m)"
     dtype: str = "floatX"
-    _print_name: Tuple[str, str] = ("BART", "\\operatorname{BART}")
-    all_trees = List[List[List[Tree]]]
+    _print_name: tuple[str, str] = ("BART", "\\operatorname{BART}")
+    all_trees = list[list[list[Tree]]]
 
     def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):  # pylint: disable=arguments-renamed
         idx = dist_params[0].ndim - 2
@@ -92,10 +92,10 @@ class BART(Distribution):
     beta : float
         Controls the prior probability over the number of leaves of the trees.
         Should be positive.
-    split_prior : Optional[List[float]], default None.
+    split_prior : Optional[list[float]], default None.
         List of positive numbers, one per column in input data.
         Defaults to None, all covariates have the same prior probability to be selected.
-    split_rules : Optional[List[SplitRule]], default None
+    split_rules : Optional[list[SplitRule]], default None
         List of SplitRule objects, one per column in input data.
         Allows using different split rules for different columns. Default is ContinuousSplitRule.
         Other options are OneHotSplitRule and SubsetSplitRule, both meant for categorical variables.
@@ -126,7 +126,7 @@ class BART(Distribution):
         beta: float = 2.0,
         response: str = "constant",
         split_prior: Optional[npt.NDArray[np.float64]] = None,
-        split_rules: Optional[List[SplitRule]] = None,
+        split_rules: Optional[list[SplitRule]] = None,
         separate_trees: Optional[bool] = False,
         **kwargs,
     ):
@@ -198,7 +198,7 @@ class BART(Distribution):
 
 def preprocess_xy(
     X: TensorLike, Y: TensorLike
-) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
     if isinstance(Y, (Series, DataFrame)):
         Y = Y.to_numpy()
     if isinstance(X, (Series, DataFrame)):

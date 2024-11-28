@@ -12,7 +12,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -43,7 +43,7 @@ class ParticleTree:
 
     def __init__(self, tree: Tree):
         self.tree: Tree = tree.copy()
-        self.expansion_nodes: List[int] = [0]
+        self.expansion_nodes: list[int] = [0]
         self.log_weight: float = 0
 
     def copy(self) -> "ParticleTree":
@@ -123,7 +123,7 @@ class PGBART(ArrayStepShared):
         self,
         vars=None,  # pylint: disable=redefined-builtin
         num_particles: int = 10,
-        batch: Tuple[float, float] = (0.1, 0.1),
+        batch: tuple[float, float] = (0.1, 0.1),
         model: Optional[Model] = None,
     ):
         model = modelcontext(model)
@@ -310,7 +310,7 @@ class PGBART(ArrayStepShared):
         stats = {"variable_inclusion": variable_inclusion, "tune": self.tune}
         return self.sum_trees, [stats]
 
-    def normalize(self, particles: List[ParticleTree]) -> float:
+    def normalize(self, particles: list[ParticleTree]) -> float:
         """
         Use softmax to get normalized_weights.
         """
@@ -321,16 +321,16 @@ class PGBART(ArrayStepShared):
         return wei / wei.sum()
 
     def resample(
-        self, particles: List[ParticleTree], normalized_weights: npt.NDArray[np.float64]
-    ) -> List[ParticleTree]:
+        self, particles: list[ParticleTree], normalized_weights: npt.NDArray[np.float64]
+    ) -> list[ParticleTree]:
         """
         Use systematic resample for all but the first particle
 
         Ensure particles are copied only if needed.
         """
         new_indices = self.systematic(normalized_weights) + 1
-        seen: List[int] = []
-        new_particles: List[ParticleTree] = []
+        seen: list[int] = []
+        new_particles: list[ParticleTree] = []
         for idx in new_indices:
             if idx in seen:
                 new_particles.append(particles[idx].copy())
@@ -343,8 +343,8 @@ class PGBART(ArrayStepShared):
         return particles
 
     def get_particle_tree(
-        self, particles: List[ParticleTree], normalized_weights: npt.NDArray[np.float64]
-    ) -> Tuple[ParticleTree, Tree]:
+        self, particles: list[ParticleTree], normalized_weights: npt.NDArray[np.float64]
+    ) -> tuple[ParticleTree, Tree]:
         """
         Sample a new particle and associated tree
         """
@@ -367,12 +367,12 @@ class PGBART(ArrayStepShared):
         single_uniform = (self.uniform.rvs() + np.arange(lnw)) / lnw
         return inverse_cdf(single_uniform, normalized_weights)
 
-    def init_particles(self, tree_id: int, odim: int) -> List[ParticleTree]:
+    def init_particles(self, tree_id: int, odim: int) -> list[ParticleTree]:
         """Initialize particles."""
         p0: ParticleTree = self.all_particles[odim][tree_id]
         # The old tree does not grow so we update the weight only once
         self.update_weight(p0, odim)
-        particles: List[ParticleTree] = [p0]
+        particles: list[ParticleTree] = [p0]
 
         particles.extend(ParticleTree(self.a_tree) for _ in self.indices)
         return particles
@@ -419,7 +419,7 @@ def _update(
     mean: npt.NDArray[np.float64],
     m_2: npt.NDArray[np.float64],
     new_value: npt.NDArray[np.float64],
-) -> Tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], Union[float, npt.NDArray[np.float64]]]:
+) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64], Union[float, npt.NDArray[np.float64]]]:
     delta = new_value - mean
     mean += delta / count
     delta2 = new_value - mean
@@ -439,7 +439,7 @@ class SampleSplittingVariable:
         """
         self.enu = list(enumerate(np.cumsum(alpha_vec / alpha_vec.sum())))
 
-    def rvs(self) -> Union[int, Tuple[int, float]]:
+    def rvs(self) -> Union[int, tuple[int, float]]:
         rnd: float = np.random.random()
         for i, val in self.enu:
             if rnd <= val:
@@ -447,7 +447,7 @@ class SampleSplittingVariable:
         return self.enu[-1]
 
 
-def compute_prior_probability(alpha: int, beta: int) -> List[float]:
+def compute_prior_probability(alpha: int, beta: int) -> list[float]:
     """
     Calculate the probability of the node being a leaf node (1 - p(being split node)).
 
@@ -460,7 +460,7 @@ def compute_prior_probability(alpha: int, beta: int) -> List[float]:
     -------
     list with probabilities for leaf nodes
     """
-    prior_leaf_prob: List[float] = [0]
+    prior_leaf_prob: list[float] = [0]
     depth = 0
     while prior_leaf_prob[-1] < 0.9999:
         prior_leaf_prob.append(1 - (alpha * ((1 + depth) ** (-beta))))
@@ -549,7 +549,7 @@ def draw_leaf_value(
     norm: npt.NDArray[np.float64],
     shape: int,
     response: str,
-) -> Tuple[npt.NDArray[np.float64], Optional[npt.NDArray[np.float64]]]:
+) -> tuple[npt.NDArray[np.float64], Optional[npt.NDArray[np.float64]]]:
     """Draw Gaussian distributed leaf values."""
     linear_params = None
     mu_mean = np.empty(shape)
@@ -590,7 +590,7 @@ def fast_linear_fit(
     y: npt.NDArray[np.float64],
     m: int,
     norm: npt.NDArray[np.float64],
-) -> Tuple[npt.NDArray[np.float64], List[npt.NDArray[np.float64]]]:
+) -> tuple[npt.NDArray[np.float64], list[npt.NDArray[np.float64]]]:
     n = len(x)
     y = y / m + np.expand_dims(norm, axis=1)
 

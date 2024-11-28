@@ -2,7 +2,7 @@
 """Utility function for variable selection and bart interpretability."""
 
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Optional, Union
 
 import arviz as az
 import matplotlib.pyplot as plt
@@ -21,11 +21,11 @@ TensorLike = Union[npt.NDArray[np.float64], pt.TensorVariable]
 
 
 def _sample_posterior(
-    all_trees: List[List[Tree]],
+    all_trees: list[list[Tree]],
     X: TensorLike,
     rng: np.random.Generator,
-    size: Optional[Union[int, Tuple[int, ...]]] = None,
-    excluded: Optional[List[int]] = None,
+    size: Optional[Union[int, tuple[int, ...]]] = None,
+    excluded: Optional[list[int]] = None,
     shape: int = 1,
 ) -> npt.NDArray[np.float64]:
     """
@@ -50,7 +50,7 @@ def _sample_posterior(
         X = X.eval()
 
     if size is None:
-        size_iter: Union[List, Tuple] = (1,)
+        size_iter: Union[list, tuple] = (1,)
     elif isinstance(size, int):
         size_iter = [size]
     else:
@@ -79,9 +79,9 @@ def plot_convergence(
     idata: az.InferenceData,
     var_name: Optional[str] = None,
     kind: str = "ecdf",
-    figsize: Optional[Tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = None,
     ax=None,
-) -> List[plt.Axes]:
+) -> list[plt.Axes]:
     """
     Plot convergence diagnostics.
 
@@ -93,14 +93,14 @@ def plot_convergence(
         Name of the BART variable to plot. Defaults to None.
     kind : str
         Type of plot to display. Options are "ecdf" (default) and "kde".
-    figsize : Optional[Tuple[float, float]], by default None.
+    figsize : Optional[tuple[float, float]], by default None.
         Figure size. Defaults to None.
     ax : matplotlib axes
         Axes on which to plot. Defaults to None.
 
     Returns
     -------
-    List[ax] : matplotlib axes
+    list[ax] : matplotlib axes
     """
     ess_threshold = idata["posterior"]["chain"].size * 100
     ess = np.atleast_2d(az.ess(idata, method="bulk", var_names=var_name)[var_name].values)
@@ -157,8 +157,8 @@ def plot_ice(
     bartrv: Variable,
     X: npt.NDArray[np.float64],
     Y: Optional[npt.NDArray[np.float64]] = None,
-    var_idx: Optional[List[int]] = None,
-    var_discrete: Optional[List[int]] = None,
+    var_idx: Optional[list[int]] = None,
+    var_discrete: Optional[list[int]] = None,
     func: Optional[Callable] = None,
     centered: Optional[bool] = True,
     samples: int = 100,
@@ -170,10 +170,10 @@ def plot_ice(
     color="C0",
     color_mean: str = "C0",
     alpha: float = 0.1,
-    figsize: Optional[Tuple[float, float]] = None,
-    smooth_kwargs: Optional[Dict[str, Any]] = None,
+    figsize: Optional[tuple[float, float]] = None,
+    smooth_kwargs: Optional[dict[str, Any]] = None,
     ax: Optional[plt.Axes] = None,
-) -> List[plt.Axes]:
+) -> list[plt.Axes]:
     """
     Individual conditional expectation plot.
 
@@ -185,9 +185,9 @@ def plot_ice(
         The covariate matrix.
     Y : Optional[npt.NDArray[np.float64]], by default None.
         The response vector.
-    var_idx : Optional[List[int]], by default None.
+    var_idx : Optional[list[int]], by default None.
         List of the indices of the covariate for which to compute the pdp or ice.
-    var_discrete : Optional[List[int]], by default None.
+    var_discrete : Optional[list[int]], by default None.
         List of the indices of the covariate treated as discrete.
     func : Optional[Callable], by default None.
         Arbitrary function to apply to the predictions. Defaults to the identity function.
@@ -302,9 +302,9 @@ def plot_pdp(
     X: npt.NDArray[np.float64],
     Y: Optional[npt.NDArray[np.float64]] = None,
     xs_interval: str = "quantiles",
-    xs_values: Optional[Union[int, List[float]]] = None,
-    var_idx: Optional[List[int]] = None,
-    var_discrete: Optional[List[int]] = None,
+    xs_values: Optional[Union[int, list[float]]] = None,
+    var_idx: Optional[list[int]] = None,
+    var_discrete: Optional[list[int]] = None,
     func: Optional[Callable] = None,
     samples: int = 200,
     random_seed: Optional[int] = None,
@@ -314,10 +314,10 @@ def plot_pdp(
     color="C0",
     color_mean: str = "C0",
     alpha: float = 0.1,
-    figsize: Optional[Tuple[float, float]] = None,
-    smooth_kwargs: Optional[Dict[str, Any]] = None,
+    figsize: Optional[tuple[float, float]] = None,
+    smooth_kwargs: Optional[dict[str, Any]] = None,
     ax: Optional[plt.Axes] = None,
-) -> List[plt.Axes]:
+) -> list[plt.Axes]:
     """
     Partial dependence plot.
 
@@ -334,14 +334,14 @@ def plot_pdp(
         evenly spaced values in the range of X. "quantiles", the evaluation is done at the specified
         quantiles of X. "insample", the evaluation is done at the values of X.
         For discrete variables these options are ommited.
-    xs_values : Optional[Union[int, List[float]]], by default None.
+    xs_values : Optional[Union[int, list[float]]], by default None.
         Values of X used to evaluate the predicted function. If ``xs_interval="linear"`` number of
         points in the evenly spaced grid. If ``xs_interval="quantiles"`` quantile or sequence of
         quantiles to compute, which must be between 0 and 1 inclusive.
         Ignored when ``xs_interval="insample"``.
-    var_idx : Optional[List[int]], by default None.
+    var_idx : Optional[list[int]], by default None.
         List of the indices of the covariate for which to compute the pdp or ice.
-    var_discrete : Optional[List[int]], by default None.
+    var_discrete : Optional[list[int]], by default None.
         List of the indices of the covariate treated as discrete.
     func : Optional[Callable], by default None.
         Arbitrary function to apply to the predictions. Defaults to the identity function.
@@ -449,12 +449,12 @@ def plot_pdp(
 
 def _create_figure_axes(
     bartrv: Variable,
-    var_idx: List[int],
+    var_idx: list[int],
     grid: str = "long",
     sharey: bool = True,
-    figsize: Optional[Tuple[float, float]] = None,
+    figsize: Optional[tuple[float, float]] = None,
     ax: Optional[plt.Axes] = None,
-) -> Tuple[plt.Figure, List[plt.Axes], int]:
+) -> tuple[plt.Figure, list[plt.Axes], int]:
     """
     Create and return the figure and axes objects for plotting the variables.
 
@@ -464,9 +464,9 @@ def _create_figure_axes(
     ----------
     bartrv : BART Random Variable
         BART variable once the model that include it has been fitted.
-    var_idx : Optional[List[int]], by default None.
+    var_idx : Optional[list[int]], by default None.
         List of the indices of the covariate for which to compute the pdp or ice.
-    var_discrete : Optional[List[int]], by default None.
+    var_discrete : Optional[list[int]], by default None.
     grid : str or tuple
         How to arrange the subplots. Defaults to "long", one subplot below the other.
         Other options are "wide", one subplot next to each other or a tuple indicating the number of
@@ -481,7 +481,7 @@ def _create_figure_axes(
 
     Returns
     -------
-    Tuple[plt.Figure, List[plt.Axes], int]
+    tuple[plt.Figure, list[plt.Axes], int]
         A tuple containing the figure object, list of axes objects, and the shape value.
     """
     if bartrv.ndim == 1:  # type: ignore
@@ -535,18 +535,18 @@ def _prepare_plot_data(
     X: npt.NDArray[np.float64],
     Y: Optional[npt.NDArray[np.float64]] = None,
     xs_interval: str = "quantiles",
-    xs_values: Optional[Union[int, List[float]]] = None,
-    var_idx: Optional[List[int]] = None,
-    var_discrete: Optional[List[int]] = None,
-) -> Tuple[
+    xs_values: Optional[Union[int, list[float]]] = None,
+    var_idx: Optional[list[int]] = None,
+    var_discrete: Optional[list[int]] = None,
+) -> tuple[
     npt.NDArray[np.float64],
-    List[str],
+    list[str],
     str,
-    List[int],
-    List[int],
-    List[int],
+    list[int],
+    list[int],
+    list[int],
     str,
-    Union[int, None, List[float]],
+    Union[int, None, list[float]],
 ]:
     """
     Prepare data for plotting.
@@ -627,7 +627,7 @@ def _prepare_plot_data(
 def _create_pdp_data(
     X: npt.NDArray[np.float64],
     xs_interval: str,
-    xs_values: Optional[Union[int, List[float]]] = None,
+    xs_values: Optional[Union[int, list[float]]] = None,
 ) -> npt.NDArray[np.float64]:
     """
     Create data for partial dependence plot.
@@ -663,8 +663,8 @@ def _smooth_mean(
     new_x: npt.NDArray[np.float64],
     p_di: npt.NDArray[np.float64],
     kind: str = "pdp",
-    smooth_kwargs: Optional[Dict[str, Any]] = None,
-) -> Tuple[np.ndarray, np.ndarray]:
+    smooth_kwargs: Optional[dict[str, Any]] = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """
     Smooth the mean data for plotting.
 
@@ -676,12 +676,12 @@ def _smooth_mean(
         The distribution of partial dependence from which to comptue the smoothed mean.
     kind : str, optional
         The type of plot. Possible values are "pdp" or "ice".
-    smooth_kwargs : Optional[Dict[str, Any]], optional
+    smooth_kwargs : Optional[dict[str, Any]], optional
         Additional keyword arguments for the smoothing function. Defaults to None.
 
     Returns
     -------
-    Tuple[np.ndarray, np.ndarray]
+    tuple[np.ndarray, np.ndarray]
         A tuple containing a grid for the x-axis data and the corresponding smoothed y-axis data.
 
     """
@@ -709,7 +709,7 @@ def plot_variable_inclusion(idata, X, labels=None, figsize=None, plot_kwargs=Non
         InferenceData containing a collection of BART_trees in sample_stats group
     X : npt.NDArray[np.float64]
         The covariate matrix.
-    labels : Optional[List[str]]
+    labels : Optional[list[str]]
         List of the names of the covariates. If X is a DataFrame the names of the covariables will
         be taken from it and this argument will be ignored.
     figsize : tuple
@@ -860,7 +860,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
         if method == "backward_VI":
             subsets = subsets[-init:]
 
-        indices: List[int] = list(idxs[::-1])
+        indices: list[int] = list(idxs[::-1])
 
         for idx, subset in enumerate(subsets):
             predicted_subset = _sample_posterior(
@@ -880,7 +880,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
 
     if method in ["backward", "backward_VI"]:
         if method == "backward_VI":
-            least_important_vars: List[int] = indices[-fixed:]
+            least_important_vars: list[int] = indices[-fixed:]
             r2_mean_vi = r2_mean[:init]
             r2_hdi_vi = r2_hdi[:init]
             preds_vi = preds[:init]
@@ -964,7 +964,7 @@ def plot_variable_importance(
     vi_results: dict,
     labels=None,
     figsize=None,
-    plot_kwargs: Optional[Dict[str, Any]] = None,
+    plot_kwargs: Optional[dict[str, Any]] = None,
     ax: Optional[plt.Axes] = None,
 ):
     """
@@ -976,7 +976,7 @@ def plot_variable_importance(
         Dictionary computed with `compute_variable_importance`
     X : npt.NDArray[np.float64]
         The covariate matrix.
-    labels : Optional[List[str]]
+    labels : Optional[list[str]]
         List of the names of the covariates. If X is a DataFrame the names of the covariables will
         be taken from it and this argument will be ignored.
     plot_kwargs : dict
@@ -1061,8 +1061,8 @@ def plot_scatter_submodels(
     func: Optional[Callable] = None,
     grid: str = "long",
     labels=None,
-    figsize: Optional[Tuple[float, float]] = None,
-    plot_kwargs: Optional[Dict[str, Any]] = None,
+    figsize: Optional[tuple[float, float]] = None,
+    plot_kwargs: Optional[dict[str, Any]] = None,
     axes: Optional[plt.Axes] = None,
 ):
     """
@@ -1078,7 +1078,7 @@ def plot_scatter_submodels(
         How to arrange the subplots. Defaults to "long", one subplot below the other.
         Other options are "wide", one subplot next to each other or a tuple indicating the number
         of rows and columns.
-    labels : Optional[List[str]]
+    labels : Optional[list[str]]
         List of the names of the covariates.
     plot_kwargs : dict
         Additional keyword arguments for the plot. Defaults to None.
