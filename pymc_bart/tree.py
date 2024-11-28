@@ -12,8 +12,9 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from collections.abc import Generator
 from functools import lru_cache
-from typing import Dict, Generator, List, Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -30,7 +31,7 @@ class Node:
     value : npt.NDArray[np.float64]
     idx_data_points : Optional[npt.NDArray[np.int_]]
     idx_split_variable : int
-    linear_params: Optional[List[float]] = None
+    linear_params: Optional[list[float]] = None
     """
 
     __slots__ = "value", "nvalue", "idx_split_variable", "idx_data_points", "linear_params"
@@ -41,7 +42,7 @@ class Node:
         nvalue: int = 0,
         idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
-        linear_params: Optional[List[npt.NDArray[np.float64]]] = None,
+        linear_params: Optional[list[npt.NDArray[np.float64]]] = None,
     ) -> None:
         self.value = value
         self.nvalue = nvalue
@@ -56,7 +57,7 @@ class Node:
         nvalue: int = 0,
         idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
-        linear_params: Optional[List[npt.NDArray[np.float64]]] = None,
+        linear_params: Optional[list[npt.NDArray[np.float64]]] = None,
     ) -> "Node":
         return cls(
             value=value,
@@ -94,7 +95,7 @@ class Tree:
 
     Attributes
     ----------
-    tree_structure : Dict[int, Node]
+    tree_structure : dict[int, Node]
         A dictionary that represents the nodes stored in breadth-first order, based in the array
         method for storing binary trees (https://en.wikipedia.org/wiki/Binary_tree#Arrays).
         The dictionary's keys are integers that represent the nodes position.
@@ -102,11 +103,11 @@ class Tree:
         of the tree itself.
     output: Optional[npt.NDArray[np.float64]]
         Array of shape number of observations, shape
-    split_rules : List[SplitRule]
+    split_rules : list[SplitRule]
         List of SplitRule objects, one per column in input data.
         Allows using different split rules for different columns. Default is ContinuousSplitRule.
         Other options are OneHotSplitRule and SubsetSplitRule, both meant for categorical variables.
-    idx_leaf_nodes : Optional[List[int]], by default None.
+    idx_leaf_nodes : Optional[list[int]], by default None.
         Array with the index of the leaf nodes of the tree.
 
     Parameters
@@ -120,10 +121,10 @@ class Tree:
 
     def __init__(
         self,
-        tree_structure: Dict[int, Node],
+        tree_structure: dict[int, Node],
         output: npt.NDArray[np.float64],
-        split_rules: List[SplitRule],
-        idx_leaf_nodes: Optional[List[int]] = None,
+        split_rules: list[SplitRule],
+        idx_leaf_nodes: Optional[list[int]] = None,
     ) -> None:
         self.tree_structure = tree_structure
         self.idx_leaf_nodes = idx_leaf_nodes
@@ -137,7 +138,7 @@ class Tree:
         idx_data_points: Optional[npt.NDArray[np.int_]],
         num_observations: int,
         shape: int,
-        split_rules: List[SplitRule],
+        split_rules: list[SplitRule],
     ) -> "Tree":
         return cls(
             tree_structure={
@@ -159,7 +160,7 @@ class Tree:
         self.set_node(index, node)
 
     def copy(self) -> "Tree":
-        tree: Dict[int, Node] = {
+        tree: dict[int, Node] = {
             k: Node(
                 value=v.value,
                 nvalue=v.nvalue,
@@ -199,7 +200,7 @@ class Tree:
             self.idx_leaf_nodes.remove(index_leaf_node)
 
     def trim(self) -> "Tree":
-        tree: Dict[int, Node] = {
+        tree: dict[int, Node] = {
             k: Node(
                 value=v.value,
                 nvalue=v.nvalue,
@@ -233,7 +234,7 @@ class Tree:
     def predict(
         self,
         x: npt.NDArray[np.float64],
-        excluded: Optional[List[int]] = None,
+        excluded: Optional[list[int]] = None,
         shape: int = 1,
     ) -> npt.NDArray[np.float64]:
         """
@@ -243,7 +244,7 @@ class Tree:
         ----------
         x : npt.NDArray[np.float64]
             Unobserved point
-        excluded: Optional[List[int]]
+        excluded: Optional[list[int]]
             Indexes of the variables to exclude when computing predictions
 
         Returns
@@ -259,8 +260,8 @@ class Tree:
     def _traverse_tree(
         self,
         X: npt.NDArray[np.float64],
-        excluded: Optional[List[int]] = None,
-        shape: Union[int, Tuple[int, ...]] = 1,
+        excluded: Optional[list[int]] = None,
+        shape: Union[int, tuple[int, ...]] = 1,
     ) -> npt.NDArray[np.float64]:
         """
         Traverse the tree starting from the root node given an (un)observed point.
@@ -273,7 +274,7 @@ class Tree:
             Index of the node to start the traversal from
         split_variable : int
             Index of the variable used to split the node
-        excluded: Optional[List[int]]
+        excluded: Optional[list[int]]
             Indexes of the variables to exclude when computing predictions
 
         Returns
@@ -327,14 +328,14 @@ class Tree:
         return p_d
 
     def _traverse_leaf_values(
-        self, leaf_values: List[npt.NDArray[np.float64]], leaf_n_values: List[int], node_index: int
+        self, leaf_values: list[npt.NDArray[np.float64]], leaf_n_values: list[int], node_index: int
     ) -> None:
         """
         Traverse the tree appending leaf values starting from a particular node.
 
         Parameters
         ----------
-        leaf_values : List[npt.NDArray[np.float64]]
+        leaf_values : list[npt.NDArray[np.float64]]
         node_index : int
         """
         node = self.get_node(node_index)
