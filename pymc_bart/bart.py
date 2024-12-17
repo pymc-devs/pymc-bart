@@ -175,7 +175,7 @@ class BART(Distribution):
             return cls.get_moment(rv, size, *rv_inputs)
 
         cls.rv_op = bart_op
-        params = [X, Y, m, alpha, beta, split_prior]
+        params = [X, Y, m, alpha, beta]
         return super().__new__(cls, name, *params, **kwargs)
 
     @classmethod

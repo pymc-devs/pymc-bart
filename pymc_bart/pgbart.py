@@ -17,6 +17,7 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 from numba import njit
+from pymc.initial_point import PointType
 from pymc.model import Model, modelcontext
 from pymc.pytensorf import inputvars, join_nonshared_inputs, make_shared_replacements
 from pymc.step_methods.arraystep import ArrayStepShared
@@ -125,9 +126,12 @@ class PGBART(ArrayStepShared):
         num_particles: int = 10,
         batch: tuple[float, float] = (0.1, 0.1),
         model: Optional[Model] = None,
+        initial_point: PointType | None = None,
+        compile_kwargs: dict | None = None,  # pylint: disable=unused-argument
     ):
         model = modelcontext(model)
-        initial_values = model.initial_point()
+        if initial_point is None:
+            initial_point = model.initial_point()
         if vars is None:
             vars = model.value_vars
         else:
@@ -150,7 +154,7 @@ class PGBART(ArrayStepShared):
         self.m = self.bart.m
         self.response = self.bart.response
 
-        shape = initial_values[value_bart.name].shape
+        shape = initial_point[value_bart.name].shape
 
         self.shape = 1 if len(shape) == 1 else shape[0]
 
@@ -217,8 +221,8 @@ class PGBART(ArrayStepShared):
 
         self.num_particles = num_particles
         self.indices = list(range(1, num_particles))
-        shared = make_shared_replacements(initial_values, vars, model)
-        self.likelihood_logp = logp(initial_values, [model.datalogp], vars, shared)
+        shared = make_shared_replacements(initial_point, vars, model)
+        self.likelihood_logp = logp(initial_point, [model.datalogp], vars, shared)
         self.all_particles = [
             [ParticleTree(self.a_tree) for _ in range(self.m)] for _ in range(self.trees_shape)
         ]

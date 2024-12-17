@@ -248,8 +248,10 @@ def test_categorical_model(separate_trees, split_rule):
             separate_trees=separate_trees,
         )
         y = pm.Categorical("y", p=pm.math.softmax(lo.T, axis=-1), observed=Y)
-        idata = pm.sample(random_seed=3415, tune=300, draws=300)
-        idata = pm.sample_posterior_predictive(idata, predictions=True, extend_inferencedata=True)
+        idata = pm.sample(tune=300, draws=300, random_seed=3415)
+        idata = pm.sample_posterior_predictive(
+            idata, predictions=True, extend_inferencedata=True, random_seed=3415
+        )
 
     # Fit should be good enough so right category is selected over 50% of time
     assert (idata.predictions.y.median(["chain", "draw"]) == Y).all()
