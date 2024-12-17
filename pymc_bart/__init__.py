@@ -42,7 +42,7 @@ __all__ = [
     "plot_variable_importance",
     "plot_variable_inclusion",
 ]
-__version__ = "0.7.1"
+__version__ = "0.8.0"
 
 
 pm.STEP_METHODS = list(pm.STEP_METHODS) + [PGBART]
