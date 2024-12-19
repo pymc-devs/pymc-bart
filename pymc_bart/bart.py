@@ -55,7 +55,7 @@ class BARTRV(RandomVariable):
         if not size:
             size = None
 
-        if isinstance(cls.Y, TensorSharedVariable) or isinstance(cls.Y, TensorVariable):
+        if isinstance(cls.Y, (TensorSharedVariable, TensorVariable)):
             Y = cls.Y.eval()
         else:
             Y = cls.Y
