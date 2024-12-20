@@ -19,7 +19,6 @@ from pymc_bart.split_rules import ContinuousSplitRule, OneHotSplitRule, SubsetSp
 from pymc_bart.utils import (
     compute_variable_importance,
     plot_convergence,
-    plot_dependence,
     plot_ice,
     plot_pdp,
     plot_scatter_submodels,
@@ -35,14 +34,13 @@ __all__ = [
     "SubsetSplitRule",
     "compute_variable_importance",
     "plot_convergence",
-    "plot_dependence",
     "plot_ice",
     "plot_pdp",
     "plot_scatter_submodels",
     "plot_variable_importance",
     "plot_variable_inclusion",
 ]
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 
 
 pm.STEP_METHODS = list(pm.STEP_METHODS) + [PGBART]
