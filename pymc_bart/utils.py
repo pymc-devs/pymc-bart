@@ -81,7 +81,7 @@ def plot_convergence(
     kind: str = "ecdf",
     figsize: Optional[tuple[float, float]] = None,
     ax=None,
-) -> list[plt.Axes]:
+) -> plt.Axes:
     """
     Plot convergence diagnostics.
 
@@ -135,22 +135,6 @@ def plot_convergence(
         ax[1].set_yticks([])
 
     return ax
-
-
-def plot_dependence(*args, kind="pdp", **kwargs):  # pylint: disable=unused-argument
-    """
-    Partial dependence or individual conditional expectation plot.
-    """
-    if kind == "pdp":
-        warnings.warn(
-            "This function has been deprecated. Use plot_pdp instead.",
-            FutureWarning,
-        )
-    elif kind == "ice":
-        warnings.warn(
-            "This function has been deprecated. Use plot_ice instead.",
-            FutureWarning,
-        )
 
 
 def plot_ice(
@@ -307,6 +291,7 @@ def plot_pdp(
     var_discrete: Optional[list[int]] = None,
     func: Optional[Callable] = None,
     samples: int = 200,
+    ref_line: bool = True,
     random_seed: Optional[int] = None,
     sharey: bool = True,
     smooth: bool = True,
@@ -347,6 +332,8 @@ def plot_pdp(
         Arbitrary function to apply to the predictions. Defaults to the identity function.
     samples : int
         Number of posterior samples used in the predictions. Defaults to 200
+    ref_line : bool
+        If True a reference line is plotted at the mean of the partial dependence. Defaults to True.
     random_seed : Optional[int], by default None.
         Seed used to sample from the posterior. Defaults to None.
     sharey : bool
@@ -402,6 +389,7 @@ def plot_pdp(
 
     count = 0
     fake_X = _create_pdp_data(X, xs_interval, xs_values)
+    null_pd = []
     for var in range(len(var_idx)):
         excluded = indices[:]
         excluded.remove(var)
@@ -413,6 +401,7 @@ def plot_pdp(
             new_x = fake_X[:, var]
             for s_i in range(shape):
                 p_di = func(p_d[:, :, s_i])
+                null_pd.append(p_di.mean())
                 if var in var_discrete:
                     _, idx_uni = np.unique(new_x, return_index=True)
                     y_means = p_di.mean(0)[idx_uni]
@@ -441,6 +430,11 @@ def plot_pdp(
                 axes[count].set_xlabel(x_labels[var])
 
                 count += 1
+
+    if ref_line:
+        ref_val = sum(null_pd) / len(null_pd)
+        for ax_ in np.ravel(axes):
+            ax_.axhline(ref_val, color="0.7", linestyle="--")
 
     fig.text(-0.05, 0.5, y_label, va="center", rotation="vertical", fontsize=15)
 
@@ -949,11 +943,13 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
 
         indices = least_important_vars[::-1]
 
-    labels = np.array(["+ " + ele if index != 0 else ele for index, ele in enumerate(labels)])
+    labels = np.array(
+        ["+ " + ele if index != 0 else ele for index, ele in enumerate(labels[indices])]
+    )
 
     vi_results = {
         "indices": np.asarray(indices),
-        "labels": labels[indices],
+        "labels": labels,
         "r2_mean": r2_mean,
         "r2_hdi": r2_hdi,
         "preds": preds,
