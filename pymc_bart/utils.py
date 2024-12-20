@@ -81,7 +81,7 @@ def plot_convergence(
     kind: str = "ecdf",
     figsize: Optional[tuple[float, float]] = None,
     ax=None,
-) -> plt.Axes:
+) -> list[plt.Axes]:
     """
     Plot convergence diagnostics.
 
