@@ -828,7 +828,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
 
     r2_mean = np.zeros(n_vars)
     r2_hdi = np.zeros((n_vars, 2))
-    preds = np.zeros((n_vars, samples, bartrv.eval().shape[0]))
+    preds = np.zeros((n_vars, samples, *bartrv.eval().T.shape))
 
     if method == "backward_VI":
         if fixed >= n_vars:

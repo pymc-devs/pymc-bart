@@ -255,3 +255,4 @@ def test_categorical_model(separate_trees, split_rule):
 
     # Fit should be good enough so right category is selected over 50% of time
     assert (idata.predictions.y.median(["chain", "draw"]) == Y).all()
+    assert pmb.compute_variable_importance(idata, bartrv=lo, X=X)["preds"].shape == (5, 50, 9, 3)
