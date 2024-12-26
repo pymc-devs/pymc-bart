@@ -585,7 +585,7 @@ def fast_mean(ari: npt.NDArray[np.float64]) -> Union[float, npt.NDArray[np.float
         for j in range(ari.shape[0]):
             for i in range(count):
                 res[j] += ari[j, i]
-        return res / count
+        return (res / count).astype(np.float64)
 
 
 @njit
@@ -596,7 +596,7 @@ def fast_linear_fit(
     norm: npt.NDArray[np.float64],
 ) -> tuple[npt.NDArray[np.float64], list[npt.NDArray[np.float64]]]:
     n = len(x)
-    y = y / m + np.expand_dims(norm, axis=1)
+    y = (y / m + np.expand_dims(norm, axis=1)).astype(np.float64)
 
     xbar = np.sum(x) / n
     ybar = np.sum(y, axis=1) / n
