@@ -309,9 +309,19 @@ class Tree:
                 )
                 if excluded is not None and idx_split_variable in excluded:
                     prop_nvalue_left = self.get_node(left_node_index).nvalue / node.nvalue
-                    stack.append((left_node_index, weights * prop_nvalue_left, idx_split_variable))
                     stack.append(
-                        (right_node_index, weights * (1 - prop_nvalue_left), idx_split_variable)
+                        (
+                            left_node_index,
+                            (weights * prop_nvalue_left).astype(np.float64),
+                            idx_split_variable,
+                        )
+                    )
+                    stack.append(
+                        (
+                            right_node_index,
+                            (weights * (1 - prop_nvalue_left)).astype(np.float64),
+                            idx_split_variable,
+                        )
                     )
                 else:
                     to_left = (

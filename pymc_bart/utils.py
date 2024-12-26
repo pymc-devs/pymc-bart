@@ -848,7 +848,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
         idxs = np.argsort(
             idata["sample_stats"]["variable_inclusion"].mean(("chain", "draw")).values
         )
-        subsets = [idxs[:-i].tolist() for i in range(1, len(idxs))]
+        subsets: list[list[int]] = [list(idxs[:-i]) for i in range(1, len(idxs))]
         subsets.append(None)  # type: ignore
 
         if method == "backward_VI":
