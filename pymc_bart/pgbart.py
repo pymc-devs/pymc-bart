@@ -16,6 +16,8 @@ from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
+import pymc as pm
+import pytensor as pt
 from numba import njit
 from pymc.initial_point import PointType
 from pymc.model import Model, modelcontext
@@ -120,15 +122,15 @@ class PGBART(ArrayStepShared):
         "tune": (bool, []),
     }
 
-    def __init__(  # noqa: PLR0915
+    def __init__(  # noqa: PLR0912, PLR0915
         self,
-        vars=None,  # pylint: disable=redefined-builtin
+        vars: list[pm.Distribution] | None = None,
         num_particles: int = 10,
         batch: tuple[float, float] = (0.1, 0.1),
         model: Optional[Model] = None,
         initial_point: PointType | None = None,
-        compile_kwargs: dict | None = None,  # pylint: disable=unused-argument
-    ):
+        compile_kwargs: dict | None = None,
+    ) -> None:
         model = modelcontext(model)
         if initial_point is None:
             initial_point = model.initial_point()
@@ -137,6 +139,10 @@ class PGBART(ArrayStepShared):
         else:
             vars = [model.rvs_to_values.get(var, var) for var in vars]
             vars = inputvars(vars)
+
+        if vars is None:
+            raise ValueError("Unable to find variables to sample")
+
         value_bart = vars[0]
         self.bart = model.values_to_rvs[value_bart].owner.op
 
@@ -395,7 +401,7 @@ class PGBART(ArrayStepShared):
         particle.log_weight = new_likelihood
 
     @staticmethod
-    def competence(var, has_grad):
+    def competence(var: pm.Distribution, has_grad: bool) -> Competence:
         """PGBART is only suitable for BART distributions."""
         dist = getattr(var.owner, "op", None)
         if isinstance(dist, BARTRV):
@@ -406,7 +412,7 @@ class PGBART(ArrayStepShared):
 class RunningSd:
     """Welford's online algorithm for computing the variance/standard deviation"""
 
-    def __init__(self, shape: tuple) -> None:
+    def __init__(self, shape: tuple[int, ...]) -> None:
         self.count = 0  # number of data points
         self.mean = np.zeros(shape)  # running mean
         self.m_2 = np.zeros(shape)  # running second moment
@@ -561,7 +567,7 @@ def draw_leaf_value(
         return np.zeros(shape), linear_params
 
     if y_mu_pred.size == 1:
-        mu_mean = (np.full(shape, y_mu_pred.item() / m) + norm).astype(np.float64)
+        mu_mean = np.full(shape, y_mu_pred.item() / m) + norm
     elif y_mu_pred.size < 3 or response == "constant":
         mu_mean = fast_mean(y_mu_pred) / m + norm
     else:
@@ -585,7 +591,7 @@ def fast_mean(ari: npt.NDArray) -> Union[float, npt.NDArray]:
         for j in range(ari.shape[0]):
             for i in range(count):
                 res[j] += ari[j, i]
-        return (res / count).astype(np.float64)
+        return res / count
 
 
 @njit
@@ -596,7 +602,7 @@ def fast_linear_fit(
     norm: npt.NDArray,
 ) -> tuple[npt.NDArray, list[npt.NDArray]]:
     n = len(x)
-    y = (y / m + np.expand_dims(norm, axis=1)).astype(np.float64)
+    y = y / m + np.expand_dims(norm, axis=1)
 
     xbar = np.sum(x) / n
     ybar = np.sum(y, axis=1) / n
@@ -732,7 +738,9 @@ def are_whole_number(array: npt.NDArray) -> np.bool_:
     return np.all(np.mod(array[~np.isnan(array)], 1) == 0)
 
 
-def logp(point, out_vars, vars, shared):  # pylint: disable=redefined-builtin
+def logp(
+    point, out_vars: list[pm.Distribution], vars: list[pm.Distribution], shared: list[pt.Tensor]
+):
     """Compile PyTensor function of the model and the input and output variables.
 
     Parameters

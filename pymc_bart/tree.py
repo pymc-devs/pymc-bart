@@ -286,7 +286,9 @@ class Tree:
         x_shape = (1,) if len(X.shape) == 1 else X.shape[:-1]
         nd_dims = (...,) + (None,) * len(x_shape)
 
-        stack = [(0, np.ones(x_shape), 0)]  # (node_index, weight, idx_split_variable) initial state
+        stack: list[tuple[int, npt.NDArray, int]] = [
+            (0, np.ones(x_shape), 0)
+        ]  # (node_index, weight, idx_split_variable) initial state
         p_d = (
             np.zeros(shape + x_shape) if isinstance(shape, tuple) else np.zeros((shape,) + x_shape)
         )
@@ -312,14 +314,14 @@ class Tree:
                     stack.append(
                         (
                             left_node_index,
-                            (weights * prop_nvalue_left).astype(np.float64),
+                            weights * prop_nvalue_left,
                             idx_split_variable,
                         )
                     )
                     stack.append(
                         (
                             right_node_index,
-                            (weights * (1 - prop_nvalue_left)).astype(np.float64),
+                            weights * (1 - prop_nvalue_left),
                             idx_split_variable,
                         )
                     )
