@@ -739,7 +739,10 @@ def are_whole_number(array: npt.NDArray) -> np.bool_:
 
 
 def logp(
-    point, out_vars: list[pm.Distribution], vars: list[pm.Distribution], shared: list[pt.Tensor]
+    point,
+    out_vars: list[pm.Distribution],
+    vars: list[pm.Distribution],
+    shared: list[pt.TensorVariable],
 ):
     """Compile PyTensor function of the model and the input and output variables.
 
