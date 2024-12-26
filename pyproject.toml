@@ -33,3 +33,20 @@ exclude_lines = [
 isort = 1
 black = 1
 pyupgrade = 1
+
+
+[tool.mypy]
+files = "pymc_bart/*.py"
+plugins = "numpy.typing.mypy_plugin"
+
+[tool.mypy-matplotlib]
+ignore_missing_imports = true
+
+[tool.mypy-numba]
+ignore_missing_imports = true
+
+[tool.mypy-pymc]
+ignore_missing_imports = true
+
+[tool.mypy-scipy]
+ignore_missing_imports = true
