@@ -132,7 +132,7 @@ class BART(Distribution):
         alpha: float = 0.95,
         beta: float = 2.0,
         response: str = "constant",
-        split_prior: Optional[npt.NDArray[np.float64]] = None,
+        split_prior: Optional[npt.NDArray] = None,
         split_rules: Optional[list[SplitRule]] = None,
         separate_trees: Optional[bool] = False,
         **kwargs,
@@ -203,9 +203,7 @@ class BART(Distribution):
         return mean
 
 
-def preprocess_xy(
-    X: TensorLike, Y: TensorLike
-) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.float64]]:
+def preprocess_xy(X: TensorLike, Y: TensorLike) -> tuple[npt.NDArray, npt.NDArray]:
     if isinstance(Y, (Series, DataFrame)):
         Y = Y.to_numpy()
     if isinstance(X, (Series, DataFrame)):

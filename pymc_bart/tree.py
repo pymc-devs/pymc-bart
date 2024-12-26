@@ -28,7 +28,7 @@ class Node:
 
     Attributes
     ----------
-    value : npt.NDArray[np.float64]
+    value : npt.NDArray
     idx_data_points : Optional[npt.NDArray[np.int_]]
     idx_split_variable : int
     linear_params: Optional[list[float]] = None
@@ -38,11 +38,11 @@ class Node:
 
     def __init__(
         self,
-        value: npt.NDArray[np.float64] = np.array([-1.0]),
+        value: npt.NDArray = np.array([-1.0]),
         nvalue: int = 0,
         idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
-        linear_params: Optional[list[npt.NDArray[np.float64]]] = None,
+        linear_params: Optional[list[npt.NDArray]] = None,
     ) -> None:
         self.value = value
         self.nvalue = nvalue
@@ -53,11 +53,11 @@ class Node:
     @classmethod
     def new_leaf_node(
         cls,
-        value: npt.NDArray[np.float64],
+        value: npt.NDArray,
         nvalue: int = 0,
         idx_data_points: Optional[npt.NDArray[np.int_]] = None,
         idx_split_variable: int = -1,
-        linear_params: Optional[list[npt.NDArray[np.float64]]] = None,
+        linear_params: Optional[list[npt.NDArray]] = None,
     ) -> "Node":
         return cls(
             value=value,
@@ -101,7 +101,7 @@ class Tree:
         The dictionary's keys are integers that represent the nodes position.
         The dictionary's values are objects of type Node that represent the split and leaf nodes
         of the tree itself.
-    output: Optional[npt.NDArray[np.float64]]
+    output: Optional[npt.NDArray]
         Array of shape number of observations, shape
     split_rules : list[SplitRule]
         List of SplitRule objects, one per column in input data.
@@ -122,7 +122,7 @@ class Tree:
     def __init__(
         self,
         tree_structure: dict[int, Node],
-        output: npt.NDArray[np.float64],
+        output: npt.NDArray,
         split_rules: list[SplitRule],
         idx_leaf_nodes: Optional[list[int]] = None,
     ) -> None:
@@ -134,7 +134,7 @@ class Tree:
     @classmethod
     def new_tree(
         cls,
-        leaf_node_value: npt.NDArray[np.float64],
+        leaf_node_value: npt.NDArray,
         idx_data_points: Optional[npt.NDArray[np.int_]],
         num_observations: int,
         shape: int,
@@ -190,7 +190,7 @@ class Tree:
         self,
         current_node: Node,
         selected_predictor: int,
-        split_value: npt.NDArray[np.float64],
+        split_value: npt.NDArray,
         index_leaf_node: int,
     ) -> None:
         current_node.value = split_value
@@ -222,7 +222,7 @@ class Tree:
             if node.is_split_node():
                 yield node.idx_split_variable
 
-    def _predict(self) -> npt.NDArray[np.float64]:
+    def _predict(self) -> npt.NDArray:
         output = self.output
 
         if self.idx_leaf_nodes is not None:
@@ -233,23 +233,23 @@ class Tree:
 
     def predict(
         self,
-        x: npt.NDArray[np.float64],
+        x: npt.NDArray,
         excluded: Optional[list[int]] = None,
         shape: int = 1,
-    ) -> npt.NDArray[np.float64]:
+    ) -> npt.NDArray:
         """
         Predict output of tree for an (un)observed point x.
 
         Parameters
         ----------
-        x : npt.NDArray[np.float64]
+        x : npt.NDArray
             Unobserved point
         excluded: Optional[list[int]]
             Indexes of the variables to exclude when computing predictions
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray
             Value of the leaf value where the unobserved point lies.
         """
         if excluded is None:
@@ -259,16 +259,16 @@ class Tree:
 
     def _traverse_tree(
         self,
-        X: npt.NDArray[np.float64],
+        X: npt.NDArray,
         excluded: Optional[list[int]] = None,
         shape: Union[int, tuple[int, ...]] = 1,
-    ) -> npt.NDArray[np.float64]:
+    ) -> npt.NDArray:
         """
         Traverse the tree starting from the root node given an (un)observed point.
 
         Parameters
         ----------
-        X : npt.NDArray[np.float64]
+        X : npt.NDArray
             (Un)observed point(s)
         node_index : int
             Index of the node to start the traversal from
@@ -279,14 +279,16 @@ class Tree:
 
         Returns
         -------
-        npt.NDArray[np.float64]
+        npt.NDArray
             Leaf node value or mean of leaf node values
         """
 
         x_shape = (1,) if len(X.shape) == 1 else X.shape[:-1]
         nd_dims = (...,) + (None,) * len(x_shape)
 
-        stack = [(0, np.ones(x_shape), 0)]  # (node_index, weight, idx_split_variable) initial state
+        stack: list[tuple[int, npt.NDArray, int]] = [
+            (0, np.ones(x_shape), 0)
+        ]  # (node_index, weight, idx_split_variable) initial state
         p_d = (
             np.zeros(shape + x_shape) if isinstance(shape, tuple) else np.zeros((shape,) + x_shape)
         )
@@ -309,9 +311,19 @@ class Tree:
                 )
                 if excluded is not None and idx_split_variable in excluded:
                     prop_nvalue_left = self.get_node(left_node_index).nvalue / node.nvalue
-                    stack.append((left_node_index, weights * prop_nvalue_left, idx_split_variable))
                     stack.append(
-                        (right_node_index, weights * (1 - prop_nvalue_left), idx_split_variable)
+                        (
+                            left_node_index,
+                            weights * prop_nvalue_left,
+                            idx_split_variable,
+                        )
+                    )
+                    stack.append(
+                        (
+                            right_node_index,
+                            weights * (1 - prop_nvalue_left),
+                            idx_split_variable,
+                        )
                     )
                 else:
                     to_left = (
@@ -328,14 +340,14 @@ class Tree:
         return p_d
 
     def _traverse_leaf_values(
-        self, leaf_values: list[npt.NDArray[np.float64]], leaf_n_values: list[int], node_index: int
+        self, leaf_values: list[npt.NDArray], leaf_n_values: list[int], node_index: int
     ) -> None:
         """
         Traverse the tree appending leaf values starting from a particular node.
 
         Parameters
         ----------
-        leaf_values : list[npt.NDArray[np.float64]]
+        leaf_values : list[npt.NDArray]
         node_index : int
         """
         node = self.get_node(node_index)
