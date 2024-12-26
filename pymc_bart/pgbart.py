@@ -556,7 +556,7 @@ def draw_leaf_value(
 ) -> tuple[npt.NDArray[np.float64], Optional[npt.NDArray[np.float64]]]:
     """Draw Gaussian distributed leaf values."""
     linear_params = None
-    mu_mean: npt.NDArray[np.float64] = np.empty(shape)
+    mu_mean: npt.NDArray[np.float64]
     if y_mu_pred.size == 0:
         return np.zeros(shape), linear_params
 
