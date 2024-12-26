@@ -17,7 +17,7 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 import pymc as pm
-import pytensor as pt
+import pytensor.tensor as pt
 from numba import njit
 from pymc.initial_point import PointType
 from pymc.model import Model, modelcontext
