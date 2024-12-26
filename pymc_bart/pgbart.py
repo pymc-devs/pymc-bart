@@ -430,7 +430,7 @@ def _update(
     m_2 += delta * delta2
 
     std = (m_2 / count) ** 0.5
-    return mean, m_2, std
+    return mean.astype(np.float64), m_2.astype(np.float64), std.astype(np.float64)
 
 
 class SampleSplittingVariable:
