@@ -55,12 +55,12 @@ class BARTRV(RandomVariable):
         if not size:
             size = None
 
-        if isinstance(cls.Y, (TensorSharedVariable, TensorVariable)):
-            Y = cls.Y.eval()
-        else:
-            Y = cls.Y
-
         if not cls.all_trees:
+            if isinstance(cls.Y, (TensorSharedVariable, TensorVariable)):
+                Y = cls.Y.eval()
+            else:
+                Y = cls.Y
+
             if size is not None:
                 return np.full((size[0], Y.shape[0]), Y.mean())
             else:
