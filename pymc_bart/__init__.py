@@ -18,6 +18,7 @@ from pymc_bart.pgbart import PGBART
 from pymc_bart.split_rules import ContinuousSplitRule, OneHotSplitRule, SubsetSplitRule
 from pymc_bart.utils import (
     compute_variable_importance,
+    get_variable_inclusion,
     plot_convergence,
     plot_ice,
     plot_pdp,
@@ -33,6 +34,7 @@ __all__ = [
     "OneHotSplitRule",
     "SubsetSplitRule",
     "compute_variable_importance",
+    "get_variable_inclusion",
     "plot_convergence",
     "plot_ice",
     "plot_pdp",
