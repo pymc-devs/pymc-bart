@@ -93,10 +93,12 @@ Contents
    :maxdepth: 2
 
    examples
+
+References
+==========
+
+.. toctree::
+   :maxdepth: 1
+
    api_reference
-
-Indices
-=======
-
-* :ref:`genindex`
-* :ref:`modindex`
+   changelog
