@@ -1164,8 +1164,6 @@ def plot_scatter_submodels(
     if preds_all.ndim > 2:
         n_cats = preds_all.shape[-1]
         indices = np.tile(indices, n_cats)
-        # labels = np.tile(labels, n_cats)
-        # cats = np.repeat(np.arange(n_cats), len(indices) // n_cats)
 
     if ax is None:
         _, ax = _get_axes(grid, len(indices), True, True, figsize)
