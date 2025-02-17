@@ -290,7 +290,6 @@ def plot_pdp(
     var_idx: Optional[list[int]] = None,
     var_discrete: Optional[list[int]] = None,
     func: Optional[Callable] = None,
-    softmax_link: Optional[bool] = False,
     samples: int = 200,
     ref_line: bool = True,
     random_seed: Optional[int] = None,
@@ -331,9 +330,6 @@ def plot_pdp(
         List of the indices of the covariate treated as discrete.
     func : Optional[Callable], by default None.
         Arbitrary function to apply to the predictions. Defaults to the identity function.
-    softmax_link: Optional[bool] = False,
-        If True the predictions are transformed using the softmax function. Only works when
-        likelihood is categorical. Defaults to False.
     samples : int
         Number of posterior samples used in the predictions. Defaults to 200
     ref_line : bool
@@ -400,17 +396,18 @@ def plot_pdp(
         p_d = _sample_posterior(
             all_trees, X=fake_X, rng=rng, size=samples, excluded=excluded, shape=shape
         )
-        if softmax_link is True:
-            from scipy.special import softmax
-
-            # categories are the last dimension
-            p_d = softmax(p_d, axis=-1)
+        # need to apply func to full array and to last dimension if it's softmax
+        if func.__name__ == "softmax":
+            # categories are always the last dimension
+            # for some reason, mypy thinks that func can be identity,
+            # which doesn't have the axis argument
+            p_d = func(p_d, axis=-1)  # type: ignore[call-arg]
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="hdi currently interprets 2d data")
             new_x = fake_X[:, var]
             for s_i in range(shape):
-                p_di = func(p_d[:, :, s_i])
+                p_di = p_d[:, :, s_i] if func.__name__ == "softmax" else func(p_d[:, :, s_i])
                 null_pd.append(p_di.mean())
                 if var in var_discrete:
                     _, idx_uni = np.unique(new_x, return_index=True)
