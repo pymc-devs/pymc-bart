@@ -393,21 +393,17 @@ def plot_pdp(
     for var in range(len(var_idx)):
         excluded = indices[:]
         excluded.remove(var)
-        p_d = _sample_posterior(
-            all_trees, X=fake_X, rng=rng, size=samples, excluded=excluded, shape=shape
+        p_d = func(
+            _sample_posterior(
+                all_trees, X=fake_X, rng=rng, size=samples, excluded=excluded, shape=shape
+            )
         )
-        # need to apply func to full array and to last dimension if it's softmax
-        if func.__name__ == "softmax":
-            # categories are always the last dimension
-            # for some reason, mypy thinks that func can be identity,
-            # which doesn't have the axis argument
-            p_d = func(p_d, axis=-1)  # type: ignore[call-arg]
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="hdi currently interprets 2d data")
             new_x = fake_X[:, var]
             for s_i in range(shape):
-                p_di = p_d[:, :, s_i] if func.__name__ == "softmax" else func(p_d[:, :, s_i])
+                p_di = p_d[:, :, s_i]
                 null_pd.append(p_di.mean())
                 if var in var_discrete:
                     _, idx_uni = np.unique(new_x, return_index=True)
