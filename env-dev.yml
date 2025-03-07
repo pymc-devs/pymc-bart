@@ -1,0 +1,23 @@
+name: pymc-bart-dev
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - pymc>=5.16.2,<=5.19.1
+  - arviz>=0.18.0
+  - numba
+  - matplotlib
+  - numpy
+  - pytensor
+  # Development dependencies
+  - pytest>=4.4.0
+  - pytest-cov>=2.6.1
+  - click==8.0.4
+  - pylint==2.17.4
+  - pre-commit
+  - black
+  - isort
+  - flake8
+  - pip
+  - pip:
+    - -e .
