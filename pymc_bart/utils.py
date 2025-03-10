@@ -254,7 +254,7 @@ def plot_ice(
             )
 
         new_x = fake_X[:, var]
-        p_d = func(y_pred)
+        p_d = func(np.array(y_pred))
 
         for s_i in range(shape):
             if centered:
