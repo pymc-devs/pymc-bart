@@ -254,13 +254,13 @@ def plot_ice(
             )
 
         new_x = fake_X[:, var]
-        p_d = np.array(y_pred)
+        p_d = func(y_pred)
 
         for s_i in range(shape):
             if centered:
-                p_di = func(p_d[:, :, s_i]) - func(p_d[:, :, s_i][:, 0][:, None])
+                p_di = p_d[:, :, s_i] - p_d[:, :, s_i][:, 0][:, None]
             else:
-                p_di = func(p_d[:, :, s_i])
+                p_di = p_d[:, :, s_i]
             if var in var_discrete:
                 axes[count].plot(new_x, p_di.mean(0), "o", color=color_mean)
                 axes[count].plot(new_x, p_di.T, ".", color=color, alpha=alpha)
