@@ -1,8 +1,6 @@
 myst-nb
-sphinx==5.0.2 # see https://github.com/pymc-devs/pymc-examples/issues/409
-git+https://github.com/pymc-devs/pymc-sphinx-theme
+sphinx
+git+https://github.com/pymc-devs/pymc-sphinx-theme@test_016
 sphinxcontrib-bibtex
-nbsphinx
 sphinx_design
 sphinx_codeautolink
-sphinx_remove_toctrees
