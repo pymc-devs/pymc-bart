@@ -72,6 +72,7 @@ bibtex_reference_style = "author_year"
 html_theme = "pymc_sphinx_theme"
 html_theme_options = {
     "secondary_sidebar_items": ["page-toc", "edit-this-page", "sourcelink", "donate"],
+    "search_bar_text": "Search within PyMC-BART...",
     "navbar_start": ["navbar-logo"],
     "icon_links": [
         {
