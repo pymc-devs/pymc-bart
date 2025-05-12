@@ -1,6 +1,6 @@
 myst-nb
 sphinx
-git+https://github.com/pymc-devs/pymc-sphinx-theme@test_016
+pymc-sphinx-theme>=0.16
 sphinxcontrib-bibtex
 sphinx_design
 sphinx_codeautolink

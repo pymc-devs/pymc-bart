@@ -16,3 +16,14 @@ python:
    - requirements: requirements.txt
    - method: pip
      path: .
+
+search:
+  ranking:
+    _sources/*: -10
+    _modules/*: -5
+    genindex.html: -9
+
+  ignore:
+    - 404.html
+    - search.html
+    - index.html
