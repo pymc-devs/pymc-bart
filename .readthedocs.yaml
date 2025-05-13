@@ -6,9 +6,9 @@ sphinx:
   configuration: docs/conf.py
 
 build:
-  os: ubuntu-20.04
+  os: ubuntu-24.04
   tools:
-    python: "3.10"
+    python: "3.12"
 
 python:
    install:
@@ -16,3 +16,15 @@ python:
    - requirements: requirements.txt
    - method: pip
      path: .
+
+search:
+  ranking:
+    _sources/*: -10
+    _modules/*: -5
+    genindex.html: -9
+
+  ignore:
+    - 404.html
+    - search.html
+    - index.html
+    - 'examples/*'

@@ -21,7 +21,6 @@ extensions = [
     "sphinx_design",
     "sphinxcontrib.bibtex",
     "sphinx_codeautolink",
-    "sphinx_remove_toctrees",
 ]
 
 # List of patterns, relative to source directory, that match files and
@@ -73,6 +72,7 @@ bibtex_reference_style = "author_year"
 html_theme = "pymc_sphinx_theme"
 html_theme_options = {
     "secondary_sidebar_items": ["page-toc", "edit-this-page", "sourcelink", "donate"],
+    "search_bar_text": "Search within PyMC-BART...",
     "navbar_start": ["navbar-logo"],
     "icon_links": [
         {
@@ -80,17 +80,6 @@ html_theme_options = {
             "icon": "fa-brands fa-github",
             "name": "GitHub",
         },
-        {
-            "url": "https://twitter.com/pymc_devs/",
-            "icon": "fa-brands fa-twitter",
-            "name": "Twitter",
-        },
-        {
-            "url": "https://www.youtube.com/c/PyMCDevelopers",
-            "icon": "fa-brands fa-youtube",
-            "name": "YouTube",
-        },
-        {"url": "https://discourse.pymc.io", "icon": "fa-brands fa-discourse", "name": "Discourse"},
     ],
 }
 
@@ -143,23 +132,6 @@ myst_substitutions = {
 }
 nb_execution_mode = "off"
 
-
-remove_from_toctrees = [
-    "BART/*",
-    "case_studies/*",
-    "causal_inference/*",
-    "diagnostics_and_criticism/*",
-    "gaussian_processes/*",
-    "generalized_linear_models/*",
-    "mixture_models/*",
-    "ode_models/*",
-    "howto/*",
-    "samplers/*",
-    "splines/*",
-    "survival_analysis/*",
-    "time_series/*",
-    "variational_inference/*",
-]
 
 # bibtex config
 bibtex_bibfiles = ["references.bib"]
