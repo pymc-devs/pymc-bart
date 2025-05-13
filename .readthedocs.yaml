@@ -27,3 +27,4 @@ search:
     - 404.html
     - search.html
     - index.html
+    - 'examples/*'
