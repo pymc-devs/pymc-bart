@@ -1,3 +1,18 @@
+<a id="0.9.1"></a>
+# [0.9.1](https://github.com/pymc-devs/pymc-bart/releases/tag/0.9.1) - 2025-05-19
+
+## What's Changed
+* misc doc improvements and theme update by [@OriolAbril](https://github.com/OriolAbril) in [#225](https://github.com/pymc-devs/pymc-bart/pull/225)
+* Use last pymc version by [@aloctavodia](https://github.com/aloctavodia) in [#227](https://github.com/pymc-devs/pymc-bart/pull/227)
+
+## New Contributors
+* [@OriolAbril](https://github.com/OriolAbril) made their first contribution in [#225](https://github.com/pymc-devs/pymc-bart/pull/225)
+
+**Full Changelog**: https://github.com/pymc-devs/pymc-bart/compare/0.9.0...0.9.1
+
+[Changes][0.9.1]
+
+
 <a id="0.9.0"></a>
 # [0.9.0](https://github.com/pymc-devs/pymc-bart/releases/tag/0.9.0) - 2025-03-10
 
@@ -415,6 +430,7 @@
 [Changes][0.0.3]
 
 
+[0.9.1]: https://github.com/pymc-devs/pymc-bart/compare/0.9.0...0.9.1
 [0.9.0]: https://github.com/pymc-devs/pymc-bart/compare/0.8.2...0.9.0
 [0.8.2]: https://github.com/pymc-devs/pymc-bart/compare/0.8.1...0.8.2
 [0.8.1]: https://github.com/pymc-devs/pymc-bart/compare/0.8.0...0.8.1
