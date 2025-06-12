@@ -29,7 +29,6 @@ from pytensor.tensor.sharedvar import TensorSharedVariable
 from pytensor.tensor.variable import TensorVariable
 
 from .split_rules import SplitRule
-from .tree import Tree
 from .utils import TensorLike, _sample_posterior
 
 __all__ = ["BART"]
@@ -42,7 +41,6 @@ class BARTRV(RandomVariable):
     signature = "(m,n),(m),(),(),() -> (m)"
     dtype: str = "floatX"
     _print_name: tuple[str, str] = ("BART", "\\operatorname{BART}")
-    all_trees = list[list[list[Tree]]]
 
     def _supp_shape_from_params(self, dist_params, rep_param_idx=1, param_shapes=None):  # pylint: disable=arguments-renamed
         idx = dist_params[0].ndim - 2
@@ -55,7 +53,7 @@ class BARTRV(RandomVariable):
         if not size:
             size = None
 
-        if not cls.all_trees:
+        if not hasattr(cls, "all_trees") or not cls.all_trees:
             if isinstance(cls.Y, (TensorSharedVariable, TensorVariable)):
                 Y = cls.Y.eval()
             else:
@@ -142,8 +140,9 @@ class BART(Distribution):
                 "Options linear and mix are experimental and still not well tested\n"
                 + "Use with caution."
             )
+        # Create a unique manager list for each BART instance
         manager = Manager()
-        cls.all_trees = manager.list()
+        instance_all_trees = manager.list()
 
         X, Y = preprocess_xy(X, Y)
 
@@ -154,7 +153,7 @@ class BART(Distribution):
             (BARTRV,),
             {
                 "name": "BART",
-                "all_trees": cls.all_trees,
+                "all_trees": instance_all_trees,  # Instance-specific tree storage
                 "inplace": False,
                 "initval": Y.mean(),
                 "X": X,
