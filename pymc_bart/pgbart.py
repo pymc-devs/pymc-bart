@@ -426,6 +426,13 @@ class PGBART(ArrayStepShared):
             return Competence.IDEAL
         return Competence.INCOMPATIBLE
 
+    @staticmethod
+    def _make_update_stats_functions():
+        def update_stats(step_stats):
+            return {key: step_stats[key] for key in ("variable_inclusion", "tune")}
+
+        return (update_stats,)
+
 
 class RunningSd:
     """Welford's online algorithm for computing the variance/standard deviation"""
