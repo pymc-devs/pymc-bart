@@ -1,5 +1,5 @@
 pymc>=5.16.2,<=5.23.0
-arviz_stats[xarray]>=0.6.0
+arviz-stats[xarray]>=0.6.0
 numba
 matplotlib
 numpy>=2.0

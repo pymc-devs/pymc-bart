@@ -19,5 +19,5 @@ dependencies:
   - flake8
   - pip
   - pip:
-    - arviz_stats[xarray]>=0.6.0
+    - arviz-stats[xarray]>=0.6.0
     - -e .
