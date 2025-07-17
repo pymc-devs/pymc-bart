@@ -29,7 +29,7 @@ interpretation of those models and perform variable selection.
 Installation
 ============
 
-PyMC-BART requires a working Python interpreter (3.10+). We recommend installing Python and key numerical libraries using the `Anaconda distribution <https://www.anaconda.com/products/individual#Downloads>`_, which has one-click installers available on all major platforms.
+PyMC-BART requires a working Python interpreter (3.11+). We recommend installing Python and key numerical libraries using the `Anaconda distribution <https://www.anaconda.com/products/individual#Downloads>`_, which has one-click installers available on all major platforms.
 
 Assuming a standard Python environment is installed on your machine, PyMC-BART itself can be installed either using pip or conda-forge.
 

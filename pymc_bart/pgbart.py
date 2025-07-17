@@ -364,7 +364,7 @@ class PGBART(ArrayStepShared):
                 new_particles.append(particles[idx].copy())
             else:
                 new_particles.append(particles[idx])
-                seen.append(idx)
+                seen.append(int(idx))
 
         particles[1:] = new_particles
 

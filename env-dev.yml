@@ -4,7 +4,6 @@ channels:
   - defaults
 dependencies:
   - pymc==5.24.0
-  - arviz>=0.18.0
   - numba
   - matplotlib
   - numpy
@@ -20,4 +19,5 @@ dependencies:
   - flake8
   - pip
   - pip:
+    - arviz-stats[xarray]>=0.6.0
     - -e .
