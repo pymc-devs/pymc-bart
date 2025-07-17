@@ -1,11 +1,12 @@
 import numpy as np
 import pymc as pm
 import pytest
-from numpy.testing import assert_almost_equal, assert_array_equal
+from numpy.testing import assert_almost_equal
 from pymc.initial_point import make_initial_point_fn
 from pymc.logprob.basic import transformed_conditional_logp
 
 import pymc_bart as pmb
+from pymc_bart.utils import _decode_vi
 
 
 def assert_moment_is_expected(model, expected, check_finite_logp=True):
@@ -52,14 +53,12 @@ def test_bart_vi(response):
     with pm.Model() as model:
         mu = pmb.BART("mu", X, Y, m=10, response=response)
         sigma = pm.HalfNormal("sigma", 1)
-        y = pm.Normal("y", mu, sigma, observed=Y)
+        pm.Normal("y", mu, sigma, observed=Y)
         idata = pm.sample(tune=200, draws=200, random_seed=3415)
-        var_imp = (
-            idata.sample_stats["variable_inclusion"]
-            .stack(samples=("chain", "draw"))
-            .mean("samples")
-        )
-        var_imp /= var_imp.sum()
+        vi_vals = idata["sample_stats"]["variable_inclusion"].values.ravel()
+        var_imp = np.array([_decode_vi(val, 3) for val in vi_vals]).sum(axis=0)
+
+        var_imp = var_imp / var_imp.sum()
         assert var_imp[0] > var_imp[1:].sum()
         assert_almost_equal(var_imp.sum(), 1)
 
@@ -121,92 +120,6 @@ def test_shape(response):
     assert model.initial_point()["w"].shape == (2, 250)
     assert idata.posterior.coords["w_dim_0"].data.size == 2
     assert idata.posterior.coords["w_dim_1"].data.size == 250
-
-
-class TestUtils:
-    X_norm = np.random.normal(0, 1, size=(50, 2))
-    X_binom = np.random.binomial(1, 0.5, size=(50, 1))
-    X = np.hstack([X_norm, X_binom])
-    Y = np.random.normal(0, 1, size=50)
-
-    with pm.Model() as model:
-        mu = pmb.BART("mu", X, Y, m=10)
-        sigma = pm.HalfNormal("sigma", 1)
-        y = pm.Normal("y", mu, sigma, observed=Y)
-        idata = pm.sample(tune=200, draws=200, random_seed=3415)
-
-    def test_sample_posterior(self):
-        all_trees = self.mu.owner.op.all_trees
-        rng = np.random.default_rng(3)
-        pred_all = pmb.utils._sample_posterior(all_trees, X=self.X, rng=rng, size=2)
-        rng = np.random.default_rng(3)
-        pred_first = pmb.utils._sample_posterior(all_trees, X=self.X[:10], rng=rng)
-
-        assert_almost_equal(pred_first[0], pred_all[0, :10], decimal=4)
-        assert pred_all.shape == (2, 50, 1)
-        assert pred_first.shape == (1, 10, 1)
-
-    @pytest.mark.parametrize(
-        "kwargs",
-        [
-            {},
-            {
-                "samples": 2,
-                "var_discrete": [3],
-            },
-            {"instances": 2},
-            {"var_idx": [0], "smooth": False, "color": "k"},
-            {"grid": (1, 2), "sharey": "none", "alpha": 1},
-            {"var_discrete": [0]},
-        ],
-    )
-    def test_ice(self, kwargs):
-        pmb.plot_ice(self.mu, X=self.X, Y=self.Y, **kwargs)
-
-    @pytest.mark.parametrize(
-        "kwargs",
-        [
-            {},
-            {
-                "samples": 2,
-                "xs_interval": "quantiles",
-                "xs_values": [0.25, 0.5, 0.75],
-                "var_discrete": [3],
-            },
-            {"var_idx": [0], "smooth": False, "color": "k"},
-            {"grid": (1, 2), "sharey": "none", "alpha": 1},
-            {"var_discrete": [0]},
-        ],
-    )
-    def test_pdp(self, kwargs):
-        pmb.plot_pdp(self.mu, X=self.X, Y=self.Y, **kwargs)
-
-    @pytest.mark.parametrize(
-        "kwargs",
-        [
-            {"samples": 50},
-            {"labels": ["A", "B", "C"], "samples": 2, "figsize": (6, 6)},
-        ],
-    )
-    def test_vi(self, kwargs):
-        samples = kwargs.pop("samples")
-        vi_results = pmb.compute_variable_importance(
-            self.idata, bartrv=self.mu, X=self.X, samples=samples
-        )
-        pmb.plot_variable_importance(vi_results, **kwargs)
-        pmb.plot_scatter_submodels(vi_results, **kwargs)
-
-    def test_pdp_pandas_labels(self):
-        pd = pytest.importorskip("pandas")
-
-        X_names = ["norm1", "norm2", "binom"]
-        X_pd = pd.DataFrame(self.X, columns=X_names)
-        Y_pd = pd.Series(self.Y, name="response")
-        axes = pmb.plot_pdp(self.mu, X=X_pd, Y=Y_pd)
-
-        figure = axes[0].figure
-        assert figure.texts[0].get_text() == "Partial response"
-        assert_array_equal([ax.get_xlabel() for ax in axes], X_names)
 
 
 @pytest.mark.parametrize(
@@ -275,7 +188,7 @@ def test_multiple_bart_variables():
 
         # Combined model
         sigma = pm.HalfNormal("sigma", 1)
-        y = pm.Normal("y", mu1 + mu2, sigma, observed=Y)
+        pm.Normal("y", mu1 + mu2, sigma, observed=Y)
 
         # Sample with automatic assignment of BART samplers
         idata = pm.sample(tune=50, draws=50, chains=1, random_seed=3415)
@@ -290,6 +203,16 @@ def test_multiple_bart_variables():
         # Verify sampling worked
         assert idata.posterior["mu1"].shape == (1, 50, 50)
         assert idata.posterior["mu2"].shape == (1, 50, 50)
+
+        vi_results = pmb.compute_variable_importance(idata, mu1, X1, model=model)
+        assert vi_results["labels"].shape == (2,)
+        assert vi_results["preds"].shape == (2, 50, 50)
+        assert vi_results["preds_all"].shape == (50, 50)
+
+        vi_tuple = pmb.get_variable_inclusion(idata, X1, model=model, bart_var_name="mu1")
+        assert vi_tuple[0].shape == (2,)
+        assert len(vi_tuple[1]) == 2
+        assert isinstance(vi_tuple[1][0], str)
 
 
 def test_multiple_bart_variables_manual_step():

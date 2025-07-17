@@ -7,6 +7,7 @@ from typing import Any, Callable, Optional, Union
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
+import pymc as pm
 import pytensor.tensor as pt
 from arviz_base import rcParams
 from arviz_stats.base import array_stats
@@ -674,22 +675,29 @@ def _smooth_mean(
     return x_data, y_data
 
 
-def get_variable_inclusion(idata, X, labels=None, to_kulprit=False):
+def get_variable_inclusion(idata, X, model=None, bart_var_name=None, labels=None, to_kulprit=False):
     """
     Get the normalized variable inclusion from BART model.
 
     Parameters
     ----------
     idata : InferenceData
-        InferenceData containing a collection of BART_trees in sample_stats group
+        InferenceData with a variable "variable_inclusion" in ``sample_stats`` group
     X : npt.NDArray
         The covariate matrix.
+    model : Optional[pm.Model]
+        The PyMC model that contains the BART variable. Only needed if the model contains multiple
+        BART variables.
+    bart_var_name : Optional[str]
+        The name of the BART variable in the model. Only needed if the model contains multiple
+        BART variables.
     labels : Optional[list[str]]
         List of the names of the covariates. If X is a DataFrame the names of the covariables will
         be taken from it and this argument will be ignored.
     to_kulprit : bool
         If True, the function will return a list of list with the variables names.
         This list can be passed as a path to Kulprit's project method. Defaults to False.
+
     Returns
     -------
     VI_norm : npt.NDArray
@@ -697,7 +705,20 @@ def get_variable_inclusion(idata, X, labels=None, to_kulprit=False):
     labels : list[str]
         List of the names of the covariates.
     """
-    VIs = idata["sample_stats"]["variable_inclusion"].mean(("chain", "draw")).values
+    n_vars = X.shape[1]
+    vi_xarray = idata["sample_stats"]["variable_inclusion"]
+    if "variable_inclusion_dim_0" in vi_xarray.coords:
+        if model is None or bart_var_name is None:
+            raise ValueError(
+                "The InfereceData was generated from a model with multiple BART variables, \n"
+                "please provide the model and also the name of the BART variable \n"
+                "for which you want to compute the variable inclusion."
+            )
+        index = [var.name for var in model.free_RVs].index(bart_var_name)
+        vi_vals = vi_xarray.sel({"variable_inclusion_dim_0": index}).values.ravel()
+    else:
+        vi_vals = idata["sample_stats"]["variable_inclusion"].values.ravel()
+    VIs = np.array([_decode_vi(val, n_vars) for val in vi_vals]).sum(axis=0)
     VI_norm = VIs / VIs.sum()
     idxs = np.argsort(VI_norm)
 
@@ -705,17 +726,15 @@ def get_variable_inclusion(idata, X, labels=None, to_kulprit=False):
     n_vars = len(indices)
 
     if hasattr(X, "columns") and hasattr(X, "to_numpy"):
-        labels = X.columns
+        labels = list(X.columns)
 
     if labels is None:
-        labels = np.arange(n_vars).astype(str)
-
-    label_list = labels.to_list()
+        labels = [str(i) for i in range(n_vars)]
 
     if to_kulprit:
-        return [label_list[:idx] for idx in range(n_vars)]
+        return [labels[:idx] for idx in range(n_vars)]
     else:
-        return VI_norm[indices], label_list
+        return VI_norm[indices], labels
 
 
 def plot_variable_inclusion(idata, X, labels=None, figsize=None, plot_kwargs=None, ax=None):
@@ -781,10 +800,11 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     idata: Any,
     bartrv: Variable,
     X: npt.NDArray,
+    model: "pm.Model | None" = None,
     method: str = "VI",
     fixed: int = 0,
     samples: int = 50,
-    random_seed: Optional[int] = None,
+    random_seed: int | None = None,
 ) -> dict[str, object]:
     """
     Estimates variable importance from the BART-posterior.
@@ -792,11 +812,14 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     Parameters
     ----------
     idata : InferenceData
-        InferenceData containing a collection of BART_trees in sample_stats group
+        InferenceData containing a "variable_inclusion" variable in the sample_stats group.
     bartrv : BART Random Variable
         BART variable once the model that include it has been fitted.
     X : npt.NDArray
         The covariate matrix.
+    model : Optional[pm.Model]
+        The PyMC model that contains the BART variable. Only needed if the model contains multiple
+        BART variables.
     method : str
         Method used to rank variables. Available options are "VI" (default), "backward"
         and "backward_VI".
@@ -825,6 +848,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     rng = np.random.default_rng(random_seed)
 
     all_trees = bartrv.owner.op.all_trees
+    bart_var_name = bartrv.name
 
     if bartrv.ndim == 1:  # type: ignore
         shape = 1
@@ -858,9 +882,20 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     )
 
     if method in ["VI", "backward_VI"]:
-        idxs = np.argsort(
-            idata["sample_stats"]["variable_inclusion"].mean(("chain", "draw")).values
-        )
+        vi_xarray = idata["sample_stats"]["variable_inclusion"]
+        if "variable_inclusion_dim_0" in vi_xarray.coords:
+            if model is None:
+                raise ValueError(
+                    "The InfereceData was generated from a model with multiple BART variables, \n"
+                    "please provide the model and also the name of the BART variable \n"
+                    "for which you want to compute the variable inclusion."
+                )
+
+            index = [var.name for var in model.free_RVs].index(bart_var_name)
+            vi_vals = vi_xarray.sel({"variable_inclusion_dim_0": index}).values.ravel()
+        else:
+            vi_vals = idata["sample_stats"]["variable_inclusion"].values.ravel()
+        idxs = np.argsort(np.array([_decode_vi(val, n_vars) for val in vi_vals]).sum(axis=0))
         subsets: list[list[int]] = [list(idxs[:-i]) for i in range(1, len(idxs))]
         subsets.append(None)  # type: ignore
 
@@ -1226,3 +1261,39 @@ def _plot_hdi(x, y, smooth, color, alpha, smooth_kwargs, ax):
 
     ax.fill_between(x_data, y_data[:, 0], y_data[:, 1], color=color, alpha=alpha)
     return ax
+
+
+def _decode_vi(n: int, length: int) -> list[int]:
+    """
+    Decode the variable inclusion from the BART model.
+    """
+    bits = bin(n)[2:]
+    vi_list: list[int] = []
+    i = 0
+    while len(vi_list) < length:
+        # Count prefix ones
+        prefix_len = 0
+        while bits[i] == "1":
+            prefix_len += 1
+            i += 1
+        i += 1  # skip the '0'
+        b = bits[i : i + prefix_len]
+        vi_list.append(int(b, 2))
+        i += prefix_len
+    return vi_list
+
+
+def _encode_vi(vec: npt.NDArray) -> int:
+    """
+    Encode variable inclusion vector into a single integer.
+
+    The encoding is done by converting each element of the vector into a binary string,
+    where each element contributes a prefix of '1's followed by a '0' and its binary representation.
+    The final result is the integer representation of the concatenated binary string.
+    """
+    bits = ""
+    for x in vec:
+        b = bin(x)[2:]
+        prefix = "1" * len(b) + "0"
+        bits += prefix + b
+    return int(bits, 2)
