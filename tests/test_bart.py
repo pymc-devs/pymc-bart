@@ -256,3 +256,70 @@ def test_categorical_model(separate_trees, split_rule):
     # Fit should be good enough so right category is selected over 50% of time
     assert (idata.predictions.y.median(["chain", "draw"]) == Y).all()
     assert pmb.compute_variable_importance(idata, bartrv=lo, X=X)["preds"].shape == (5, 50, 9, 3)
+
+
+def test_multiple_bart_variables():
+    """Test that multiple BART variables can coexist in a single model."""
+    X1 = np.random.normal(0, 1, size=(50, 2))
+    X2 = np.random.normal(0, 1, size=(50, 3))
+    Y = np.random.normal(0, 1, size=50)
+
+    # Create correlated responses
+    Y1 = X1[:, 0] + np.random.normal(0, 0.1, size=50)
+    Y2 = X2[:, 0] + X2[:, 1] + np.random.normal(0, 0.1, size=50)
+
+    with pm.Model() as model:
+        # Two separate BART variables with different covariates
+        mu1 = pmb.BART("mu1", X1, Y1, m=5)
+        mu2 = pmb.BART("mu2", X2, Y2, m=5)
+
+        # Combined model
+        sigma = pm.HalfNormal("sigma", 1)
+        y = pm.Normal("y", mu1 + mu2, sigma, observed=Y)
+
+        # Sample with automatic assignment of BART samplers
+        idata = pm.sample(tune=50, draws=50, chains=1, random_seed=3415)
+
+        # Verify both BART variables have their own tree collections
+        assert hasattr(mu1.owner.op, "all_trees")
+        assert hasattr(mu2.owner.op, "all_trees")
+
+        # Verify trees are stored separately (different object references)
+        assert mu1.owner.op.all_trees is not mu2.owner.op.all_trees
+
+        # Verify sampling worked
+        assert idata.posterior["mu1"].shape == (1, 50, 50)
+        assert idata.posterior["mu2"].shape == (1, 50, 50)
+
+
+def test_multiple_bart_variables_manual_step():
+    """Test that multiple BART variables work with manually assigned PGBART samplers."""
+    X1 = np.random.normal(0, 1, size=(30, 2))
+    X2 = np.random.normal(0, 1, size=(30, 2))
+    Y = np.random.normal(0, 1, size=30)
+
+    # Create simple responses
+    Y1 = X1[:, 0] + np.random.normal(0, 0.1, size=30)
+    Y2 = X2[:, 1] + np.random.normal(0, 0.1, size=30)
+
+    with pm.Model() as model:
+        # Two separate BART variables
+        mu1 = pmb.BART("mu1", X1, Y1, m=3)
+        mu2 = pmb.BART("mu2", X2, Y2, m=3)
+
+        # Non-BART variable
+        sigma = pm.HalfNormal("sigma", 1)
+        y = pm.Normal("y", mu1 + mu2, sigma, observed=Y)
+
+        # Manually create PGBART samplers for each BART variable
+        step1 = pmb.PGBART([mu1], num_particles=5)
+        step2 = pmb.PGBART([mu2], num_particles=5)
+
+        # Sample with manual step assignment
+        idata = pm.sample(tune=20, draws=20, chains=1, step=[step1, step2], random_seed=3415)
+
+        # Verify both variables were sampled
+        assert "mu1" in idata.posterior
+        assert "mu2" in idata.posterior
+        assert idata.posterior["mu1"].shape == (1, 20, 30)
+        assert idata.posterior["mu2"].shape == (1, 20, 30)

@@ -130,6 +130,7 @@ class PGBART(ArrayStepShared):
         model: Optional[Model] = None,
         initial_point: PointType | None = None,
         compile_kwargs: dict | None = None,
+        **kwargs,  # Accept additional kwargs for compound sampling
     ) -> None:
         model = modelcontext(model)
         if initial_point is None:
@@ -143,7 +144,24 @@ class PGBART(ArrayStepShared):
         if vars is None:
             raise ValueError("Unable to find variables to sample")
 
-        value_bart = vars[0]
+        # Filter to only BART variables
+        bart_vars = []
+        for var in vars:
+            rv = model.values_to_rvs.get(var)
+            if rv is not None and isinstance(rv.owner.op, BARTRV):
+                bart_vars.append(var)
+
+        if not bart_vars:
+            raise ValueError("No BART variables found in the provided variables")
+
+        if len(bart_vars) > 1:
+            raise ValueError(
+                "PGBART can only handle one BART variable at a time. "
+                "For multiple BART variables, PyMC will automatically create "
+                "separate PGBART samplers for each variable."
+            )
+
+        value_bart = bart_vars[0]
         self.bart = model.values_to_rvs[value_bart].owner.op
 
         if isinstance(self.bart.X, Variable):
@@ -227,15 +245,15 @@ class PGBART(ArrayStepShared):
 
         self.num_particles = num_particles
         self.indices = list(range(1, num_particles))
-        shared = make_shared_replacements(initial_point, vars, model)
-        self.likelihood_logp = logp(initial_point, [model.datalogp], vars, shared)
+        shared = make_shared_replacements(initial_point, [value_bart], model)
+        self.likelihood_logp = logp(initial_point, [model.datalogp], [value_bart], shared)
         self.all_particles = [
             [ParticleTree(self.a_tree) for _ in range(self.m)] for _ in range(self.trees_shape)
         ]
         self.all_trees = np.array([[p.tree for p in pl] for pl in self.all_particles])
         self.lower = 0
         self.iter = 0
-        super().__init__(vars, shared)
+        super().__init__([value_bart], shared)
 
     def astep(self, _):
         variable_inclusion = np.zeros(self.num_variates, dtype="int")
@@ -407,6 +425,13 @@ class PGBART(ArrayStepShared):
         if isinstance(dist, BARTRV):
             return Competence.IDEAL
         return Competence.INCOMPATIBLE
+
+    @staticmethod
+    def _make_update_stats_functions():
+        def update_stats(step_stats):
+            return {key: step_stats[key] for key in ("variable_inclusion", "tune")}
+
+        return (update_stats,)
 
 
 class RunningSd:
