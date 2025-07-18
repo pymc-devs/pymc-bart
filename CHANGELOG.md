@@ -1,3 +1,20 @@
+<a id="0.10.0"></a>
+# [0.10.0](https://github.com/pymc-devs/pymc-bart/releases/tag/0.10.0) - 2025-07-18
+
+## What's Changed
+* Use ArviZ-stats by [@aloctavodia](https://github.com/aloctavodia) in [#232](https://github.com/pymc-devs/pymc-bart/pull/232)
+* Add support for multiple BART random variables per model. by [@derekpowell](https://github.com/derekpowell) in [#231](https://github.com/pymc-devs/pymc-bart/pull/231)
+* encode vi and update to work with multiple RVs by [@aloctavodia](https://github.com/aloctavodia) in [#235](https://github.com/pymc-devs/pymc-bart/pull/235)
+
+
+## New Contributors
+* [@derekpowell](https://github.com/derekpowell) made their first contribution in [#231](https://github.com/pymc-devs/pymc-bart/pull/231)
+
+**Full Changelog**: https://github.com/pymc-devs/pymc-bart/compare/0.9.2...0.10.0
+
+[Changes][0.10.0]
+
+
 <a id="0.9.2"></a>
 # [0.9.2](https://github.com/pymc-devs/pymc-bart/releases/tag/0.9.2) - 2025-06-12
 
@@ -442,6 +459,7 @@
 [Changes][0.0.3]
 
 
+[0.10.0]: https://github.com/pymc-devs/pymc-bart/compare/0.9.2...0.10.0
 [0.9.2]: https://github.com/pymc-devs/pymc-bart/compare/0.9.1...0.9.2
 [0.9.1]: https://github.com/pymc-devs/pymc-bart/compare/0.9.0...0.9.1
 [0.9.0]: https://github.com/pymc-devs/pymc-bart/compare/0.8.2...0.9.0
