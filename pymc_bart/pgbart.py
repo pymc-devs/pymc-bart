@@ -37,6 +37,7 @@ from pymc_bart.tree import (
     get_idx_left_child,
     get_idx_right_child,
 )
+from pymc_bart.utils import _encode_vi
 
 
 class ParticleTree:
@@ -118,7 +119,7 @@ class PGBART(ArrayStepShared):
     default_blocked = False
     generates_stats = True
     stats_dtypes_shapes: dict[str, tuple[type, list]] = {
-        "variable_inclusion": (object, []),
+        "variable_inclusion": (int, []),
         "tune": (bool, []),
     }
 
@@ -334,6 +335,8 @@ class PGBART(ArrayStepShared):
 
         if not self.tune:
             self.bart.all_trees.append(self.all_trees)
+
+        variable_inclusion = _encode_vi(variable_inclusion)
 
         stats = {"variable_inclusion": variable_inclusion, "tune": self.tune}
         return self.sum_trees, [stats]
