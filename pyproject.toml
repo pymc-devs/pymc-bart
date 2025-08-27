@@ -37,7 +37,6 @@ pyupgrade = 1
 
 [tool.mypy]
 files = "pymc_bart/*.py"
-plugins = "numpy.typing.mypy_plugin"
 
 [tool.mypy-matplotlib]
 ignore_missing_imports = true
