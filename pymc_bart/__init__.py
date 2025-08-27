@@ -25,6 +25,7 @@ from pymc_bart.utils import (
     plot_scatter_submodels,
     plot_variable_importance,
     plot_variable_inclusion,
+    vi_to_kulprit,
 )
 
 __all__ = [
@@ -41,6 +42,7 @@ __all__ = [
     "plot_scatter_submodels",
     "plot_variable_importance",
     "plot_variable_inclusion",
+    "vi_to_kulprit",
 ]
 __version__ = "0.10.0"
 
