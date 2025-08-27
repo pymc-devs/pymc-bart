@@ -79,6 +79,10 @@ class TestUtils:
         pmb.plot_variable_importance(vi_results, **kwargs)
         pmb.plot_scatter_submodels(vi_results, **kwargs)
 
+        user_terms = pmb.vi_to_kulprit(vi_results)
+        assert len(user_terms) == 3
+        assert all("+" not in term for terms in user_terms[1:] for term in terms)
+
     def test_pdp_pandas_labels(self):
         pd = pytest.importorskip("pandas")
 

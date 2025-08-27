@@ -1006,6 +1006,24 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     return vi_results
 
 
+def vi_to_kulprit(vi_results: dict) -> list[list[str]]:
+    """
+    Export variable importance results to Kulprit format.
+
+    Parameters
+    ----------
+    vi_results : dict
+        Dictionary computed with `compute_variable_importance`
+
+    Returns
+    -------
+    list[list[str]]
+        A list of lists containing variable names for each submodel.
+    """
+    clean_labels = [label.strip("+ ") for label in vi_results["labels"]]
+    return [clean_labels[:idx] for idx in range(len(clean_labels))]
+
+
 def plot_variable_importance(
     vi_results: dict,
     submodels: Optional[Union[list[int], np.ndarray, tuple[int, ...]]] = None,
