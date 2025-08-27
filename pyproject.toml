@@ -10,8 +10,8 @@ line-length = 100
 select = ["E", "F", "I", "PL", "UP", "W"]
 ignore = [
   "PLR2004", # Checks for the use of unnamed numerical constants ("magic") values in comparisons.
-  "PLR0913", #Too many arguments in function definition
-
+  "PLR0913", # Too many arguments in function definition
+  "PLC0415", # import should be at the top-level
 ]
 
 [tool.ruff.lint.pylint]
