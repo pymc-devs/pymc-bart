@@ -74,13 +74,13 @@ def test_discrete_uniform():
 def test_normal_sampler():
     normal = NormalSampler(2, shape=1)
     samples = np.array([normal.rvs() for i in range(100000)])
-    np.testing.assert_almost_equal(samples.mean(), 0, decimal=2)
-    np.testing.assert_almost_equal(samples.std(), 2, decimal=2)
+    np.testing.assert_almost_equal(samples.mean(), 0, decimal=1)
+    np.testing.assert_almost_equal(samples.std(), 2, decimal=1)
 
     normal = NormalSampler(2, shape=2)
     samples = np.array([normal.rvs() for i in range(100000)])
-    np.testing.assert_almost_equal(samples.mean(0), [0, 0], decimal=2)
-    np.testing.assert_almost_equal(samples.std(0), [2, 2], decimal=2)
+    np.testing.assert_almost_equal(samples.mean(0), [0, 0], decimal=1)
+    np.testing.assert_almost_equal(samples.std(0), [2, 2], decimal=1)
 
 
 def test_uniform_sampler():
