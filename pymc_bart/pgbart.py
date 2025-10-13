@@ -12,7 +12,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -128,7 +127,7 @@ class PGBART(ArrayStepShared):
         vars: list[pm.Distribution] | None = None,
         num_particles: int = 10,
         batch: tuple[float, float] = (0.1, 0.1),
-        model: Optional[Model] = None,
+        model: Model | None = None,
         initial_point: PointType | None = None,
         compile_kwargs: dict | None = None,
         **kwargs,  # Accept additional kwargs for compound sampling
@@ -445,7 +444,7 @@ class RunningSd:
         self.mean = np.zeros(shape)  # running mean
         self.m_2 = np.zeros(shape)  # running second moment
 
-    def update(self, new_value: npt.NDArray) -> Union[float, npt.NDArray]:
+    def update(self, new_value: npt.NDArray) -> float | npt.NDArray:
         self.count = self.count + 1
         self.mean, self.m_2, std = _update(self.count, self.mean, self.m_2, new_value)
         return fast_mean(std)
@@ -457,7 +456,7 @@ def _update(
     mean: npt.NDArray,
     m_2: npt.NDArray,
     new_value: npt.NDArray,
-) -> tuple[npt.NDArray, npt.NDArray, Union[float, npt.NDArray]]:
+) -> tuple[npt.NDArray, npt.NDArray, float | npt.NDArray]:
     delta = new_value - mean
     mean += delta / count
     delta2 = new_value - mean
@@ -477,7 +476,7 @@ class SampleSplittingVariable:
         """
         self.enu = list(enumerate(np.cumsum(alpha_vec / alpha_vec.sum())))
 
-    def rvs(self) -> Union[int, tuple[int, float]]:
+    def rvs(self) -> int | tuple[int, float]:
         rnd: float = np.random.random()
         for i, val in self.enu:
             if rnd <= val:
@@ -587,7 +586,7 @@ def draw_leaf_value(
     norm: npt.NDArray,
     shape: int,
     response: str,
-) -> tuple[npt.NDArray, Optional[npt.NDArray]]:
+) -> tuple[npt.NDArray, npt.NDArray | None]:
     """Draw Gaussian distributed leaf values."""
     linear_params = None
     mu_mean: npt.NDArray
@@ -605,7 +604,7 @@ def draw_leaf_value(
 
 
 @njit
-def fast_mean(ari: npt.NDArray) -> Union[float, npt.NDArray]:
+def fast_mean(ari: npt.NDArray) -> float | npt.NDArray:
     """Use Numba to speed up the computation of the mean."""
     if ari.ndim == 1:
         count = ari.shape[0]
