@@ -16,7 +16,6 @@
 
 import warnings
 from multiprocessing import Manager
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -130,9 +129,9 @@ class BART(Distribution):
         alpha: float = 0.95,
         beta: float = 2.0,
         response: str = "constant",
-        split_prior: Optional[npt.NDArray] = None,
-        split_rules: Optional[list[SplitRule]] = None,
-        separate_trees: Optional[bool] = False,
+        split_prior: npt.NDArray | None = None,
+        split_rules: list[SplitRule] | None = None,
+        separate_trees: bool | None = False,
         **kwargs,
     ):
         if response in ["linear", "mix"]:

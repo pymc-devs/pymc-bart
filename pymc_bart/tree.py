@@ -14,7 +14,6 @@
 
 from collections.abc import Generator
 from functools import lru_cache
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -40,9 +39,9 @@ class Node:
         self,
         value: npt.NDArray = np.array([-1.0]),
         nvalue: int = 0,
-        idx_data_points: Optional[npt.NDArray[np.int_]] = None,
+        idx_data_points: npt.NDArray[np.int_] | None = None,
         idx_split_variable: int = -1,
-        linear_params: Optional[list[npt.NDArray]] = None,
+        linear_params: list[npt.NDArray] | None = None,
     ) -> None:
         self.value = value
         self.nvalue = nvalue
@@ -55,9 +54,9 @@ class Node:
         cls,
         value: npt.NDArray,
         nvalue: int = 0,
-        idx_data_points: Optional[npt.NDArray[np.int_]] = None,
+        idx_data_points: npt.NDArray[np.int_] | None = None,
         idx_split_variable: int = -1,
-        linear_params: Optional[list[npt.NDArray]] = None,
+        linear_params: list[npt.NDArray] | None = None,
     ) -> "Node":
         return cls(
             value=value,
@@ -124,7 +123,7 @@ class Tree:
         tree_structure: dict[int, Node],
         output: npt.NDArray,
         split_rules: list[SplitRule],
-        idx_leaf_nodes: Optional[list[int]] = None,
+        idx_leaf_nodes: list[int] | None = None,
     ) -> None:
         self.tree_structure = tree_structure
         self.idx_leaf_nodes = idx_leaf_nodes
@@ -135,7 +134,7 @@ class Tree:
     def new_tree(
         cls,
         leaf_node_value: npt.NDArray,
-        idx_data_points: Optional[npt.NDArray[np.int_]],
+        idx_data_points: npt.NDArray[np.int_] | None,
         num_observations: int,
         shape: int,
         split_rules: list[SplitRule],
@@ -234,7 +233,7 @@ class Tree:
     def predict(
         self,
         x: npt.NDArray,
-        excluded: Optional[list[int]] = None,
+        excluded: list[int] | None = None,
         shape: int = 1,
     ) -> npt.NDArray:
         """
@@ -260,8 +259,8 @@ class Tree:
     def _traverse_tree(
         self,
         X: npt.NDArray,
-        excluded: Optional[list[int]] = None,
-        shape: Union[int, tuple[int, ...]] = 1,
+        excluded: list[int] | None = None,
+        shape: int | tuple[int, ...] = 1,
     ) -> npt.NDArray:
         """
         Traverse the tree starting from the root node given an (un)observed point.
