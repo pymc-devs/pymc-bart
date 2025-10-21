@@ -118,7 +118,7 @@ class PGBART(ArrayStepShared):
     default_blocked = False
     generates_stats = True
     stats_dtypes_shapes: dict[str, tuple[type, list]] = {
-        "variable_inclusion": (int, []),
+        "variable_inclusion": (object, []),
         "tune": (bool, []),
     }
 
