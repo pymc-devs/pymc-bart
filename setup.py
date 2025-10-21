@@ -76,6 +76,6 @@ if __name__ == "__main__":
         packages=find_packages(),
         include_package_data=True,
         classifiers=classifiers,
-        python_requires=">=3.8",
+        python_requires=">=3.11",
         install_requires=install_reqs,
     )
