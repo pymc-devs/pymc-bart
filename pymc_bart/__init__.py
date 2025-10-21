@@ -44,7 +44,7 @@ __all__ = [
     "plot_variable_inclusion",
     "vi_to_kulprit",
 ]
-__version__ = "0.10.0"
+__version__ = "0.11.0"
 
 
 pm.STEP_METHODS = list(pm.STEP_METHODS) + [PGBART]
