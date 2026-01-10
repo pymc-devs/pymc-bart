@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
+        linker: [cvm, numba]
 
     name: Set up Python ${{ matrix.python-version }}
     steps:
@@ -42,6 +43,7 @@ jobs:
           python -m pytest -vv --cov=pymc_bart --cov-report=term --cov-report=xml tests
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
+          PYTENSOR_FLAGS: linker=${{ matrix.linker }}
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v1
