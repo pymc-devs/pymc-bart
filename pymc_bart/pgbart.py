@@ -429,9 +429,13 @@ class PGBART(ArrayStepShared):
         return Competence.INCOMPATIBLE
 
     @staticmethod
-    def _make_update_stats_functions():
+    def _progressbar_config(n_chains=1):
+        return [], {}
+
+    @staticmethod
+    def _make_progressbar_update_functions():
         def update_stats(step_stats):
-            return {key: step_stats[key] for key in ("variable_inclusion", "tune")}
+            return {"tune": step_stats.get("tune", False)}
 
         return (update_stats,)
 
