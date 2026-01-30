@@ -215,7 +215,7 @@ def plot_ice(
     idx_s = list(range(X.shape[0]))
 
     count = 0
-    for i_var, var in enumerate(var_idx):
+    for var in var_idx:
         indices_mi = indices[:]
         indices_mi.remove(var)
         y_pred = []
@@ -248,7 +248,7 @@ def plot_ice(
                 idx = np.argsort(new_x)
                 axes[count].plot(new_x[idx], p_di.mean(0)[idx], color=color_mean)
                 axes[count].plot(new_x[idx], p_di.T[idx], color=color, alpha=alpha)
-            axes[count].set_xlabel(x_labels[i_var])
+            axes[count].set_xlabel(x_labels[var])
 
             count += 1
 
@@ -366,7 +366,7 @@ def plot_pdp(
     count = 0
     fake_X = _create_pdp_data(X, xs_interval, xs_values)
     null_pd = []
-    for var in range(len(var_idx)):
+    for var in var_idx:
         excluded = indices[:]
         excluded.remove(var)
         p_d = func(
@@ -515,7 +515,7 @@ def _prepare_plot_data(
     var_discrete: list[int] | None = None,
 ) -> tuple[
     npt.NDArray,
-    list[str],
+    dict[int, str],
     str,
     list[int],
     list[int],
@@ -545,7 +545,7 @@ def _prepare_plot_data(
     -------
     X : Numpy array
         Input data.
-    x_labels : list
+    x_labels : dict
         Names of variables.
     y_label : str
         Name of target variable.
@@ -586,9 +586,9 @@ def _prepare_plot_data(
         var_discrete = []
 
     if x_names:
-        x_labels = [x_names[idx] for idx in var_idx]
+        x_labels = {idx: x_names[idx] for idx in var_idx}
     else:
-        x_labels = [f"X_{idx}" for idx in var_idx]
+        x_labels = {idx: f"X_{idx}" for idx in var_idx}
 
     if xs_interval == "linear" and xs_values is None:
         xs_values = 10
