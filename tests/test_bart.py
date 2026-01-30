@@ -148,7 +148,8 @@ def test_bart_moment(size, expected):
 )
 def test_categorical_model(separate_trees, split_rule):
     Y = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
-    X = np.concatenate([Y[:, None], np.random.randint(0, 6, size=(9, 4))], axis=1)
+    rng = np.random.default_rng(12345)
+    X = np.concatenate([Y[:, None], rng.integers(0, 6, size=(9, 4))], axis=1)
 
     with pm.Model() as model:
         lo = pmb.BART(
