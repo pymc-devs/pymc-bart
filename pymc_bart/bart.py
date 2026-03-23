@@ -143,7 +143,7 @@ class BART(Distribution):
         # garbage-collected after __new__ returns. Once the Manager's server
         # process dies the ListProxy becomes a dangling reference, causing
         # TypeError on out-of-sample prediction calls.
-        instance_all_trees = []
+        instance_all_trees: list = []
 
         X, Y = preprocess_xy(X, Y)
 
