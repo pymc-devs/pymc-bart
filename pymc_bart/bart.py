@@ -15,7 +15,6 @@
 #   limitations under the License.
 
 import warnings
-from multiprocessing import Manager
 
 import numpy as np
 import numpy.typing as npt
@@ -139,9 +138,12 @@ class BART(Distribution):
                 "Options linear and mix are experimental and still not well tested\n"
                 + "Use with caution."
             )
-        # Create a unique manager list for each BART instance
-        manager = Manager()
-        instance_all_trees = manager.list()
+        # Use a plain list for tree storage. A Manager().list() was used
+        # previously but the Manager is a local variable here, so it gets
+        # garbage-collected after __new__ returns. Once the Manager's server
+        # process dies the ListProxy becomes a dangling reference, causing
+        # TypeError on out-of-sample prediction calls.
+        instance_all_trees = []
 
         X, Y = preprocess_xy(X, Y)
 
