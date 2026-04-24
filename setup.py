@@ -29,9 +29,9 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: Apache Software License",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering",
@@ -76,6 +76,6 @@ if __name__ == "__main__":
         packages=find_packages(),
         include_package_data=True,
         classifiers=classifiers,
-        python_requires=">=3.11",
+        python_requires=">=3.12",
         install_requires=install_reqs,
     )
