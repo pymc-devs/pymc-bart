@@ -90,8 +90,8 @@ def plot_convergence(
 
     Parameters
     ----------
-    idata : InferenceData
-        InferenceData object containing the posterior samples.
+    idata : DataTree
+        DataTree object containing the posterior samples.
     var_name : Optional[str]
         Name of the BART variable to plot. Defaults to None.
     kind : str
@@ -683,8 +683,8 @@ def get_variable_inclusion(idata, X, model=None, bart_var_name=None, labels=None
 
     Parameters
     ----------
-    idata : InferenceData
-        InferenceData with a variable "variable_inclusion" in ``sample_stats`` group
+    idata : DataTree
+        DataTree with a variable "variable_inclusion" in ``sample_stats`` group
     X : npt.NDArray
         The covariate matrix.
     model : Optional[pm.Model]
@@ -745,8 +745,8 @@ def plot_variable_inclusion(idata, X, labels=None, figsize=None, plot_kwargs=Non
 
     Parameters
     ----------
-    idata : InferenceData
-        InferenceData containing a collection of BART_trees in sample_stats group
+    idata : DataTree
+        DataTree containing a collection of BART_trees in sample_stats group
     X : npt.NDArray
         The covariate matrix.
     labels : Optional[list[str]]
@@ -813,8 +813,8 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
 
     Parameters
     ----------
-    idata : InferenceData
-        InferenceData containing a "variable_inclusion" variable in the sample_stats group.
+    idata : DataTree
+        DataTree containing a "variable_inclusion" variable in the sample_stats group.
     bartrv : BART Random Variable
         BART variable once the model that include it has been fitted.
     X : npt.NDArray
