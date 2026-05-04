@@ -1,4 +1,4 @@
-pytensor @ git+https://github.com/pymc-devs/pytensor.git
+pytensor>=3.0.0
 pymc @ git+https://github.com/pymc-devs/pymc.git@v6
 arviz-stats[xarray]>=1.1.0
 numba
