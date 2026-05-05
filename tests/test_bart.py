@@ -97,7 +97,7 @@ def test_shared_variable(response):
         idata = pm.sample(tune=100, draws=100, chains=2, random_seed=3415)
         ppc = pm.sample_posterior_predictive(idata)
         pm.set_data({"data_X": X[:3]})
-        ppc2 = pm.sample_posterior_predictive(idata)
+        ppc2 = pm.sample_posterior_predictive(idata, sample_vars=["mu", "y"])
 
     assert ppc.posterior_predictive["y"].shape == (2, 100, 50)
     assert ppc2.posterior_predictive["y"].shape == (2, 100, 3)
