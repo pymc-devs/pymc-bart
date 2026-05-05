@@ -11,7 +11,7 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-import pymc as pm
+from pymc.sampling import mcmc
 
 from pymc_bart.bart import BART
 from pymc_bart.pgbart import PGBART
@@ -47,4 +47,6 @@ __all__ = [
 __version__ = "0.11.0"
 
 
-pm.STEP_METHODS = list(pm.STEP_METHODS) + [PGBART]
+methods = mcmc.STEP_METHODS
+if not any(method is PGBART for method in methods):
+    methods.append(PGBART)
