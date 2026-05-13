@@ -1,3 +1,21 @@
+<a id="0.12.0"></a>
+# [0.12.0](https://github.com/pymc-devs/pymc-bart/releases/tag/0.12.0) - 2026-05-13
+
+## What's Changed
+* Fix python_requires so that wheels match declared Python requirements by [@maresb](https://github.com/maresb) in [#248](https://github.com/pymc-devs/pymc-bart/pull/248)
+* Run whole suite with C and Numba linkers by [@aloctavodia](https://github.com/aloctavodia) in [#257](https://github.com/pymc-devs/pymc-bart/pull/257)
+* Adapt sample to use new progress bar by [@fonnesbeck](https://github.com/fonnesbeck) in [#259](https://github.com/pymc-devs/pymc-bart/pull/259)
+* Use var index in plot_pdp and plot_ice by [@aloctavodia](https://github.com/aloctavodia) in [#261](https://github.com/pymc-devs/pymc-bart/pull/261)
+* Use PyMC v6, Pytensor v3 and ArviZ 1.1 by [@aloctavodia](https://github.com/aloctavodia) in [#269](https://github.com/pymc-devs/pymc-bart/pull/269)
+
+## New Contributors
+* [@fonnesbeck](https://github.com/fonnesbeck) made their first contribution in [#259](https://github.com/pymc-devs/pymc-bart/pull/259)
+
+**Full Changelog**: https://github.com/pymc-devs/pymc-bart/compare/0.11.0...0.12.0
+
+[Changes][0.12.0]
+
+
 <a id="0.11.0"></a>
 # [0.11.0](https://github.com/pymc-devs/pymc-bart/releases/tag/0.11.0) - 2025-10-21
 
@@ -471,6 +489,7 @@
 [Changes][0.0.3]
 
 
+[0.12.0]: https://github.com/pymc-devs/pymc-bart/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/pymc-devs/pymc-bart/compare/0.10.0...0.11.0
 [0.10.0]: https://github.com/pymc-devs/pymc-bart/compare/0.9.2...0.10.0
 [0.9.2]: https://github.com/pymc-devs/pymc-bart/compare/0.9.1...0.9.2
