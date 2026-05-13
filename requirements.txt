@@ -1,5 +1,4 @@
-pytensor>=3.0.0
-pymc @ git+https://github.com/pymc-devs/pymc.git
+pymc >=6.0.0,<7.0.0
 arviz-stats[xarray]>=1.1.0
 numba
 matplotlib

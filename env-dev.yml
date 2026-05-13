@@ -3,7 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - pymc>=5.24.0
+  - pymc>=6.0.0,<7.0.0
   - numba
   - matplotlib
   - numpy
@@ -19,5 +19,5 @@ dependencies:
   - flake8
   - pip
   - pip:
-    - arviz-stats[xarray]>=0.6.0
+    - arviz-stats[xarray]>=1.1.0
     - -e .
