@@ -17,6 +17,7 @@ from numba import jit
 from pytensor.tensor.variable import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
+from pymc_bart.pymc_bart import TreeArrays
 
 from .tree import Tree
 
@@ -53,7 +54,7 @@ def _sample_posterior(
         X = X.eval()
 
     if size is None:
-        size_iter: list | tuple = (1,)
+        size_iter: list | tuple = ()
     elif isinstance(size, int):
         size_iter = [size]
     else:
@@ -65,17 +66,13 @@ def _sample_posterior(
 
     idx = rng.integers(0, len(stacked_trees), size=flatten_size)
 
-    trees_shape = len(stacked_trees[0])
-    leaves_shape = shape // trees_shape
-
-    pred = np.zeros((flatten_size, trees_shape, leaves_shape, X.shape[0]))
+    pred = np.zeros((flatten_size, shape, X.shape[0]))
 
     for ind, p in enumerate(pred):
-        for odim, odim_trees in enumerate(stacked_trees[idx[ind]]):
-            for tree in odim_trees:
-                p[odim] += tree.predict(x=X, excluded=excluded, shape=leaves_shape)
+            for tree in stacked_trees[idx[ind]]:
+                p += tree.predict(x=X, excluded=excluded, shape=shape)
 
-    return pred.transpose((0, 3, 1, 2)).reshape((*size_iter, -1, shape))
+    return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, shape))
 
 
 def plot_convergence(
@@ -305,7 +302,7 @@ def plot_pdp(
     var_discrete : Optional[list[int]], by default None.
         List of the indices of the covariate treated as discrete.
     func : Optional[Callable], by default None.
-        Arbitrary function to apply to the predictions. Defaults to the identity function.
+        Arbitrary function to apply to the ions. Defaults to the identity function.
     samples : int
         Number of posterior samples used in the predictions. Defaults to 200
     ref_line : bool
@@ -462,7 +459,10 @@ def _create_figure_axes(
     if bartrv.ndim == 1:  # type: ignore
         shape = 1
     else:
-        shape = bartrv.eval().shape[0]
+        if isinstance(bartrv.owner_op.all_trees[0][0], TreeArrays):
+            shape = bartrv.owner_op.all_trees[0][0].n_outputs
+        else: 
+            shape = bartrv.eval().shape[0]
 
     n_plots = len(var_idx) * shape
 
@@ -855,7 +855,10 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     if bartrv.ndim == 1:  # type: ignore
         shape = 1
     else:
-        shape = bartrv.eval().shape[0]
+        if isinstance(all_trees[0][0], TreeArrays):
+            shape = all_trees[0][0].n_outputs
+        else:
+            shape = bartrv.eval().shape[0]
 
     n_vars = X.shape[1]
 
@@ -867,7 +870,11 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
 
     r2_mean: npt.NDArray = np.zeros(n_vars)
     r2_hdi: npt.NDArray = np.zeros((n_vars, 2))
-    preds: npt.NDArray = np.zeros((n_vars, samples, *bartrv.eval().T.shape))
+
+    # bartrv.eval().T.shape is (n_training_samples, n_outputs)
+    n_training_samples = X.shape[0]
+
+    preds: npt.NDArray = np.zeros((n_vars, samples, n_training_samples, shape))
 
     if method == "backward_VI":
         if fixed >= n_vars:

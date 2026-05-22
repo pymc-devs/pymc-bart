@@ -148,7 +148,7 @@ class Tree:
                 )
             },
             idx_leaf_nodes=[0],
-            output=np.zeros((num_observations, shape)).astype(config.floatX),
+            output=np.zeros((num_observations, shape)).astype(config.floatX).squeeze(),
             split_rules=split_rules,
         )
 
@@ -227,7 +227,7 @@ class Tree:
         if self.idx_leaf_nodes is not None:
             for node_index in self.idx_leaf_nodes:
                 leaf_node = self.get_node(node_index)
-                output[leaf_node.idx_data_points] = leaf_node.value
+                output[leaf_node.idx_data_points] = leaf_node.value.squeeze()
         return output.T
 
     def predict(

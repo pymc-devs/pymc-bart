@@ -182,12 +182,6 @@ class PGBART(ArrayStepShared):
 
         self.shape = 1 if len(shape) == 1 else shape[0]
 
-        # Set trees_shape (dim for separate tree structures)
-        # and leaves_shape (dim for leaf node values)
-        # One of the two is always one, the other equal to self.shape
-        self.trees_shape = self.shape if self.bart.separate_trees else 1
-        self.leaves_shape = self.shape if not self.bart.separate_trees else 1
-
         if self.bart.split_prior.size == 0:
             self.alpha_vec = np.ones(self.X.shape[1])
         else:
@@ -206,33 +200,29 @@ class PGBART(ArrayStepShared):
         self.num_observations = self.X.shape[0]
         self.num_variates = self.X.shape[1]
         self.available_predictors = list(range(self.num_variates))
-
-        # if data is binary
-        self.leaf_sd = np.ones((self.trees_shape, self.leaves_shape))
-
+        
         y_unique = np.unique(self.Y)
         if y_unique.size == 2 and np.all(y_unique == [0, 1]):
-            self.leaf_sd *= 3 / self.m**0.5
+            self.leaf_sd = 3 / self.m**0.5
         else:
-            self.leaf_sd *= self.Y.std() / self.m**0.5
+            self.leaf_sd = self.Y.std() / self.m**0.5
 
-        self.running_sd = [
-            RunningSd((self.leaves_shape, self.num_observations)) for _ in range(self.trees_shape)
-        ]
+        self.running_sd = RunningSd(shape)
+    
 
         self.sum_trees = np.full(
-            (self.trees_shape, self.leaves_shape, self.Y.shape[0]), init_mean
+            (self.shape, self.Y.shape[0]), init_mean
         ).astype(config.floatX)
         self.sum_trees_noi = self.sum_trees - init_mean
         self.a_tree = Tree.new_tree(
             leaf_node_value=init_mean / self.m,
             idx_data_points=np.arange(self.num_observations, dtype="int32"),
             num_observations=self.num_observations,
-            shape=self.leaves_shape,
+            shape=self.shape,
             split_rules=self.split_rules,
         )
 
-        self.normal = NormalSampler(1, self.leaves_shape)
+        self.normal = NormalSampler(1, self.shape)
         self.uniform = UniformSampler(0, 1)
         self.prior_prob_leaf_node = compute_prior_probability(self.bart.alpha, self.bart.beta)
         self.ssv = SampleSplittingVariable(self.alpha_vec)
@@ -247,10 +237,9 @@ class PGBART(ArrayStepShared):
         self.indices = list(range(1, num_particles))
         shared = make_shared_replacements(initial_point, [value_bart], model)
         self.likelihood_logp = logp(initial_point, [model.datalogp], [value_bart], shared)
-        self.all_particles = [
-            [ParticleTree(self.a_tree) for _ in range(self.m)] for _ in range(self.trees_shape)
-        ]
-        self.all_trees = np.array([[p.tree for p in pl] for pl in self.all_particles])
+        self.all_particles = [ParticleTree(self.a_tree) for _ in range(self.m)]
+
+        self.all_trees = np.array([p.tree for p in self.all_particles])
         self.lower = 0
         self.iter = 0
         super().__init__([value_bart], shared)
@@ -262,75 +251,81 @@ class PGBART(ArrayStepShared):
         tree_ids = range(self.lower, upper)
         self.lower = upper if upper < self.m else 0
 
-        for odim in range(self.trees_shape):
-            for tree_id in tree_ids:
-                self.iter += 1
-                # Compute the sum of trees without the old tree that we are attempting to replace
-                self.sum_trees_noi[odim] = (
-                    self.sum_trees[odim] - self.all_particles[odim][tree_id].tree._predict()
-                )
-                # Generate an initial set of particles
-                # at the end we return one of these particles as the new tree
-                particles = self.init_particles(tree_id, odim)
+        # for odim in range(self.trees_shape):
+        for tree_id in tree_ids:
+            self.iter += 1
+            # Compute the sum of trees without the old tree that we are attempting to replace
+            self.sum_trees_noi = (
+                self.sum_trees - self.all_particles[tree_id].tree._predict()
+            )
 
-                while True:
-                    # Sample each particle (try to grow each tree), except for the first one
-                    stop_growing = True
-                    for p in particles[1:]:
-                        if p.sample_tree(
-                            self.ssv,
-                            self.available_predictors,
-                            self.prior_prob_leaf_node,
-                            self.X,
-                            self.missing_data,
-                            self.sum_trees[odim],
-                            self.leaf_sd[odim],
-                            self.m,
-                            self.response,
-                            self.normal,
-                            self.leaves_shape,
-                        ):
-                            self.update_weight(p, odim)
-                        if p.expansion_nodes:
-                            stop_growing = False
-                    if stop_growing:
-                        break
+            # Generate an initial set of particles
+            # at the end we return one of these particles as the new tree
+            particles = self.init_particles(tree_id)
 
-                    # Normalize weights
-                    normalized_weights = self.normalize(particles[1:])
+            while True:
+                # Sample each particle (try to grow each tree), except for the first one
+                stop_growing = True
+                for p in particles[1:]:
+                    if p.sample_tree(
+                        self.ssv,
+                        self.available_predictors,
+                        self.prior_prob_leaf_node,
+                        self.X,
+                        self.missing_data,
+                        self.sum_trees,
+                        self.leaf_sd,
+                        self.m,
+                        self.response,
+                        self.normal,
+                        self.shape,
+                    ):
+                        self.update_weight(p)
+                    if p.expansion_nodes:
+                        stop_growing = False
+                if stop_growing:
+                    break
 
-                    # Resample
-                    particles = self.resample(particles, normalized_weights)
 
-                normalized_weights = self.normalize(particles)
-                # Get the new particle and associated tree
-                self.all_particles[odim][tree_id], new_tree = self.get_particle_tree(
-                    particles, normalized_weights
-                )
-                # Update the sum of trees
-                new = new_tree._predict()
-                self.sum_trees[odim] = self.sum_trees_noi[odim] + new
-                # To reduce memory usage, we trim the tree
-                self.all_trees[odim][tree_id] = new_tree.trim()
+                # Normalize weights
+                normalized_weights = self.normalize(particles[1:])
 
-                if self.tune:
-                    # Update the splitting variable and the splitting variable sampler
-                    if self.iter > self.m:
-                        self.ssv = SampleSplittingVariable(self.alpha_vec)
+                # Resample
+                particles = self.resample(particles, normalized_weights)
 
-                    for index in new_tree.get_split_variables():
-                        self.alpha_vec[index] += 1
+            normalized_weights = self.normalize(particles)
 
-                    # update standard deviation at leaf nodes
-                    if self.iter > 2:
-                        self.leaf_sd[odim] = self.running_sd[odim].update(new)
-                    else:
-                        self.running_sd[odim].update(new)
 
+            # Get the new particle and associated tree
+            self.all_particles[tree_id], new_tree = self.get_particle_tree(
+                particles, normalized_weights
+            )
+
+
+            # Update the sum of trees
+            new = new_tree._predict()
+            self.sum_trees = self.sum_trees_noi + new
+
+
+            # To reduce memory usage, we trim the tree
+            self.all_trees[tree_id] = new_tree.trim()
+
+
+            if self.tune:
+                # Update the splitting variable and the splitting variable sampler
+                if self.iter > self.m:
+                    self.ssv = SampleSplittingVariable(self.alpha_vec)
+                for index in new_tree.get_split_variables():
+                    self.alpha_vec[index] += 1
+                # update standard deviation at leaf nodes
+                if self.iter > 2:
+                    self.leaf_sd = self.running_sd.update(new)
                 else:
-                    # update the variable inclusion
-                    for index in new_tree.get_split_variables():
-                        variable_inclusion[index] += 1
+                    self.running_sd.update(new)
+            else:
+                # update the variable inclusion
+                for index in new_tree.get_split_variables():
+                    variable_inclusion[index] += 1
 
         if not self.tune:
             self.bart.all_trees.append(self.all_trees)
@@ -397,27 +392,21 @@ class PGBART(ArrayStepShared):
         single_uniform = (self.uniform.rvs() + np.arange(lnw)) / lnw
         return inverse_cdf(single_uniform, normalized_weights)
 
-    def init_particles(self, tree_id: int, odim: int) -> list[ParticleTree]:
+    def init_particles(self, tree_id: int) -> list[ParticleTree]:
         """Initialize particles."""
-        p0: ParticleTree = self.all_particles[odim][tree_id]
+        p0: ParticleTree = self.all_particles[tree_id]
         # The old tree does not grow so we update the weight only once
-        self.update_weight(p0, odim)
+        self.update_weight(p0)
         particles: list[ParticleTree] = [p0]
 
         particles.extend(ParticleTree(self.a_tree) for _ in self.indices)
         return particles
 
-    def update_weight(self, particle: ParticleTree, odim: int) -> None:
+    def update_weight(self, particle: ParticleTree) -> None:
         """
         Update the weight of a particle.
         """
-
-        delta = (
-            np.identity(self.trees_shape)[odim][:, None, None]
-            * particle.tree._predict()[None, :, :]
-        )
-
-        new_likelihood = self.likelihood_logp((self.sum_trees_noi + delta).flatten())
+        new_likelihood = self.likelihood_logp((self.sum_trees_noi + particle.tree._predict()).flatten())
         particle.log_weight = new_likelihood
 
     @staticmethod

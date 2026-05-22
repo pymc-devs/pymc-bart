@@ -137,7 +137,7 @@ def test_bart_moment(size, expected):
 
 
 @pytest.mark.parametrize(
-    argnames="separate_trees,split_rule",
+    argnames="split_rule",
     argvalues=[
         (False, pmb.ContinuousSplitRule),
         (False, pmb.OneHotSplitRule),
@@ -146,7 +146,7 @@ def test_bart_moment(size, expected):
     ],
     ids=["continuous", "one-hot", "subset", "separate-trees"],
 )
-def test_categorical_model(separate_trees, split_rule):
+def test_categorical_model(split_rule):
     Y = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
     rng = np.random.default_rng(12345)
     X = np.concatenate([Y[:, None], rng.integers(0, 6, size=(9, 4))], axis=1)
@@ -158,8 +158,7 @@ def test_categorical_model(separate_trees, split_rule):
             Y,
             m=2,
             shape=(3, 9),
-            split_rules=[split_rule] * 5,
-            separate_trees=separate_trees,
+            split_rules=[split_rule] * 5
         )
         y = pm.Categorical("y", p=pm.math.softmax(lo.T, axis=-1), observed=Y)
         idata = pm.sample(tune=300, draws=300, random_seed=3415)

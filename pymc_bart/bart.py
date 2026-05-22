@@ -103,12 +103,6 @@ class BART(Distribution):
         List of SplitRule objects, one per column in input data.
         Allows using different split rules for different columns. Default is ContinuousSplitRule.
         Other options are OneHotSplitRule and SubsetSplitRule, both meant for categorical variables.
-    separate_trees : Optional[bool], default False
-        When training multiple trees (by setting a shape parameter), the default behavior is to
-        learn a joint tree structure and only have different leaf values for each.
-        This flag forces a fully separate tree structure to be trained instead.
-        This is unnecessary in many cases and is considerably slower, multiplying
-        run-time roughly by number of dimensions.
 
     Notes
     -----
@@ -132,6 +126,7 @@ class BART(Distribution):
         split_prior: npt.NDArray | None = None,
         split_rules: list[SplitRule] | None = None,
         separate_trees: bool | None = False,
+        sampler="pymc",
         **kwargs,
     ):
         if response in ["linear", "mix"]:
@@ -147,25 +142,61 @@ class BART(Distribution):
 
         split_prior = np.array([]) if split_prior is None else np.asarray(split_prior)
 
-        bart_op = type(
-            f"BART_{name}",
-            (BARTRV,),
-            {
-                "name": "BART",
-                "all_trees": instance_all_trees,  # Instance-specific tree storage
-                "inplace": False,
-                "initval": Y.mean(),
-                "X": X,
-                "Y": Y,
-                "m": m,
-                "response": response,
-                "alpha": alpha,
-                "beta": beta,
-                "split_prior": split_prior,
-                "split_rules": split_rules,
-                "separate_trees": separate_trees,
-            },
-        )()
+
+        if sampler == "bartrs":
+            import pymc_bartrs as pmb_rs
+
+
+            def rule_to_str(rule): 
+                if isinstance(rule, SplitRule):
+                    return rule.__class__.__name__
+                else:
+                    raise ValueError("Split rules should be instances of SplitRule class.")
+                
+
+            response_map = {"constant": "gaussian", "linear": "linear"}
+            if response not in response_map:
+                raise ValueError("...")
+
+            split_rules_dict = None
+            if split_rules is not None:
+                split_rules_dict = {
+                    i: rule_to_str(rule) for i, rule in enumerate(split_rules)
+                }
+
+            return pmb_rs.BART(
+                name,
+                X,
+                Y,
+                m=m,
+                alpha=alpha,
+                beta=beta,
+                response=response_map[response],
+                split_rules=split_rules_dict,
+                split_prior=split_prior,
+                separate_trees=separate_trees,
+                **kwargs,
+            )
+        else: 
+            bart_op = type(
+                f"BART_{name}",
+                (BARTRV,),
+                {
+                    "name": "BART",
+                    "all_trees": instance_all_trees,
+                    "inplace": False,
+                    "initval": Y.mean(),
+                    "X": X,
+                    "Y": Y,
+                    "m": m,
+                    "response": response,
+                    "alpha": alpha,
+                    "beta": beta,
+                    "split_prior": split_prior,
+                    "split_rules": split_rules,
+                    "separate_trees": separate_trees,
+                },
+            )()
 
         Distribution.register(BARTRV)
 
