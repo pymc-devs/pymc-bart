@@ -19,6 +19,7 @@ from multiprocessing import Manager
 
 import numpy as np
 import numpy.typing as npt
+from typing import Dict, Optional
 import pytensor.tensor as pt
 from pandas import DataFrame, Series
 from pymc.distributions.distribution import Distribution, _support_point
@@ -27,7 +28,6 @@ from pytensor.tensor.random.op import RandomVariable
 from pytensor.tensor.sharedvar import TensorSharedVariable
 from pytensor.tensor.variable import TensorVariable
 
-from .split_rules import SplitRule
 from .utils import TensorLike, _sample_posterior
 
 __all__ = ["BART"]
@@ -123,10 +123,8 @@ class BART(Distribution):
         alpha: float = 0.95,
         beta: float = 2.0,
         response: str = "constant",
-        split_prior: npt.NDArray | None = None,
-        split_rules: list[SplitRule] | None = None,
-        separate_trees: bool | None = False,
-        sampler="pymc",
+        split_rules: Optional[list[str]] = None,
+        split_prior: Optional[npt.NDArray[np.float64]] = None,
         **kwargs,
     ):
         if response in ["linear", "mix"]:
@@ -141,44 +139,8 @@ class BART(Distribution):
         X, Y = preprocess_xy(X, Y)
 
         split_prior = np.array([]) if split_prior is None else np.asarray(split_prior)
-
-
-        if sampler == "bartrs":
-            import pymc_bartrs as pmb_rs
-
-
-            def rule_to_str(rule): 
-                if isinstance(rule, SplitRule):
-                    return rule.__class__.__name__
-                else:
-                    raise ValueError("Split rules should be instances of SplitRule class.")
-                
-
-            response_map = {"constant": "gaussian", "linear": "linear"}
-            if response not in response_map:
-                raise ValueError("...")
-
-            split_rules_dict = None
-            if split_rules is not None:
-                split_rules_dict = {
-                    i: rule_to_str(rule) for i, rule in enumerate(split_rules)
-                }
-
-            return pmb_rs.BART(
-                name,
-                X,
-                Y,
-                m=m,
-                alpha=alpha,
-                beta=beta,
-                response=response_map[response],
-                split_rules=split_rules_dict,
-                split_prior=split_prior,
-                separate_trees=separate_trees,
-                **kwargs,
-            )
-        else: 
-            bart_op = type(
+        
+        bart_op = type(
                 f"BART_{name}",
                 (BARTRV,),
                 {
@@ -194,7 +156,6 @@ class BART(Distribution):
                     "beta": beta,
                     "split_prior": split_prior,
                     "split_rules": split_rules,
-                    "separate_trees": separate_trees,
                 },
             )()
 

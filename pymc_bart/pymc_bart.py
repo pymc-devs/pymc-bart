@@ -1,6 +1,10 @@
+from yaml import warnings
+
+
 try:
     from pymc_bartrs.pymc_bartrs import PyBartSettings, PySampler, TreeArrays
-except Exception:
+except Exception as e:
+    print(f"Warning: Could not import PyBartSettings, PySampler, or TreeArrays due to: {e}")
     PyBartSettings = PySampler = TreeArrays = None
     
 for cls in (PyBartSettings, PySampler, TreeArrays):

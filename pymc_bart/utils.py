@@ -1,6 +1,8 @@
 # pylint: disable=too-many-branches
 """Utility function for variable selection and bart interpretability."""
 
+from __future__ import annotations
+
 import base64
 import warnings
 from collections.abc import Callable
@@ -17,15 +19,18 @@ from numba import jit
 from pytensor.tensor.variable import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
-from pymc_bart.pymc_bart import TreeArrays
 
-from .tree import Tree
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pymc_bart.pymc_bart import TreeArrays
 
 TensorLike = TypeVar("TensorLike", npt.NDArray, pt.TensorVariable)
 
 
 def _sample_posterior(
-    all_trees: list[list[Tree]],
+    all_trees: list[list[TreeArrays]],
     X: TensorLike,
     rng: np.random.Generator,
     size: int | tuple[int, ...] | None = None,
@@ -456,6 +461,7 @@ def _create_figure_axes(
     tuple[plt.Figure, list[plt.Axes], int]
         A tuple containing the figure object, list of axes objects, and the shape value.
     """
+    from pymc_bart.pymc_bart import TreeArrays
     if bartrv.ndim == 1:  # type: ignore
         shape = 1
     else:
@@ -844,6 +850,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     -------
     vi_results: dictionary
     """
+    from pymc_bart.pymc_bart import TreeArrays
     if method not in ["VI", "backward", "backward_VI"]:
         raise ValueError("method must be 'VI', 'backward' or 'backward_VI'")
 
@@ -927,7 +934,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
             )
             r2_mean[idx] = np.mean(r_2)
             r2_hdi[idx] = array_stats.hdi(r_2, prob=rcParams["stats.ci_prob"])
-            preds[idx] = predicted_subset.squeeze()
+            preds[idx] = predicted_subset# .squeeze()
 
     if method in ["backward", "backward_VI"]:
         if method == "backward_VI":

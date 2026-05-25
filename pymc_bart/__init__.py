@@ -11,11 +11,7 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-from pymc.sampling import mcmc
-
 from pymc_bart.bart import BART
-from pymc_bart.pgbart import PGBART
-from pymc_bart.split_rules import ContinuousSplitRule, OneHotSplitRule, SubsetSplitRule
 from pymc_bart.utils import (
     compute_variable_importance,
     get_variable_inclusion,
@@ -28,12 +24,10 @@ from pymc_bart.utils import (
     vi_to_kulprit,
 )
 
+import pymc_bartrs  # registers PGBART with PyMC
+
 __all__ = [
     "BART",
-    "PGBART",
-    "ContinuousSplitRule",
-    "OneHotSplitRule",
-    "SubsetSplitRule",
     "compute_variable_importance",
     "get_variable_inclusion",
     "plot_convergence",
@@ -44,9 +38,3 @@ __all__ = [
     "plot_variable_inclusion",
     "vi_to_kulprit",
 ]
-__version__ = "0.12.0"
-
-
-methods = mcmc.STEP_METHODS
-if not any(method is PGBART for method in methods):
-    methods.append(PGBART)
