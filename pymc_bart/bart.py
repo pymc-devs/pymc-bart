@@ -14,6 +14,7 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+from os import name
 import warnings
 from multiprocessing import Manager
 
@@ -122,7 +123,7 @@ class BART(Distribution):
         m: int = 50,
         alpha: float = 0.95,
         beta: float = 2.0,
-        response: str = "constant",
+        response: str = "gaussian",
         split_rules: Optional[list[str]] = None,
         split_prior: Optional[npt.NDArray[np.float64]] = None,
         **kwargs,
@@ -140,35 +141,34 @@ class BART(Distribution):
 
         split_prior = np.array([]) if split_prior is None else np.asarray(split_prior)
         
-        bart_op = type(
-                f"BART_{name}",
-                (BARTRV,),
-                {
-                    "name": "BART",
-                    "all_trees": instance_all_trees,
-                    "inplace": False,
-                    "initval": Y.mean(),
-                    "X": X,
-                    "Y": Y,
-                    "m": m,
-                    "response": response,
-                    "alpha": alpha,
-                    "beta": beta,
-                    "split_prior": split_prior,
-                    "split_rules": split_rules,
-                },
-            )()
+        bart_op_type = type(
+            f"BART_{name}",
+            (BARTRV,),
+            {
+                "name": "BART",
+                "all_trees": instance_all_trees,
+                "inplace": False,
+                "initval": Y.mean(),
+                "X": X,
+                "Y": Y,
+                "m": m,
+                "response": response,
+                "alpha": alpha,
+                "beta": beta,
+                "split_prior": split_prior,
+                "split_rules": split_rules,
+            },
+        )
+        
+        bart_op = bart_op_type()
 
         Distribution.register(BARTRV)
-
-        @_support_point.register(BARTRV)
-        def get_moment(rv, size, *rv_inputs):
-            return cls.get_moment(rv, size, *rv_inputs)
+        Distribution.register(bart_op_type)
 
         cls.rv_op = bart_op
         params = [X, Y, m, alpha, beta]
-        return super().__new__(cls, name, *params, **kwargs)
-
+        return super().__new__(cls, name, *params, **kwargs)    
+    
     @classmethod
     def dist(cls, *params, **kwargs):
         return super().dist(params, **kwargs)
@@ -186,13 +186,13 @@ class BART(Distribution):
         TensorVariable
         """
         return pt.zeros_like(x)
-
+    
     @classmethod
     def get_moment(cls, rv, size, *rv_inputs):
         mean = pt.fill(size, rv.Y.mean())
         return mean
-
-
+    
+    
 def preprocess_xy(X: TensorLike, Y: TensorLike) -> tuple[npt.NDArray, npt.NDArray]:
     if isinstance(Y, (Series, DataFrame)):
         Y = Y.to_numpy()
@@ -220,3 +220,7 @@ def logp(op, value_var, *dist_params, **kwargs):
     _dist_params = dist_params[3:]
     value_var = value_var[0]
     return BART.logp(value_var, *_dist_params)  # pylint: disable=no-value-for-parameter
+
+@_support_point.register(BARTRV)
+def bart_support_point(op, rv, *rv_inputs):
+    return pt.full(rv.shape, op.Y.mean(), dtype=rv.dtype)

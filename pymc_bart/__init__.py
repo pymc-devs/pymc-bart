@@ -24,7 +24,7 @@ from pymc_bart.utils import (
     vi_to_kulprit,
 )
 
-import pymc_bartrs  # registers PGBART with PyMC
+import bartrs  # registers PGBART with PyMC
 
 __all__ = [
     "BART",
@@ -38,3 +38,5 @@ __all__ = [
     "plot_variable_inclusion",
     "vi_to_kulprit",
 ]
+
+__version__ = "0.12.0"

@@ -22,7 +22,6 @@ from scipy.signal import savgol_filter
 
 
 from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from pymc_bart.pymc_bart import TreeArrays
 
@@ -30,12 +29,11 @@ TensorLike = TypeVar("TensorLike", npt.NDArray, pt.TensorVariable)
 
 
 def _sample_posterior(
-    all_trees: list[list[TreeArrays]],
+    all_trees: list[list[TreeArrays]] | list[list[list[TreeArrays]]],
     X: TensorLike,
     rng: np.random.Generator,
     size: int | tuple[int, ...] | None = None,
     excluded: list[int] | None = None,
-    shape: int = 1,
 ) -> npt.NDArray:
     """
     Generate samples from the BART-posterior.
@@ -69,15 +67,31 @@ def _sample_posterior(
     for s in size_iter:
         flatten_size *= s
 
-    idx = rng.integers(0, len(stacked_trees), size=flatten_size)
+    if isinstance(all_trees[0][0], list):
+        n_draws = len(all_trees[0])
+        n_outputs = len(all_trees)
 
-    pred = np.zeros((flatten_size, shape, X.shape[0]))
+        pred = np.zeros((flatten_size, n_outputs, X.shape[0]))
 
-    for ind, p in enumerate(pred):
-            for tree in stacked_trees[idx[ind]]:
-                p += tree.predict(x=X, excluded=excluded, shape=shape)
+        idx = rng.integers(0, n_draws, size=flatten_size)
 
-    return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, shape))
+        for out_idx, trees in enumerate(all_trees):
+            for ind, p in enumerate(pred[:, out_idx, :]):
+                for tree in trees[idx[ind]]:
+                    p += np.asarray(tree.predict(x=X, excluded=excluded)).squeeze()
+
+        return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, n_outputs))
+    else:
+        n_outputs = all_trees[0][0].n_outputs
+        idx = rng.integers(0, len(stacked_trees), size=flatten_size)
+
+        pred = np.zeros((flatten_size, n_outputs, X.shape[0]))
+
+        for ind, p in enumerate(pred):
+                for tree in stacked_trees[idx[ind]]:
+                    p += tree.predict(x=X, excluded=excluded)
+
+        return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, n_outputs))
 
 
 def plot_convergence(
@@ -226,7 +240,7 @@ def plot_ice(
             fake_X[:, indices_mi] = X[:, indices_mi][instance]
             y_pred.append(
                 np.mean(
-                    _sample_posterior(all_trees, X=fake_X, rng=rng, size=samples, shape=shape),
+                    _sample_posterior(all_trees, X=fake_X, rng=rng, size=samples),
                     0,
                 )
             )
@@ -260,7 +274,7 @@ def plot_ice(
 
 
 def plot_pdp(
-    bartrv: Variable,
+    bartrv: Variable | list[Variable],
     X: npt.NDArray,
     Y: npt.NDArray | None = None,
     xs_interval: str = "quantiles",
@@ -342,7 +356,13 @@ def plot_pdp(
     -------
     axes: matplotlib axes
     """
-    all_trees: list = bartrv.owner.op.all_trees
+    if isinstance(bartrv, list):
+        if not all(rv.ndim == 1 for rv in bartrv):
+            raise ValueError("List inputs must contain only 1D BART variables")
+        all_trees = [rv.owner.op.all_trees for rv in bartrv]
+    else:
+        all_trees = bartrv.owner.op.all_trees
+        
     rng = np.random.default_rng(random_seed)
 
     if func is None:
@@ -373,7 +393,7 @@ def plot_pdp(
         excluded.remove(var)
         p_d = func(
             _sample_posterior(
-                all_trees, X=fake_X, rng=rng, size=samples, excluded=excluded, shape=shape
+                all_trees, X=fake_X, rng=rng, size=samples, excluded=excluded,
             )
         )
 
@@ -425,7 +445,7 @@ def plot_pdp(
 
 
 def _create_figure_axes(
-    bartrv: Variable,
+    bartrv: Variable | list[Variable],
     var_idx: list[int],
     grid: str = "long",
     sharey: bool = True,
@@ -462,13 +482,22 @@ def _create_figure_axes(
         A tuple containing the figure object, list of axes objects, and the shape value.
     """
     from pymc_bart.pymc_bart import TreeArrays
-    if bartrv.ndim == 1:  # type: ignore
-        shape = 1
+    if not isinstance(bartrv, list):
+        if bartrv.ndim == 1:  # type: ignore
+            shape = 1
+        else:
+            if isinstance(bartrv.owner_op.all_trees[0][0], TreeArrays):
+                shape = bartrv.owner_op.all_trees[0][0].n_outputs
+            else: 
+                shape = bartrv.eval().shape[0]
     else:
-        if isinstance(bartrv.owner_op.all_trees[0][0], TreeArrays):
-            shape = bartrv.owner_op.all_trees[0][0].n_outputs
-        else: 
-            shape = bartrv.eval().shape[0]
+        if all(rv.ndim == 1 for rv in bartrv):
+            shape = len(bartrv)
+        else:
+            if isinstance(bartrv[0].owner_op.all_trees[0][0], TreeArrays):
+                shape = bartrv[0].owner_op.all_trees[0][0].n_outputs
+            else: 
+                shape = bartrv[0].eval().shape[0]
 
     n_plots = len(var_idx) * shape
 
@@ -806,7 +835,7 @@ def plot_variable_inclusion(idata, X, labels=None, figsize=None, plot_kwargs=Non
 
 def compute_variable_importance(  # noqa: PLR0915 PLR0912
     idata: Any,
-    bartrv: Variable,
+    bartrv: Variable | list[Variable],
     X: npt.NDArray,
     model: "pm.Model | None" = None,
     method: str = "VI",
@@ -856,16 +885,22 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
 
     rng = np.random.default_rng(random_seed)
 
-    all_trees = bartrv.owner.op.all_trees
-    bart_var_name = bartrv.name
-
-    if bartrv.ndim == 1:  # type: ignore
-        shape = 1
+    if isinstance(bartrv, list):
+        if not all(rv.ndim == 1 for rv in bartrv):
+            raise ValueError("List inputs must contain only 1D BART variables")
+        all_trees = [rv.owner.op.all_trees for rv in bartrv]
+        bart_var_name = [rv.name for rv in bartrv]
+        shape = len(bartrv)
     else:
-        if isinstance(all_trees[0][0], TreeArrays):
-            shape = all_trees[0][0].n_outputs
+        all_trees = bartrv.owner.op.all_trees
+        bart_var_name = bartrv.name
+        if bartrv.ndim == 1:  # type: ignore
+            shape = 1
         else:
-            shape = bartrv.eval().shape[0]
+            if isinstance(all_trees[0][0], TreeArrays):
+                shape = all_trees[0][0].n_outputs
+            else:
+                shape = bartrv.eval().shape[0]
 
     n_vars = X.shape[1]
 
@@ -892,10 +927,9 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     else:
         fixed = 0
         init = 0
-
-    predicted_all = _sample_posterior(
-        all_trees, X=X, rng=rng, size=samples, excluded=None, shape=shape
-    )
+        predicted_all = _sample_posterior(
+            all_trees, X=X, rng=rng, size=samples, excluded=None
+        )
 
     if method in ["VI", "backward_VI"]:
         vi_xarray = idata["sample_stats"]["variable_inclusion"]
@@ -907,11 +941,22 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
                     "for which you want to compute the variable inclusion."
                 )
 
-            index = [var.name for var in model.free_RVs].index(bart_var_name)
-            vi_vals = vi_xarray.sel({"variable_inclusion_dim_0": index}).values.ravel()
+            if isinstance(bartrv, list):
+                vi_counts = np.zeros(n_vars)
+                for name in bart_var_name:
+                    index = [var.name for var in model.free_RVs].index(name)
+                    vi_vals = vi_xarray.sel({"variable_inclusion_dim_0": index}).values.ravel()
+                    vi_counts += np.array([_decode_vi(val, n_vars) for val in vi_vals]).sum(axis=0)
+                idxs = np.argsort(vi_counts)
+            else:
+                index = [var.name for var in model.free_RVs].index(bart_var_name)
+                vi_vals = vi_xarray.sel({"variable_inclusion_dim_0": index}).values.ravel()
+                idxs = np.argsort(
+                    np.array([_decode_vi(val, n_vars) for val in vi_vals]).sum(axis=0)
+                )
         else:
             vi_vals = idata["sample_stats"]["variable_inclusion"].values.ravel()
-        idxs = np.argsort(np.array([_decode_vi(val, n_vars) for val in vi_vals]).sum(axis=0))
+            idxs = np.argsort(np.array([_decode_vi(val, n_vars) for val in vi_vals]).sum(axis=0))
         subsets: list[list[int]] = [list(idxs[:-i]) for i in range(1, len(idxs))]
         subsets.append(None)  # type: ignore
 
@@ -927,7 +972,6 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
                 rng=rng,
                 size=samples,
                 excluded=subset,
-                shape=shape,
             )
             r_2 = np.array(
                 [pearsonr2(predicted_all[j], predicted_subset[j]) for j in range(samples)]
@@ -944,7 +988,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
             preds_vi = preds[:init]
             r2_mean = np.zeros(n_vars - fixed - 1)
             r2_hdi = np.zeros((n_vars - fixed - 1, 2))
-            preds = np.zeros((n_vars - fixed - 1, samples, bartrv.eval().shape[0]))
+            preds = np.zeros((n_vars - fixed - 1, samples, n_training_samples, shape))
         else:
             least_important_vars = []
 
@@ -965,8 +1009,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
                     X=X,
                     rng=rng,
                     size=samples,
-                    excluded=subset,
-                    shape=shape,
+                    excluded=subset
                 )
                 # Calculate Pearson correlation for each sample and find the mean
                 r_2 = np.zeros(samples)
