@@ -3,8 +3,6 @@ from unittest import TestCase
 import numpy as np
 import pymc as pm
 import pytest
-
-import pymc_bart as pmb
 from pymc_bart.pgbart import (
     NormalSampler,
     UniformSampler,
@@ -12,6 +10,8 @@ from pymc_bart.pgbart import (
     fast_linear_fit,
     fast_mean,
 )
+
+import pymc_bart as pmb
 
 
 class TestSystematic(TestCase):

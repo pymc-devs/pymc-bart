@@ -6,7 +6,7 @@ from __future__ import annotations
 import base64
 import warnings
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,8 +20,6 @@ from pytensor.tensor.variable import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
 
-
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pymc_bart.pymc_bart import TreeArrays
 
@@ -88,8 +86,8 @@ def _sample_posterior(
         pred = np.zeros((flatten_size, n_outputs, X.shape[0]))
 
         for ind, p in enumerate(pred):
-                for tree in stacked_trees[idx[ind]]:
-                    p += tree.predict(x=X, excluded=excluded)
+            for tree in stacked_trees[idx[ind]]:
+                p += tree.predict(x=X, excluded=excluded)
 
         return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, n_outputs))
 
@@ -362,7 +360,7 @@ def plot_pdp(
         all_trees = [rv.owner.op.all_trees for rv in bartrv]
     else:
         all_trees = bartrv.owner.op.all_trees
-        
+
     rng = np.random.default_rng(random_seed)
 
     if func is None:
@@ -393,7 +391,11 @@ def plot_pdp(
         excluded.remove(var)
         p_d = func(
             _sample_posterior(
-                all_trees, X=fake_X, rng=rng, size=samples, excluded=excluded,
+                all_trees,
+                X=fake_X,
+                rng=rng,
+                size=samples,
+                excluded=excluded,
             )
         )
 
@@ -482,22 +484,20 @@ def _create_figure_axes(
         A tuple containing the figure object, list of axes objects, and the shape value.
     """
     from pymc_bart.pymc_bart import TreeArrays
+
     if not isinstance(bartrv, list):
         if bartrv.ndim == 1:  # type: ignore
             shape = 1
+        elif isinstance(bartrv.owner_op.all_trees[0][0], TreeArrays):
+            shape = bartrv.owner_op.all_trees[0][0].n_outputs
         else:
-            if isinstance(bartrv.owner_op.all_trees[0][0], TreeArrays):
-                shape = bartrv.owner_op.all_trees[0][0].n_outputs
-            else: 
-                shape = bartrv.eval().shape[0]
+            shape = bartrv.eval().shape[0]
+    elif all(rv.ndim == 1 for rv in bartrv):
+        shape = len(bartrv)
+    elif isinstance(bartrv[0].owner_op.all_trees[0][0], TreeArrays):
+        shape = bartrv[0].owner_op.all_trees[0][0].n_outputs
     else:
-        if all(rv.ndim == 1 for rv in bartrv):
-            shape = len(bartrv)
-        else:
-            if isinstance(bartrv[0].owner_op.all_trees[0][0], TreeArrays):
-                shape = bartrv[0].owner_op.all_trees[0][0].n_outputs
-            else: 
-                shape = bartrv[0].eval().shape[0]
+        shape = bartrv[0].eval().shape[0]
 
     n_plots = len(var_idx) * shape
 
@@ -837,7 +837,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     idata: Any,
     bartrv: Variable | list[Variable],
     X: npt.NDArray,
-    model: "pm.Model | None" = None,
+    model: pm.Model | None = None,
     method: str = "VI",
     fixed: int = 0,
     samples: int = 50,
@@ -880,6 +880,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     vi_results: dictionary
     """
     from pymc_bart.pymc_bart import TreeArrays
+
     if method not in ["VI", "backward", "backward_VI"]:
         raise ValueError("method must be 'VI', 'backward' or 'backward_VI'")
 
@@ -896,11 +897,10 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
         bart_var_name = bartrv.name
         if bartrv.ndim == 1:  # type: ignore
             shape = 1
+        elif isinstance(all_trees[0][0], TreeArrays):
+            shape = all_trees[0][0].n_outputs
         else:
-            if isinstance(all_trees[0][0], TreeArrays):
-                shape = all_trees[0][0].n_outputs
-            else:
-                shape = bartrv.eval().shape[0]
+            shape = bartrv.eval().shape[0]
 
     n_vars = X.shape[1]
 
@@ -927,9 +927,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     else:
         fixed = 0
         init = 0
-        predicted_all = _sample_posterior(
-            all_trees, X=X, rng=rng, size=samples, excluded=None
-        )
+        predicted_all = _sample_posterior(all_trees, X=X, rng=rng, size=samples, excluded=None)
 
     if method in ["VI", "backward_VI"]:
         vi_xarray = idata["sample_stats"]["variable_inclusion"]
@@ -978,7 +976,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
             )
             r2_mean[idx] = np.mean(r_2)
             r2_hdi[idx] = array_stats.hdi(r_2, prob=rcParams["stats.ci_prob"])
-            preds[idx] = predicted_subset# .squeeze()
+            preds[idx] = predicted_subset  # .squeeze()
 
     if method in ["backward", "backward_VI"]:
         if method == "backward_VI":
@@ -1005,11 +1003,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
             for subset in subsets:
                 # Sample posterior predictions excluding a subset of variables
                 predicted_subset = _sample_posterior(
-                    all_trees=all_trees,
-                    X=X,
-                    rng=rng,
-                    size=samples,
-                    excluded=subset
+                    all_trees=all_trees, X=X, rng=rng, size=samples, excluded=subset
                 )
                 # Calculate Pearson correlation for each sample and find the mean
                 r_2 = np.zeros(samples)
