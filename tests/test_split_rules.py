@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-
 from pymc_bart.split_rules import ContinuousSplitRule, OneHotSplitRule, SubsetSplitRule
 
 

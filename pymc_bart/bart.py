@@ -14,13 +14,11 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-from os import name
 import warnings
 from multiprocessing import Manager
 
 import numpy as np
 import numpy.typing as npt
-from typing import Dict, Optional
 import pytensor.tensor as pt
 from pandas import DataFrame, Series
 from pymc.distributions.distribution import Distribution, _support_point
@@ -124,8 +122,8 @@ class BART(Distribution):
         alpha: float = 0.95,
         beta: float = 2.0,
         response: str = "gaussian",
-        split_rules: Optional[list[str]] = None,
-        split_prior: Optional[npt.NDArray[np.float64]] = None,
+        split_rules: list[str] | None = None,
+        split_prior: npt.NDArray[np.float64] | None = None,
         **kwargs,
     ):
         if response in ["linear", "mix"]:
@@ -140,7 +138,7 @@ class BART(Distribution):
         X, Y = preprocess_xy(X, Y)
 
         split_prior = np.array([]) if split_prior is None else np.asarray(split_prior)
-        
+
         bart_op_type = type(
             f"BART_{name}",
             (BARTRV,),
@@ -159,7 +157,7 @@ class BART(Distribution):
                 "split_rules": split_rules,
             },
         )
-        
+
         bart_op = bart_op_type()
 
         Distribution.register(BARTRV)
@@ -167,8 +165,8 @@ class BART(Distribution):
 
         cls.rv_op = bart_op
         params = [X, Y, m, alpha, beta]
-        return super().__new__(cls, name, *params, **kwargs)    
-    
+        return super().__new__(cls, name, *params, **kwargs)
+
     @classmethod
     def dist(cls, *params, **kwargs):
         return super().dist(params, **kwargs)
@@ -186,13 +184,13 @@ class BART(Distribution):
         TensorVariable
         """
         return pt.zeros_like(x)
-    
+
     @classmethod
     def get_moment(cls, rv, size, *rv_inputs):
         mean = pt.fill(size, rv.Y.mean())
         return mean
-    
-    
+
+
 def preprocess_xy(X: TensorLike, Y: TensorLike) -> tuple[npt.NDArray, npt.NDArray]:
     if isinstance(Y, (Series, DataFrame)):
         Y = Y.to_numpy()
@@ -220,6 +218,7 @@ def logp(op, value_var, *dist_params, **kwargs):
     _dist_params = dist_params[3:]
     value_var = value_var[0]
     return BART.logp(value_var, *_dist_params)  # pylint: disable=no-value-for-parameter
+
 
 @_support_point.register(BARTRV)
 def bart_support_point(op, rv, *rv_inputs):

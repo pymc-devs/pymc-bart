@@ -1,5 +1,4 @@
 import numpy as np
-
 from pymc_bart.tree import Node, get_depth, get_idx_left_child, get_idx_right_child
 
 
