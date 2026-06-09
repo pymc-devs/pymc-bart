@@ -3,4 +3,3 @@ pre-commit
 pylint==2.17.4
 pytest-cov>=2.6.1
 pytest>=4.4.0
-bartrs @ git+https://github.com/pymc-devs/bartrs.git@main
