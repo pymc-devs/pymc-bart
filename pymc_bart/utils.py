@@ -76,7 +76,9 @@ def _sample_posterior(
         for out_idx, trees in enumerate(all_trees):
             for ind, p in enumerate(pred[:, out_idx, :]):
                 for tree in trees[idx[ind]]:
-                    pred[:, out_idx, :] += np.asarray(tree.predict(x=X, excluded=excluded)).squeeze()
+                    pred[:, out_idx, :] += np.asarray(
+                        tree.predict(x=X, excluded=excluded)
+                    ).squeeze()
 
         return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, n_outputs))
     else:
@@ -86,8 +88,8 @@ def _sample_posterior(
         pred = np.zeros((flatten_size, n_outputs, X.shape[0]))
 
         for ind, p in enumerate(pred):
-                for tree in stacked_trees[idx[ind]]:
-                    pred[ind, :, :] += tree.predict(x=X, excluded=excluded)
+            for tree in stacked_trees[idx[ind]]:
+                pred[ind, :, :] += tree.predict(x=X, excluded=excluded)
 
         return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, n_outputs))
 
