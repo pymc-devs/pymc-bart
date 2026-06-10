@@ -66,7 +66,7 @@ class BARTRV(RandomVariable):
                 shape = size[0]
             else:
                 shape = 1
-                
+
             return _sample_posterior(cls.all_trees, cls.X, rng=rng).squeeze().T
 
 
@@ -99,7 +99,7 @@ class BART(Distribution):
     split_prior : Optional[list[float]], default None.
         List of positive numbers, one per column in input data.
         Defaults to None, all covariates have the same prior probability to be selected.
-    split_rules : Optional[list[SplitRule]], default None
+    split_rules : Optional[list[str]], default None
         List of SplitRule objects, one per column in input data.
         Allows using different split rules for different columns. Default is ContinuousSplitRule.
         Other options are OneHotSplitRule and SubsetSplitRule, both meant for categorical variables.
