@@ -54,6 +54,8 @@ def _sample_posterior(
     if isinstance(X, Variable):
         X = X.eval()
 
+    X = np.ascontiguousarray(np.asarray(X, dtype=np.float64))
+
     if size is None:
         size_iter: list | tuple = ()
     elif isinstance(size, int):
@@ -76,10 +78,8 @@ def _sample_posterior(
         for out_idx, trees in enumerate(all_trees):
             for ind, p in enumerate(pred[:, out_idx, :]):
                 for tree in trees[idx[ind]]:
-                    pred[:, out_idx, :] += np.asarray(
-                        tree.predict(x=X, excluded=excluded)
-                    ).squeeze()
-
+                    pred[ind, out_idx, :] += np.asarray(tree.predict(x=X, excluded=excluded)).squeeze()
+                    
         return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, n_outputs))
     else:
         n_outputs = all_trees[0][0].n_outputs
@@ -1057,7 +1057,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
         "labels": labels,
         "r2_mean": r2_mean,
         "r2_hdi": r2_hdi,
-        "preds": preds,
+        "preds": preds.squeeze(),
         "preds_all": predicted_all.squeeze(),
     }
     return vi_results

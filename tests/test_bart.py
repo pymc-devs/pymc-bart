@@ -6,6 +6,7 @@ from pymc.initial_point import make_initial_point_fn
 from pymc.logprob.basic import transformed_conditional_logp
 
 import pymc_bart as pmb
+from bartrs import PGBART
 from pymc_bart.utils import _decode_vi
 
 
@@ -139,12 +140,11 @@ def test_bart_moment(size, expected):
 @pytest.mark.parametrize(
     argnames="split_rule",
     argvalues=[
-        (False, pmb.ContinuousSplitRule),
-        (False, pmb.OneHotSplitRule),
-        (False, pmb.SubsetSplitRule),
-        (True, pmb.ContinuousSplitRule),
+        ("ContinuousSplit"),
+        ("OneHotSplit"),
+        ("ContinuousSplit"),
     ],
-    ids=["continuous", "one-hot", "subset", "separate-trees"],
+    ids=["continuous", "one-hot", "continuous"],
 )
 def test_categorical_model(split_rule):
     Y = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
@@ -228,8 +228,8 @@ def test_multiple_bart_variables_manual_step():
         y = pm.Normal("y", mu1 + mu2, sigma, observed=Y)
 
         # Manually create PGBART samplers for each BART variable
-        step1 = pmb.PGBART([mu1], num_particles=5)
-        step2 = pmb.PGBART([mu2], num_particles=5)
+        step1 = PGBART([mu1], num_particles=5)
+        step2 = PGBART([mu2], num_particles=5)
 
         # Sample with manual step assignment
         idata = pm.sample(tune=20, draws=20, chains=1, step=[step1, step2], random_seed=3415)

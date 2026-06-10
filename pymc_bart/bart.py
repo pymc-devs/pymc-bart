@@ -66,7 +66,8 @@ class BARTRV(RandomVariable):
                 shape = size[0]
             else:
                 shape = 1
-            return _sample_posterior(cls.all_trees, cls.X, rng=rng, shape=shape).squeeze().T
+                
+            return _sample_posterior(cls.all_trees, cls.X, rng=rng).squeeze().T
 
 
 bart = BARTRV()
@@ -121,7 +122,7 @@ class BART(Distribution):
         m: int = 50,
         alpha: float = 0.95,
         beta: float = 2.0,
-        response: str = "gaussian",
+        response: str = "constant",
         split_rules: list[str] | None = None,
         split_prior: npt.NDArray[np.float64] | None = None,
         **kwargs,
