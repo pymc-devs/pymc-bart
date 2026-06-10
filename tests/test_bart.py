@@ -1,12 +1,12 @@
 import numpy as np
 import pymc as pm
 import pytest
+from bartrs import PGBART
 from numpy.testing import assert_almost_equal
 from pymc.initial_point import make_initial_point_fn
 from pymc.logprob.basic import transformed_conditional_logp
 
 import pymc_bart as pmb
-from bartrs import PGBART
 from pymc_bart.utils import _decode_vi
 
 
