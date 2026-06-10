@@ -154,7 +154,7 @@ def test_categorical_model(split_rule):
     with pm.Model() as model:
         lo = pmb.BART("logodds", X, Y, m=2, shape=(3, 9), split_rules=[split_rule] * 5)
         y = pm.Categorical("y", p=pm.math.softmax(lo.T, axis=-1), observed=Y)
-        idata = pm.sample(tune=300, draws=300, random_seed=3415)
+        idata = pm.sample(tune=300, draws=600, random_seed=3415)
         idata = pm.sample_posterior_predictive(
             idata, predictions=True, extend_inferencedata=True, random_seed=3415
         )
