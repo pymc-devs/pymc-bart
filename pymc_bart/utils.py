@@ -1,10 +1,12 @@
 # pylint: disable=too-many-branches
 """Utility function for variable selection and bart interpretability."""
 
+from __future__ import annotations
+
 import base64
 import warnings
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,18 +20,18 @@ from pytensor.tensor.variable import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
 
-from .tree import Tree
+if TYPE_CHECKING:
+    from pymc_bart.pymc_bart import TreeArrays
 
 TensorLike = TypeVar("TensorLike", npt.NDArray, pt.TensorVariable)
 
 
 def _sample_posterior(
-    all_trees: list[list[Tree]],
+    all_trees: list[list[TreeArrays]] | list[list[list[TreeArrays]]],
     X: TensorLike,
     rng: np.random.Generator,
     size: int | tuple[int, ...] | None = None,
     excluded: list[int] | None = None,
-    shape: int = 1,
 ) -> npt.NDArray:
     """
     Generate samples from the BART-posterior.
@@ -52,8 +54,10 @@ def _sample_posterior(
     if isinstance(X, Variable):
         X = X.eval()
 
+    X = np.ascontiguousarray(np.asarray(X, dtype=np.float64))
+
     if size is None:
-        size_iter: list | tuple = (1,)
+        size_iter: list | tuple = ()
     elif isinstance(size, int):
         size_iter = [size]
     else:
@@ -63,19 +67,33 @@ def _sample_posterior(
     for s in size_iter:
         flatten_size *= s
 
-    idx = rng.integers(0, len(stacked_trees), size=flatten_size)
+    if isinstance(all_trees[0][0], list):
+        n_draws = len(all_trees[0])
+        n_outputs = len(all_trees)
 
-    trees_shape = len(stacked_trees[0])
-    leaves_shape = shape // trees_shape
+        pred = np.zeros((flatten_size, n_outputs, X.shape[0]))
 
-    pred = np.zeros((flatten_size, trees_shape, leaves_shape, X.shape[0]))
+        idx = rng.integers(0, n_draws, size=flatten_size)
 
-    for ind, p in enumerate(pred):
-        for odim, odim_trees in enumerate(stacked_trees[idx[ind]]):
-            for tree in odim_trees:
-                p[odim] += tree.predict(x=X, excluded=excluded, shape=leaves_shape)
+        for out_idx, trees in enumerate(all_trees):
+            for ind, p in enumerate(pred[:, out_idx, :]):
+                for tree in trees[idx[ind]]:
+                    pred[ind, out_idx, :] += np.asarray(
+                        tree.predict(x=X, excluded=excluded)
+                    ).squeeze()
 
-    return pred.transpose((0, 3, 1, 2)).reshape((*size_iter, -1, shape))
+        return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, n_outputs))
+    else:
+        n_outputs = all_trees[0][0].n_outputs
+        idx = rng.integers(0, len(stacked_trees), size=flatten_size)
+
+        pred = np.zeros((flatten_size, n_outputs, X.shape[0]))
+
+        for ind, p in enumerate(pred):
+            for tree in stacked_trees[idx[ind]]:
+                pred[ind, :, :] += tree.predict(x=X, excluded=excluded)
+
+        return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, n_outputs))
 
 
 def plot_convergence(
@@ -224,7 +242,7 @@ def plot_ice(
             fake_X[:, indices_mi] = X[:, indices_mi][instance]
             y_pred.append(
                 np.mean(
-                    _sample_posterior(all_trees, X=fake_X, rng=rng, size=samples, shape=shape),
+                    _sample_posterior(all_trees, X=fake_X, rng=rng, size=samples),
                     0,
                 )
             )
@@ -258,7 +276,7 @@ def plot_ice(
 
 
 def plot_pdp(
-    bartrv: Variable,
+    bartrv: Variable | list[Variable],
     X: npt.NDArray,
     Y: npt.NDArray | None = None,
     xs_interval: str = "quantiles",
@@ -305,7 +323,7 @@ def plot_pdp(
     var_discrete : Optional[list[int]], by default None.
         List of the indices of the covariate treated as discrete.
     func : Optional[Callable], by default None.
-        Arbitrary function to apply to the predictions. Defaults to the identity function.
+        Arbitrary function to apply to the ions. Defaults to the identity function.
     samples : int
         Number of posterior samples used in the predictions. Defaults to 200
     ref_line : bool
@@ -340,7 +358,13 @@ def plot_pdp(
     -------
     axes: matplotlib axes
     """
-    all_trees: list = bartrv.owner.op.all_trees
+    if isinstance(bartrv, list):
+        if not all(rv.ndim == 1 for rv in bartrv):
+            raise ValueError("List inputs must contain only 1D BART variables")
+        all_trees = [rv.owner.op.all_trees for rv in bartrv]
+    else:
+        all_trees = bartrv.owner.op.all_trees
+
     rng = np.random.default_rng(random_seed)
 
     if func is None:
@@ -371,7 +395,11 @@ def plot_pdp(
         excluded.remove(var)
         p_d = func(
             _sample_posterior(
-                all_trees, X=fake_X, rng=rng, size=samples, excluded=excluded, shape=shape
+                all_trees,
+                X=fake_X,
+                rng=rng,
+                size=samples,
+                excluded=excluded,
             )
         )
 
@@ -423,7 +451,7 @@ def plot_pdp(
 
 
 def _create_figure_axes(
-    bartrv: Variable,
+    bartrv: Variable | list[Variable],
     var_idx: list[int],
     grid: str = "long",
     sharey: bool = True,
@@ -459,10 +487,21 @@ def _create_figure_axes(
     tuple[plt.Figure, list[plt.Axes], int]
         A tuple containing the figure object, list of axes objects, and the shape value.
     """
-    if bartrv.ndim == 1:  # type: ignore
-        shape = 1
+    from pymc_bart.pymc_bart import TreeArrays
+
+    if not isinstance(bartrv, list):
+        if bartrv.ndim == 1:  # type: ignore
+            shape = 1
+        elif isinstance(bartrv.owner_op.all_trees[0][0], TreeArrays):
+            shape = bartrv.owner_op.all_trees[0][0].n_outputs
+        else:
+            shape = bartrv.eval().shape[0]
+    elif all(rv.ndim == 1 for rv in bartrv):
+        shape = len(bartrv)
+    elif isinstance(bartrv[0].owner_op.all_trees[0][0], TreeArrays):
+        shape = bartrv[0].owner_op.all_trees[0][0].n_outputs
     else:
-        shape = bartrv.eval().shape[0]
+        shape = bartrv[0].eval().shape[0]
 
     n_plots = len(var_idx) * shape
 
@@ -800,9 +839,9 @@ def plot_variable_inclusion(idata, X, labels=None, figsize=None, plot_kwargs=Non
 
 def compute_variable_importance(  # noqa: PLR0915 PLR0912
     idata: Any,
-    bartrv: Variable,
+    bartrv: Variable | list[Variable],
     X: npt.NDArray,
-    model: "pm.Model | None" = None,
+    model: pm.Model | None = None,
     method: str = "VI",
     fixed: int = 0,
     samples: int = 50,
@@ -844,18 +883,28 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     -------
     vi_results: dictionary
     """
+    from pymc_bart.pymc_bart import TreeArrays
+
     if method not in ["VI", "backward", "backward_VI"]:
         raise ValueError("method must be 'VI', 'backward' or 'backward_VI'")
 
     rng = np.random.default_rng(random_seed)
 
-    all_trees = bartrv.owner.op.all_trees
-    bart_var_name = bartrv.name
-
-    if bartrv.ndim == 1:  # type: ignore
-        shape = 1
+    if isinstance(bartrv, list):
+        if not all(rv.ndim == 1 for rv in bartrv):
+            raise ValueError("List inputs must contain only 1D BART variables")
+        all_trees = [rv.owner.op.all_trees for rv in bartrv]
+        bart_var_name = [rv.name for rv in bartrv]
+        shape = len(bartrv)
     else:
-        shape = bartrv.eval().shape[0]
+        all_trees = bartrv.owner.op.all_trees
+        bart_var_name = bartrv.name
+        if bartrv.ndim == 1:  # type: ignore
+            shape = 1
+        elif isinstance(all_trees[0][0], TreeArrays):
+            shape = all_trees[0][0].n_outputs
+        else:
+            shape = bartrv.eval().shape[0]
 
     n_vars = X.shape[1]
 
@@ -867,7 +916,11 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
 
     r2_mean: npt.NDArray = np.zeros(n_vars)
     r2_hdi: npt.NDArray = np.zeros((n_vars, 2))
-    preds: npt.NDArray = np.zeros((n_vars, samples, *bartrv.eval().T.shape))
+
+    # bartrv.eval().T.shape is (n_training_samples, n_outputs)
+    n_training_samples = X.shape[0]
+
+    preds: npt.NDArray = np.zeros((n_vars, samples, n_training_samples, shape))
 
     if method == "backward_VI":
         if fixed >= n_vars:
@@ -878,10 +931,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     else:
         fixed = 0
         init = 0
-
-    predicted_all = _sample_posterior(
-        all_trees, X=X, rng=rng, size=samples, excluded=None, shape=shape
-    )
+        predicted_all = _sample_posterior(all_trees, X=X, rng=rng, size=samples, excluded=None)
 
     if method in ["VI", "backward_VI"]:
         vi_xarray = idata["sample_stats"]["variable_inclusion"]
@@ -893,11 +943,22 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
                     "for which you want to compute the variable inclusion."
                 )
 
-            index = [var.name for var in model.free_RVs].index(bart_var_name)
-            vi_vals = vi_xarray.sel({"variable_inclusion_dim_0": index}).values.ravel()
+            if isinstance(bartrv, list):
+                vi_counts = np.zeros(n_vars)
+                for name in bart_var_name:
+                    index = [var.name for var in model.free_RVs].index(name)
+                    vi_vals = vi_xarray.sel({"variable_inclusion_dim_0": index}).values.ravel()
+                    vi_counts += np.array([_decode_vi(val, n_vars) for val in vi_vals]).sum(axis=0)
+                idxs = np.argsort(vi_counts)
+            else:
+                index = [var.name for var in model.free_RVs].index(bart_var_name)
+                vi_vals = vi_xarray.sel({"variable_inclusion_dim_0": index}).values.ravel()
+                idxs = np.argsort(
+                    np.array([_decode_vi(val, n_vars) for val in vi_vals]).sum(axis=0)
+                )
         else:
             vi_vals = idata["sample_stats"]["variable_inclusion"].values.ravel()
-        idxs = np.argsort(np.array([_decode_vi(val, n_vars) for val in vi_vals]).sum(axis=0))
+            idxs = np.argsort(np.array([_decode_vi(val, n_vars) for val in vi_vals]).sum(axis=0))
         subsets: list[list[int]] = [list(idxs[:-i]) for i in range(1, len(idxs))]
         subsets.append(None)  # type: ignore
 
@@ -913,14 +974,13 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
                 rng=rng,
                 size=samples,
                 excluded=subset,
-                shape=shape,
             )
             r_2 = np.array(
                 [pearsonr2(predicted_all[j], predicted_subset[j]) for j in range(samples)]
             )
             r2_mean[idx] = np.mean(r_2)
             r2_hdi[idx] = array_stats.hdi(r_2, prob=rcParams["stats.ci_prob"])
-            preds[idx] = predicted_subset.squeeze()
+            preds[idx] = predicted_subset  # .squeeze()
 
     if method in ["backward", "backward_VI"]:
         if method == "backward_VI":
@@ -930,7 +990,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
             preds_vi = preds[:init]
             r2_mean = np.zeros(n_vars - fixed - 1)
             r2_hdi = np.zeros((n_vars - fixed - 1, 2))
-            preds = np.zeros((n_vars - fixed - 1, samples, bartrv.eval().shape[0]))
+            preds = np.zeros((n_vars - fixed - 1, samples, n_training_samples, shape))
         else:
             least_important_vars = []
 
@@ -947,12 +1007,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
             for subset in subsets:
                 # Sample posterior predictions excluding a subset of variables
                 predicted_subset = _sample_posterior(
-                    all_trees=all_trees,
-                    X=X,
-                    rng=rng,
-                    size=samples,
-                    excluded=subset,
-                    shape=shape,
+                    all_trees=all_trees, X=X, rng=rng, size=samples, excluded=subset
                 )
                 # Calculate Pearson correlation for each sample and find the mean
                 r_2 = np.zeros(samples)
@@ -1004,7 +1059,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
         "labels": labels,
         "r2_mean": r2_mean,
         "r2_hdi": r2_hdi,
-        "preds": preds,
+        "preds": preds.squeeze(),
         "preds_all": predicted_all.squeeze(),
     }
     return vi_results

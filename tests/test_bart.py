@@ -1,6 +1,7 @@
 import numpy as np
 import pymc as pm
 import pytest
+from bartrs import PGBART
 from numpy.testing import assert_almost_equal
 from pymc.initial_point import make_initial_point_fn
 from pymc.logprob.basic import transformed_conditional_logp
@@ -137,32 +138,23 @@ def test_bart_moment(size, expected):
 
 
 @pytest.mark.parametrize(
-    argnames="separate_trees,split_rule",
+    argnames="split_rule",
     argvalues=[
-        (False, pmb.ContinuousSplitRule),
-        (False, pmb.OneHotSplitRule),
-        (False, pmb.SubsetSplitRule),
-        (True, pmb.ContinuousSplitRule),
+        ("ContinuousSplit"),
+        ("OneHotSplit"),
+        ("ContinuousSplit"),
     ],
-    ids=["continuous", "one-hot", "subset", "separate-trees"],
+    ids=["continuous", "one-hot", "continuous"],
 )
-def test_categorical_model(separate_trees, split_rule):
+def test_categorical_model(split_rule):
     Y = np.array([0, 0, 0, 1, 1, 1, 2, 2, 2])
     rng = np.random.default_rng(12345)
     X = np.concatenate([Y[:, None], rng.integers(0, 6, size=(9, 4))], axis=1)
 
     with pm.Model() as model:
-        lo = pmb.BART(
-            "logodds",
-            X,
-            Y,
-            m=2,
-            shape=(3, 9),
-            split_rules=[split_rule] * 5,
-            separate_trees=separate_trees,
-        )
+        lo = pmb.BART("logodds", X, Y, m=2, shape=(3, 9), split_rules=[split_rule] * 5)
         y = pm.Categorical("y", p=pm.math.softmax(lo.T, axis=-1), observed=Y)
-        idata = pm.sample(tune=300, draws=300, random_seed=3415)
+        idata = pm.sample(tune=600, draws=600, random_seed=3415)
         idata = pm.sample_posterior_predictive(
             idata, predictions=True, extend_inferencedata=True, random_seed=3415
         )
@@ -236,8 +228,8 @@ def test_multiple_bart_variables_manual_step():
         y = pm.Normal("y", mu1 + mu2, sigma, observed=Y)
 
         # Manually create PGBART samplers for each BART variable
-        step1 = pmb.PGBART([mu1], num_particles=5)
-        step2 = pmb.PGBART([mu2], num_particles=5)
+        step1 = PGBART([mu1], num_particles=5)
+        step2 = PGBART([mu2], num_particles=5)
 
         # Sample with manual step assignment
         idata = pm.sample(tune=20, draws=20, chains=1, step=[step1, step2], random_seed=3415)

@@ -3,3 +3,4 @@ arviz-stats[xarray]>=1.1.0
 numba
 matplotlib
 numpy>=2.0
+bartrs @ git+https://github.com/pymc-devs/bartrs.git@main

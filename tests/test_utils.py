@@ -25,9 +25,9 @@ class TestUtils:
         rng = np.random.default_rng(3)
         pred_first = pmb.utils._sample_posterior(all_trees, X=self.X[:10], rng=rng)
 
-        assert_almost_equal(pred_first[0], pred_all[0, :10], decimal=4)
+        assert_almost_equal(pred_first, pred_all[0, :10], decimal=4)
         assert pred_all.shape == (2, 50, 1)
-        assert pred_first.shape == (1, 10, 1)
+        assert pred_first.shape == (10, 1)
 
     @pytest.mark.parametrize(
         "kwargs",
