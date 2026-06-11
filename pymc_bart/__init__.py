@@ -11,7 +11,14 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-import bartrs  # registers PGBART with PyMC. If removed, the PGBART step method will not be detected by PyMC.
+
+# If removed, the PGBART step method will not be detected by PyMC.
+import bartrs  # registers PGBART with PyMC.
+
+# Fix precommit complaining about unused import
+if bartrs:
+    pass
+
 
 from pymc_bart.bart import BART
 from pymc_bart.utils import (
