@@ -242,7 +242,8 @@ def test_multiple_bart_variables_manual_step():
 
 
 def test_mutable_named_dim():
-    """Test that BART variables can be created with mutable named dimensions and that sampling works."""
+    """Test that BART variables can be created with
+    mutable named dimensions and that sampling works."""
     rng = np.random.default_rng(0)
     N = 50
     X = rng.normal(size=(N, 2))
