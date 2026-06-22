@@ -52,17 +52,12 @@ class BARTRV(RandomVariable):
             size = None
 
         if not hasattr(cls, "all_trees") or not cls.all_trees:
-            if isinstance(cls.Y, (TensorSharedVariable, TensorVariable)):
-                Y = cls.Y.eval()
-            else:
-                Y = cls.Y
-
             if size is not None:
                 return np.full((size[0], Y.shape[0]), Y.mean())
             else:
                 return np.full(Y.shape[0], Y.mean())
         else:
-            return _sample_posterior(cls.all_trees, cls.X, rng=rng).squeeze().T
+            return _sample_posterior(cls.all_trees, X, rng=rng).squeeze().T
 
 
 bart = BARTRV()

@@ -167,3 +167,4 @@ cython_debug/
 
 **.csv
 tests/test_hmc.py
+tests/bench_bart.py
