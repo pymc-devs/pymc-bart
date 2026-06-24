@@ -239,3 +239,18 @@ def test_multiple_bart_variables_manual_step():
         assert "mu2" in idata.posterior
         assert idata.posterior["mu1"].shape == (1, 20, 30)
         assert idata.posterior["mu2"].shape == (1, 20, 30)
+
+
+def test_mutable_named_dim():
+    """Test that BART variables can be created with
+    mutable named dimensions and that sampling works."""
+    rng = np.random.default_rng(0)
+    N = 50
+    X = rng.normal(size=(N, 2))
+    Y = rng.normal(size=N)
+
+    with pm.Model(coords={"obs": np.arange(N), "feature": ["a", "b"]}) as model:
+        x = pm.Data("x", X, dims=("obs", "feature"))
+        mu = pmb.BART("mu", X=x, Y=Y, m=10, dims="obs")
+        pm.Normal("y", mu=mu, sigma=1.0, observed=Y, dims="obs")
+        idata = pm.sample(tune=20, draws=20, chains=1)
