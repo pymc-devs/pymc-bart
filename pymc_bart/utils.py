@@ -4,11 +4,9 @@
 from __future__ import annotations
 
 import base64
-import pickle
 import warnings
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar
-from weakref import WeakValueDictionary
+from typing import Any, TypeVar
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,9 +19,6 @@ from numba import jit
 from pytensor.tensor.variable import Variable
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
-
-if TYPE_CHECKING:
-    from pymc_bart.pymc_bart import PosteriorSampler
 
 TensorLike = TypeVar("TensorLike", npt.NDArray, pt.TensorVariable)
 
@@ -51,77 +46,88 @@ def _sample_posterior(
         Indexes of the variables to exclude when computing predictions
     """
     if size is None:
-        size_iter = ()
+        size_iter: tuple[int, ...] | list[int] = ()
     elif isinstance(size, int):
         size_iter = [size]
     else:
         size_iter = size
 
     flatten_size = 1
+    s: int
     for s in size_iter:
         flatten_size *= s
 
     X = np.ascontiguousarray(np.asarray(X, dtype=np.float64))
     excl = list(excluded) if excluded is not None else None
+    first_sampler = sampler[0] if isinstance(sampler, list) else sampler
+    draw_indices = rng.integers(0, first_sampler.n_draws, size=flatten_size).tolist()
 
     if isinstance(sampler, list):
         # shape (flatten_size, n_outputs, n_data_samples) each; stack along the outputs axis
-        pred = np.concatenate([s.sample_posterior(X, flatten_size, excl) for s in sampler], axis=1)
+        pred = np.concatenate(
+            [s.sample_posterior(X, draw_indices, excl) for s in sampler], axis=1
+        )
     else:
-        pred = sampler.sample_posterior(X, flatten_size, excl)
+        pred = sampler.sample_posterior(X, draw_indices, excl)
 
     return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, pred.shape[1]))
 
 
-_posterior_sampler_cache: "WeakValueDictionary[tuple[int, str], PosteriorSampler]" = (
-    WeakValueDictionary()
-)
-
-
-def _get_posterior_sampler(
-    idata: Any,
-    bartrv: Variable,
-    model: "pm.Model | None" = None,
-    random_seed: int | None = None,
-) -> "PosteriorSampler":
+class _MultiChainSampler:
     """
-    Rebuild a PosteriorSampler from tree data streamed through ``idata.sample_stats``.
-
+    Dispatches each requested draw to the PosteriorSampler for the chain it came from.
     """
-    cache_key = (id(idata), bartrv.name)
-    cached = _posterior_sampler_cache.get(cache_key)
-    if cached is not None:
-        return cached
+    def __init__(self, chain_samplers: list):
+        if not chain_samplers:
+            raise ValueError("No posterior draws available yet: run pm.sample() first.")
+        self._chain_samplers = chain_samplers
+        self._offsets = np.cumsum([0] + [s.n_draws for s in chain_samplers])
+
+    @property
+    def n_draws(self) -> int:
+        return int(self._offsets[-1])
+
+    @property
+    def n_outputs(self) -> int:
+        return self._chain_samplers[0].n_outputs
+
+    def sample_posterior(self, X, draw_indices, excluded):
+        draw_indices = np.asarray(draw_indices)
+        chain_of_draw = np.searchsorted(self._offsets, draw_indices, side="right") - 1
+
+        out = None
+        for chain_idx, sampler in enumerate(self._chain_samplers):
+            mask = chain_of_draw == chain_idx
+            if not np.any(mask):
+                continue
+            local_indices = (draw_indices[mask] - self._offsets[chain_idx]).tolist()
+            preds = sampler.sample_posterior(X, local_indices, excluded)
+            if out is None:
+                out = np.empty((len(draw_indices), *preds.shape[1:]), dtype=preds.dtype)
+            out[mask] = preds
+        return out
+
+
+_posterior_sampler_cache: dict[int, tuple[int, "_MultiChainSampler"]] = {}
+
+
+def _get_posterior_sampler(op) -> "_MultiChainSampler":
+    """
+    Rebuild a prediction-only sampler from tree data accumulated on the BART op itself.
+    """
+    n_chains = len(op.all_trees)
+    cached = _posterior_sampler_cache.get(id(op))
+    if cached is not None and cached[0] == n_chains:
+        return cached[1]
 
     from pymc_bart.pymc_bart import PosteriorSampler
 
-    trees_xarray = idata["sample_stats"]["trees"]
-    baseline_xarray = idata["sample_stats"]["baseline_forest"]
-
-    if trees_xarray.trees_dim_0.size > 1:
-        if model is None:
-            raise ValueError(
-                "The InferenceData was generated from a model with multiple BART variables, \n"
-                "please provide the model so the right BART variable's trees can be located."
-            )
-        index = [var.name for var in model.free_RVs].index(bartrv.name)
-        trees_vals = trees_xarray.sel({"trees_dim_0": index}).values.ravel()
-        baseline_vals = baseline_xarray.sel({"baseline_forest_dim_0": index}).values.ravel()
-    else:
-        trees_vals = trees_xarray.values.ravel()
-        baseline_vals = baseline_xarray.values.ravel()
-
-    batches = [_decode_obj(val) for val in trees_vals if val is not None]
-    baseline_forest = next((_decode_obj(val) for val in baseline_vals if val is not None), None)
-
-    sampler = PosteriorSampler.from_history(
-        batches,
-        baseline_forest,
-        bartrv.owner.op.m,
-        bartrv.owner.op.n_outputs,
-        random_seed if random_seed is not None else 0,
-    )
-    _posterior_sampler_cache[cache_key] = sampler
+    chain_samplers = [
+        PosteriorSampler.from_history(batches, baseline_forest, op.m, op.n_outputs)
+        for baseline_forest, batches in op.all_trees
+    ]
+    sampler = _MultiChainSampler(chain_samplers)
+    _posterior_sampler_cache[id(op)] = (n_chains, sampler)
     return sampler
 
 
@@ -163,7 +169,6 @@ def plot_convergence(
 def plot_ice(
     bartrv: Variable,
     X: npt.NDArray,
-    idata: Any,
     Y: npt.NDArray | None = None,
     var_idx: list[int] | None = None,
     var_discrete: list[int] | None = None,
@@ -181,7 +186,6 @@ def plot_ice(
     figsize: tuple[float, float] | None = None,
     smooth_kwargs: dict[str, Any] | None = None,
     ax: plt.Axes | None = None,
-    model: "pm.Model | None" = None,
 ) -> list[plt.Axes]:
     """
     Individual conditional expectation plot.
@@ -192,8 +196,6 @@ def plot_ice(
         BART variable once the model that include it has been fitted.
     X : npt.NDArray
         The covariate matrix.
-    idata : InferenceData
-        InferenceData returned by ``pm.sample()``.
     Y : Optional[npt.NDArray], by default None.
         The response vector.
     var_idx : Optional[list[int]], by default None.
@@ -234,16 +236,13 @@ def plot_ice(
         See scipy.signal.savgol_filter() for details.
     ax : axes
         Matplotlib axes.
-    model : Optional[pm.Model]
-        The PyMC model that contains the BART variable. Only needed if the model contains
-        multiple BART variables.
 
     Returns
     -------
     axes: matplotlib axes
     """
     rng = np.random.default_rng(random_seed)
-    sampler = _get_posterior_sampler(idata, bartrv, model=model, random_seed=random_seed)
+    sampler = _get_posterior_sampler(bartrv.owner.op)
 
     if func is None:
 
@@ -263,7 +262,7 @@ def plot_ice(
         _,
     ) = _prepare_plot_data(X, Y, "linear", None, var_idx, var_discrete)
 
-    fig, axes, shape = _create_figure_axes(bartrv, idata, var_idx, grid, sharey, figsize, ax, model)
+    fig, axes, shape = _create_figure_axes(bartrv, var_idx, grid, sharey, figsize, ax)
 
     instances_ary = rng.choice(range(X.shape[0]), replace=False, size=instances)
     idx_s = list(range(X.shape[0]))
@@ -314,7 +313,6 @@ def plot_ice(
 def plot_pdp(
     bartrv: Variable | list[Variable],
     X: npt.NDArray,
-    idata: Any,
     Y: npt.NDArray | None = None,
     xs_interval: str = "quantiles",
     xs_values: int | list[float] | None = None,
@@ -333,7 +331,6 @@ def plot_pdp(
     figsize: tuple[float, float] | None = None,
     smooth_kwargs: dict[str, Any] | None = None,
     ax: plt.Axes = None,
-    model: "pm.Model | None" = None,
 ) -> list[plt.Axes]:
     """
     Partial dependence plot.
@@ -344,8 +341,6 @@ def plot_pdp(
         BART variable once the model that include it has been fitted.
     X : npt.NDArray
         The covariate matrix.
-    idata : InferenceData
-        InferenceData returned by ``pm.sample()``.
     Y : Optional[npt.NDArray], by default None.
         The response vector.
     xs_interval : str
@@ -393,9 +388,6 @@ def plot_pdp(
         See scipy.signal.savgol_filter() for details.
     ax : axes
         Matplotlib axes.
-    model : Optional[pm.Model]
-        The PyMC model that contains the BART variable. Only needed if the model contains
-        multiple BART variables.
 
     Returns
     -------
@@ -404,12 +396,9 @@ def plot_pdp(
     if isinstance(bartrv, list):
         if not all(rv.ndim == 1 for rv in bartrv):
             raise ValueError("List inputs must contain only 1D BART variables")
-        sampler = [
-            _get_posterior_sampler(idata, rv, model=model, random_seed=random_seed)
-            for rv in bartrv
-        ]
+        sampler = [_get_posterior_sampler(rv.owner.op) for rv in bartrv]
     else:
-        sampler = _get_posterior_sampler(idata, bartrv, model=model, random_seed=random_seed)
+        sampler = _get_posterior_sampler(bartrv.owner.op)
 
     rng = np.random.default_rng(random_seed)
 
@@ -431,7 +420,7 @@ def plot_pdp(
         xs_values,
     ) = _prepare_plot_data(X, Y, xs_interval, xs_values, var_idx, var_discrete)
 
-    fig, axes, shape = _create_figure_axes(bartrv, idata, var_idx, grid, sharey, figsize, ax, model)
+    fig, axes, shape = _create_figure_axes(bartrv, var_idx, grid, sharey, figsize, ax)
 
     count = 0
     fake_X = _create_pdp_data(X, xs_interval, xs_values)
@@ -498,13 +487,11 @@ def plot_pdp(
 
 def _create_figure_axes(
     bartrv: Variable | list[Variable],
-    idata: Any,
     var_idx: list[int],
     grid: str = "long",
     sharey: bool = True,
     figsize: tuple[float, float] | None = None,
     ax: plt.Axes | None = None,
-    model: "pm.Model | None" = None,
 ) -> tuple[plt.Figure, list[plt.Axes], int]:
     """
     Create and return the figure and axes objects for plotting the variables.
@@ -515,7 +502,6 @@ def _create_figure_axes(
     ----------
     bartrv : BART Random Variable
         BART variable once the model that include it has been fitted.
-    idata : InferenceData
     var_idx : Optional[list[int]], by default None.
         List of the indices of the covariate for which to compute the pdp or ice.
     var_discrete : Optional[list[int]], by default None.
@@ -529,9 +515,6 @@ def _create_figure_axes(
         Figure size. If None it will be defined automatically.
     ax : axes
         Matplotlib axes.
-    model : Optional[pm.Model]
-        The PyMC model that contains the BART variable. Only needed if the model contains
-        multiple BART variables.
 
     Returns
     -------
@@ -542,11 +525,11 @@ def _create_figure_axes(
         if bartrv.ndim == 1:  # type: ignore
             shape = 1
         else:
-            shape = _get_posterior_sampler(idata, bartrv, model=model).n_outputs
+            shape = _get_posterior_sampler(bartrv.owner.op).n_outputs
     elif all(rv.ndim == 1 for rv in bartrv):
         shape = len(bartrv)
     else:
-        shape = _get_posterior_sampler(idata, bartrv[0], model=model).n_outputs
+        shape = _get_posterior_sampler(bartrv[0].owner.op).n_outputs
 
     n_plots = len(var_idx) * shape
 
@@ -936,14 +919,11 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
     if isinstance(bartrv, list):
         if not all(rv.ndim == 1 for rv in bartrv):
             raise ValueError("List inputs must contain only 1D BART variables")
-        sampler = [
-            _get_posterior_sampler(idata, rv, model=model, random_seed=random_seed)
-            for rv in bartrv
-        ]
+        sampler = [_get_posterior_sampler(rv.owner.op) for rv in bartrv]
         bart_var_name = [rv.name for rv in bartrv]
         shape = len(bartrv)
     else:
-        sampler = _get_posterior_sampler(idata, bartrv, model=model, random_seed=random_seed)
+        sampler = _get_posterior_sampler(bartrv.owner.op)
         bart_var_name = bartrv.name
         if bartrv.ndim == 1:  # type: ignore
             shape = 1
@@ -1415,11 +1395,3 @@ def _encode_vi(vec: list[int]) -> str:
             n >>= 7
         result.append(n & 0x7F)
     return base64.b64encode(bytes(result)).decode("ascii")
-
-
-def _encode_obj(obj: Any) -> str:
-    return base64.b64encode(pickle.dumps(obj)).decode("ascii")
-
-
-def _decode_obj(s: str) -> Any:
-    return pickle.loads(base64.b64decode(s))

@@ -27,7 +27,7 @@ from pytensor.tensor.random.op import RandomVariable
 from pytensor.tensor.sharedvar import TensorSharedVariable
 from pytensor.tensor.variable import TensorVariable
 
-from .utils import TensorLike, _sample_posterior
+from .utils import TensorLike, _get_posterior_sampler, _sample_posterior
 
 __all__ = ["BART"]
 
@@ -62,7 +62,10 @@ class BARTRV(RandomVariable):
             else:
                 return np.full(Y.shape[0], Y.mean())
         else:
-            return _sample_posterior(cls.all_trees, cls.X, rng=rng).squeeze().T
+            shape = size[0] if size is not None else 1
+            sampler = _get_posterior_sampler(cls)
+            pred = _sample_posterior(sampler, X, rng=rng, size=shape)
+            return pred.squeeze().T
 
 
 bart = BARTRV()
