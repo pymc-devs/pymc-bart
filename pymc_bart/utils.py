@@ -64,9 +64,7 @@ def _sample_posterior(
 
     if isinstance(sampler, list):
         # shape (flatten_size, n_outputs, n_data_samples) each; stack along the outputs axis
-        pred = np.concatenate(
-            [s.sample_posterior(X, draw_indices, excl) for s in sampler], axis=1
-        )
+        pred = np.concatenate([s.sample_posterior(X, draw_indices, excl) for s in sampler], axis=1)
     else:
         pred = sampler.sample_posterior(X, draw_indices, excl)
 
@@ -77,6 +75,7 @@ class _MultiChainSampler:
     """
     Dispatches each requested draw to the PosteriorSampler for the chain it came from.
     """
+
     def __init__(self, chain_samplers: list):
         if not chain_samplers:
             raise ValueError("No posterior draws available yet: run pm.sample() first.")
@@ -108,10 +107,10 @@ class _MultiChainSampler:
         return out
 
 
-_posterior_sampler_cache: dict[int, tuple[int, "_MultiChainSampler"]] = {}
+_posterior_sampler_cache: dict[int, tuple[int, _MultiChainSampler]] = {}
 
 
-def _get_posterior_sampler(op) -> "_MultiChainSampler":
+def _get_posterior_sampler(op) -> _MultiChainSampler:
     """
     Rebuild a prediction-only sampler from tree data accumulated on the BART op itself.
     """
@@ -393,6 +392,7 @@ def plot_pdp(
     -------
     axes: matplotlib axes
     """
+    sampler: _MultiChainSampler | list[_MultiChainSampler]
     if isinstance(bartrv, list):
         if not all(rv.ndim == 1 for rv in bartrv):
             raise ValueError("List inputs must contain only 1D BART variables")
@@ -916,6 +916,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
 
     rng = np.random.default_rng(random_seed)
 
+    sampler: _MultiChainSampler | list[_MultiChainSampler]
     if isinstance(bartrv, list):
         if not all(rv.ndim == 1 for rv in bartrv):
             raise ValueError("List inputs must contain only 1D BART variables")
