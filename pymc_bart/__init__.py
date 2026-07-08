@@ -12,10 +12,8 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-# If removed, the PGBART step method will not be detected by PyMC.
-import bartrs  # registers PGBART with PyMC.
+import bartrs
 
-# Fix precommit complaining about unused import
 if bartrs:
     pass
 
