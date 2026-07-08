@@ -73,7 +73,7 @@ def _sample_posterior(
     return pred.transpose((0, 2, 1)).reshape((*size_iter, -1, pred.shape[1]))
 
 
-_posterior_sampler_cache: "WeakValueDictionary[tuple[int, str], PosteriorSampler]" = (
+_posterior_sampler_cache: WeakValueDictionary[tuple[int, str], PosteriorSampler] = (
     WeakValueDictionary()
 )
 
@@ -81,9 +81,9 @@ _posterior_sampler_cache: "WeakValueDictionary[tuple[int, str], PosteriorSampler
 def _get_posterior_sampler(
     idata: Any,
     bartrv: Variable,
-    model: "pm.Model | None" = None,
+    model: pm.Model | None = None,
     random_seed: int | None = None,
-) -> "PosteriorSampler":
+) -> PosteriorSampler:
     """
     Rebuild a PosteriorSampler from tree data streamed through ``idata.sample_stats``.
 
@@ -181,7 +181,7 @@ def plot_ice(
     figsize: tuple[float, float] | None = None,
     smooth_kwargs: dict[str, Any] | None = None,
     ax: plt.Axes | None = None,
-    model: "pm.Model | None" = None,
+    model: pm.Model | None = None,
 ) -> list[plt.Axes]:
     """
     Individual conditional expectation plot.
@@ -333,7 +333,7 @@ def plot_pdp(
     figsize: tuple[float, float] | None = None,
     smooth_kwargs: dict[str, Any] | None = None,
     ax: plt.Axes = None,
-    model: "pm.Model | None" = None,
+    model: pm.Model | None = None,
 ) -> list[plt.Axes]:
     """
     Partial dependence plot.
@@ -405,8 +405,7 @@ def plot_pdp(
         if not all(rv.ndim == 1 for rv in bartrv):
             raise ValueError("List inputs must contain only 1D BART variables")
         sampler = [
-            _get_posterior_sampler(idata, rv, model=model, random_seed=random_seed)
-            for rv in bartrv
+            _get_posterior_sampler(idata, rv, model=model, random_seed=random_seed) for rv in bartrv
         ]
     else:
         sampler = _get_posterior_sampler(idata, bartrv, model=model, random_seed=random_seed)
@@ -504,7 +503,7 @@ def _create_figure_axes(
     sharey: bool = True,
     figsize: tuple[float, float] | None = None,
     ax: plt.Axes | None = None,
-    model: "pm.Model | None" = None,
+    model: pm.Model | None = None,
 ) -> tuple[plt.Figure, list[plt.Axes], int]:
     """
     Create and return the figure and axes objects for plotting the variables.
@@ -937,8 +936,7 @@ def compute_variable_importance(  # noqa: PLR0915 PLR0912
         if not all(rv.ndim == 1 for rv in bartrv):
             raise ValueError("List inputs must contain only 1D BART variables")
         sampler = [
-            _get_posterior_sampler(idata, rv, model=model, random_seed=random_seed)
-            for rv in bartrv
+            _get_posterior_sampler(idata, rv, model=model, random_seed=random_seed) for rv in bartrv
         ]
         bart_var_name = [rv.name for rv in bartrv]
         shape = len(bartrv)
