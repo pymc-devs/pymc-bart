@@ -7,10 +7,11 @@ import pymc_bart as pmb
 
 
 class TestUtils:
-    X_norm = np.random.normal(0, 1, size=(50, 2))
-    X_binom = np.random.binomial(1, 0.5, size=(50, 1))
+    _rng = np.random.default_rng(3415)
+    X_norm = _rng.normal(0, 1, size=(50, 2))
+    X_binom = _rng.binomial(1, 0.5, size=(50, 1))
     X = np.hstack([X_norm, X_binom])
-    Y = np.random.normal(0, 1, size=50)
+    Y = _rng.normal(0, 1, size=50)
 
     with pm.Model() as model:
         mu = pmb.BART("mu", X, Y, m=10)
