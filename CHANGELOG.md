@@ -1,3 +1,11 @@
+<a id="0.13.0"></a>
+# [0.13.0](https://github.com/pymc-devs/pymc-bart/releases/tag/0.13.0) - 2026-08-14
+
+
+
+[Changes][0.13.0]
+
+
 <a id="0.12.0"></a>
 # [0.12.0](https://github.com/pymc-devs/pymc-bart/releases/tag/0.12.0) - 2026-05-13
 
@@ -489,6 +497,7 @@
 [Changes][0.0.3]
 
 
+[0.13.0]: https://github.com/pymc-devs/pymc-bart/compare/0.12.0...0.13.0
 [0.12.0]: https://github.com/pymc-devs/pymc-bart/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/pymc-devs/pymc-bart/compare/0.10.0...0.11.0
 [0.10.0]: https://github.com/pymc-devs/pymc-bart/compare/0.9.2...0.10.0
