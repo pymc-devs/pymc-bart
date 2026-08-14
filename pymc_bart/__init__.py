@@ -44,4 +44,4 @@ __all__ = [
     "vi_to_kulprit",
 ]
 
-__version__ = "0.12.0"
+__version__ = "0.13.0"
