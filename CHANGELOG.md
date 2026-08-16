@@ -1,13 +1,13 @@
-<a id="v0.13.1"></a>
-# [v0.13.1](https://github.com/pymc-devs/pymc-bart/releases/tag/v0.13.1) - 2026-08-16
+<a id="0.13.1"></a>
+# [0.13.1](https://github.com/pymc-devs/pymc-bart/releases/tag/0.13.1) - 2026-08-16
 
 ## What's Changed
 * install bartrs from pypi by [@OttoVintola](https://github.com/OttoVintola) in [#287](https://github.com/pymc-devs/pymc-bart/pull/287)
 
 
-**Full Changelog**: https://github.com/pymc-devs/pymc-bart/compare/0.13.0...v0.13.1
+**Full Changelog**: https://github.com/pymc-devs/pymc-bart/compare/0.13.0...0.13.1
 
-[Changes][v0.13.1]
+[Changes][0.13.1]
 
 
 <a id="0.13.0"></a>
@@ -522,7 +522,7 @@
 [Changes][0.0.3]
 
 
-[v0.13.1]: https://github.com/pymc-devs/pymc-bart/compare/0.13.0...v0.13.1
+[0.13.1]: https://github.com/pymc-devs/pymc-bart/compare/0.13.0...0.13.1
 [0.13.0]: https://github.com/pymc-devs/pymc-bart/compare/0.12.0...0.13.0
 [0.12.0]: https://github.com/pymc-devs/pymc-bart/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/pymc-devs/pymc-bart/compare/0.10.0...0.11.0
