@@ -1,7 +1,32 @@
+<a id="v0.13.1"></a>
+# [v0.13.1](https://github.com/pymc-devs/pymc-bart/releases/tag/v0.13.1) - 2026-08-16
+
+## What's Changed
+* install bartrs from pypi by [@OttoVintola](https://github.com/OttoVintola) in [#287](https://github.com/pymc-devs/pymc-bart/pull/287)
+
+
+**Full Changelog**: https://github.com/pymc-devs/pymc-bart/compare/0.13.0...v0.13.1
+
+[Changes][v0.13.1]
+
+
 <a id="0.13.0"></a>
 # [0.13.0](https://github.com/pymc-devs/pymc-bart/releases/tag/0.13.0) - 2026-08-14
 
+## What's Changed
+* [pre-commit.ci] pre-commit autoupdate by [@pre-commit-ci](https://github.com/pre-commit-ci)[bot] in [#271](https://github.com/pymc-devs/pymc-bart/pull/271)
+* [pre-commit.ci] pre-commit autoupdate by [@pre-commit-ci](https://github.com/pre-commit-ci)[bot] in [#274](https://github.com/pymc-devs/pymc-bart/pull/274)
+* [pre-commit.ci] pre-commit autoupdate by [@pre-commit-ci](https://github.com/pre-commit-ci)[bot] in [#275](https://github.com/pymc-devs/pymc-bart/pull/275)
+* Fix streched figures by [@aloctavodia](https://github.com/aloctavodia) in [#277](https://github.com/pymc-devs/pymc-bart/pull/277)
+* Rust sampler by [@OttoVintola](https://github.com/OttoVintola) in [#276](https://github.com/pymc-devs/pymc-bart/pull/276)
+* Add regression test for models with mutable named dimension by [@OttoVintola](https://github.com/OttoVintola) in [#282](https://github.com/pymc-devs/pymc-bart/pull/282)
+* Better tree storage by [@OttoVintola](https://github.com/OttoVintola) in [#283](https://github.com/pymc-devs/pymc-bart/pull/283)
+* update pymc version by [@OttoVintola](https://github.com/OttoVintola) in [#286](https://github.com/pymc-devs/pymc-bart/pull/286)
 
+## New Contributors
+* [@OttoVintola](https://github.com/OttoVintola) made their first contribution in [#276](https://github.com/pymc-devs/pymc-bart/pull/276)
+
+**Full Changelog**: https://github.com/pymc-devs/pymc-bart/compare/0.12.0...0.13.0
 
 [Changes][0.13.0]
 
@@ -497,6 +522,7 @@
 [Changes][0.0.3]
 
 
+[v0.13.1]: https://github.com/pymc-devs/pymc-bart/compare/0.13.0...v0.13.1
 [0.13.0]: https://github.com/pymc-devs/pymc-bart/compare/0.12.0...0.13.0
 [0.12.0]: https://github.com/pymc-devs/pymc-bart/compare/0.11.0...0.12.0
 [0.11.0]: https://github.com/pymc-devs/pymc-bart/compare/0.10.0...0.11.0
