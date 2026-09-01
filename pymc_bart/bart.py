@@ -16,7 +16,6 @@
 
 import warnings
 from multiprocessing import Manager
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -28,8 +27,7 @@ from pytensor.tensor.random.op import RandomVariable
 from pytensor.tensor.sharedvar import TensorSharedVariable
 from pytensor.tensor.variable import TensorVariable
 
-from .split_rules import SplitRule
-from .utils import TensorLike, _sample_posterior
+from .utils import TensorLike, _get_posterior_sampler, _sample_posterior
 
 __all__ = ["BART"]
 
@@ -64,11 +62,10 @@ class BARTRV(RandomVariable):
             else:
                 return np.full(Y.shape[0], Y.mean())
         else:
-            if size is not None:
-                shape = size[0]
-            else:
-                shape = 1
-            return _sample_posterior(cls.all_trees, cls.X, rng=rng, shape=shape).squeeze().T
+            shape = size[0] if size is not None else 1
+            sampler = _get_posterior_sampler(cls)
+            pred = _sample_posterior(sampler, X, rng=rng, size=shape)
+            return pred.squeeze().T
 
 
 bart = BARTRV()
@@ -100,16 +97,10 @@ class BART(Distribution):
     split_prior : Optional[list[float]], default None.
         List of positive numbers, one per column in input data.
         Defaults to None, all covariates have the same prior probability to be selected.
-    split_rules : Optional[list[SplitRule]], default None
+    split_rules : Optional[list[str]], default None
         List of SplitRule objects, one per column in input data.
         Allows using different split rules for different columns. Default is ContinuousSplitRule.
         Other options are OneHotSplitRule and SubsetSplitRule, both meant for categorical variables.
-    separate_trees : Optional[bool], default False
-        When training multiple trees (by setting a shape parameter), the default behavior is to
-        learn a joint tree structure and only have different leaf values for each.
-        This flag forces a fully separate tree structure to be trained instead.
-        This is unnecessary in many cases and is considerably slower, multiplying
-        run-time roughly by number of dimensions.
 
     Notes
     -----
@@ -130,9 +121,8 @@ class BART(Distribution):
         alpha: float = 0.95,
         beta: float = 2.0,
         response: str = "constant",
-        split_prior: Optional[npt.NDArray] = None,
-        split_rules: Optional[list[SplitRule]] = None,
-        separate_trees: Optional[bool] = False,
+        split_rules: list[str] | None = None,
+        split_prior: npt.NDArray[np.float64] | None = None,
         **kwargs,
     ):
         if response in ["linear", "mix"]:
@@ -148,12 +138,12 @@ class BART(Distribution):
 
         split_prior = np.array([]) if split_prior is None else np.asarray(split_prior)
 
-        bart_op = type(
+        bart_op_type = type(
             f"BART_{name}",
             (BARTRV,),
             {
                 "name": "BART",
-                "all_trees": instance_all_trees,  # Instance-specific tree storage
+                "all_trees": instance_all_trees,
                 "inplace": False,
                 "initval": Y.mean(),
                 "X": X,
@@ -164,15 +154,13 @@ class BART(Distribution):
                 "beta": beta,
                 "split_prior": split_prior,
                 "split_rules": split_rules,
-                "separate_trees": separate_trees,
             },
-        )()
+        )
+
+        bart_op = bart_op_type()
 
         Distribution.register(BARTRV)
-
-        @_support_point.register(BARTRV)
-        def get_moment(rv, size, *rv_inputs):
-            return cls.get_moment(rv, size, *rv_inputs)
+        Distribution.register(bart_op_type)
 
         cls.rv_op = bart_op
         params = [X, Y, m, alpha, beta]
@@ -229,3 +217,8 @@ def logp(op, value_var, *dist_params, **kwargs):
     _dist_params = dist_params[3:]
     value_var = value_var[0]
     return BART.logp(value_var, *_dist_params)  # pylint: disable=no-value-for-parameter
+
+
+@_support_point.register(BARTRV)
+def bart_support_point(op, rv, *rv_inputs):
+    return pt.full(rv.shape, op.Y.mean(), dtype=rv.dtype)

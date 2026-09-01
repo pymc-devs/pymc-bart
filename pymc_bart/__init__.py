@@ -11,11 +11,14 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-import pymc as pm
+
+import bartrs
+
+if bartrs:
+    pass
+
 
 from pymc_bart.bart import BART
-from pymc_bart.pgbart import PGBART
-from pymc_bart.split_rules import ContinuousSplitRule, OneHotSplitRule, SubsetSplitRule
 from pymc_bart.utils import (
     compute_variable_importance,
     get_variable_inclusion,
@@ -30,10 +33,6 @@ from pymc_bart.utils import (
 
 __all__ = [
     "BART",
-    "PGBART",
-    "ContinuousSplitRule",
-    "OneHotSplitRule",
-    "SubsetSplitRule",
     "compute_variable_importance",
     "get_variable_inclusion",
     "plot_convergence",
@@ -44,7 +43,5 @@ __all__ = [
     "plot_variable_inclusion",
     "vi_to_kulprit",
 ]
-__version__ = "0.10.0"
 
-
-pm.STEP_METHODS = list(pm.STEP_METHODS) + [PGBART]
+__version__ = "0.13.1"
