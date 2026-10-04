@@ -67,13 +67,9 @@ class TestUtils:
         pmb.plot_pdp(self.mu, X=self.X, Y=self.Y, **kwargs)
 
     def test_pdp_rug(self):
-        axes = pmb.plot_pdp(
-            self.mu, X=self.X, Y=self.Y, var_idx=[0], rug=True
-        )
+        axes = pmb.plot_pdp(self.mu, X=self.X, Y=self.Y, var_idx=[0], rug=True)
 
-        rug_lines = [
-            line for line in axes[0].lines if line.get_marker() == "|"
-        ]
+        rug_lines = [line for line in axes[0].lines if line.get_marker() == "|"]
 
         assert len(rug_lines) == 1
         assert_array_equal(rug_lines[0].get_xdata(), self.X[:, 0])
