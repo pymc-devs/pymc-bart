@@ -323,7 +323,6 @@ def plot_pdp(
     random_seed: int | None = None,
     sharey: bool = True,
     smooth: bool = True,
-    rug: bool = False,
     grid: str = "long",
     color="C0",
     color_mean: str = "C0",
@@ -331,6 +330,8 @@ def plot_pdp(
     figsize: tuple[float, float] | None = None,
     smooth_kwargs: dict[str, Any] | None = None,
     ax: plt.Axes = None,
+    *,
+    rug: bool = False,
 ) -> list[plt.Axes]:
     """
     Partial dependence plot.
