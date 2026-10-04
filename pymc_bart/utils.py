@@ -323,6 +323,7 @@ def plot_pdp(
     random_seed: int | None = None,
     sharey: bool = True,
     smooth: bool = True,
+    rug: bool = False,
     grid: str = "long",
     color="C0",
     color_mean: str = "C0",
@@ -370,6 +371,9 @@ def plot_pdp(
         If True the result will be smoothed by first computing a linear interpolation of the data
         over a regular grid and then applying the Savitzky-Golay filter to the interpolated data.
         Defaults to True.
+    rug : bool
+        If True, plots the observed values of the covariate as ticks along the x-axis.
+        Defaults to False.
     grid : str or tuple
         How to arrange the subplots. Defaults to "long", one subplot below the other.
         Other options are "wide", one subplot next to eachother or a tuple indicating the number of
@@ -471,6 +475,14 @@ def plot_pdp(
                         axes[count].plot(x_data, y_data, color=color_mean)
                     else:
                         axes[count].plot(new_x, p_di.mean(0), color=color_mean)
+                if rug:
+                    axes[count].plot(
+                        X[:, var],
+                        np.zeros_like(X[:, var]),
+                        "|",
+                        transform=axes[count].get_xaxis_transform(),
+                        color=color,
+                    )
                 axes[count].set_xlabel(x_labels[var])
 
                 count += 1
