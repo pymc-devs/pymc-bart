@@ -134,11 +134,6 @@ myst_substitutions = {
 nb_execution_mode = "off"
 
 
-# bibtex config
-bibtex_bibfiles = ["references.bib"]
-bibtex_default_style = "unsrt"
-bibtex_reference_style = "author_year"
-
 # OpenGraph config
 # use default readthedocs integration aka no config here
 
