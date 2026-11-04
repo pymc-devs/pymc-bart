@@ -104,6 +104,31 @@ def test_shared_variable(response):
     assert ppc2.posterior_predictive["y"].shape == (2, 100, 3)
 
 
+@pytest.mark.parametrize("n_new", [1, 3])
+@pytest.mark.parametrize("n_outputs", [1, 2], ids=["1d", "multi-output"])
+def test_out_of_sample_shape(n_outputs, n_new):
+    X = np.random.normal(0, 1, size=(50, 2))
+    Y = np.random.normal(0, 1, size=50)
+
+    with pm.Model() as model:
+        data_X = pm.Data("data_X", X)
+        if n_outputs == 1:
+            mu = pmb.BART("mu", data_X, Y, m=2)
+            loc = mu
+        else:
+            mu = pmb.BART("mu", data_X, Y, m=2, shape=(n_outputs, data_X.shape[0]))
+            loc = mu[0]
+        sigma = pm.HalfNormal("sigma", 1)
+        pm.Normal("y", loc, sigma, observed=Y, shape=data_X.shape[0])
+        idata = pm.sample(tune=50, draws=10, chains=2, random_seed=3415)
+        pm.set_data({"data_X": X[:n_new]})
+        ppc = pm.sample_posterior_predictive(idata, sample_vars=["mu", "y"], random_seed=3415)
+
+    expected = (n_new,) if n_outputs == 1 else (n_outputs, n_new)
+    assert ppc.posterior_predictive["mu"].shape == (2, 10, *expected)
+    assert ppc.posterior_predictive["y"].shape == (2, 10, n_new)
+
+
 @pytest.mark.parametrize(
     argnames="response",
     argvalues=["constant", "linear"],
