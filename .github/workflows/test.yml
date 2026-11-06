@@ -23,7 +23,7 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         uses: conda-incubator/setup-miniconda@v4
         with:
-          miniconda-version: "latest"  
+          miniconda-version: "latest"
           channels: conda-forge, defaults
           channel-priority: true
           python-version: ${{ matrix.python-version }}
