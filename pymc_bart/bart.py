@@ -62,10 +62,14 @@ class BARTRV(RandomVariable):
             else:
                 return np.full(Y.shape[0], Y.mean())
         else:
-            shape = size[0] if size is not None else 1
             sampler = _get_posterior_sampler(cls)
-            pred = _sample_posterior(sampler, X, rng=rng, size=shape)
-            return pred.squeeze().T
+            # X is broadcast along the batch (output) dimensions, keep a single copy
+            X = X[(0,) * (X.ndim - 2)]
+            # A single posterior draw with shape (n_obs, n_outputs)
+            pred = _sample_posterior(sampler, X, rng=rng, size=1)[0]
+            if size is None:
+                return pred[:, 0]
+            return pred.T
 
 
 bart = BARTRV()
