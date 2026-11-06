@@ -80,9 +80,9 @@ class BART(Distribution):
     Parameters
     ----------
     X : PyTensor Variable, Pandas/Polars DataFrame or Numpy array
-        The covariate matrix.
-    Y : PyTensor Variable, Pandas/Polar DataFrame/Series,or Numpy array
-        The response vector.
+        The covariate matrix. Must be 2-dimensional with shape (n_observations, n_features).
+    Y : PyTensor Variable, Pandas/Polars DataFrame/Series, or Numpy array
+        The response vector. Must be 1-dimensional with shape (n_observations,).
     m : int
         Number of trees.
     response : str
@@ -208,6 +208,24 @@ def preprocess_xy(X: TensorLike, Y: TensorLike) -> tuple[npt.NDArray, npt.NDArra
 
     Y = Y.astype(float)
     X = X.astype(float)
+
+    if X.ndim != 2:
+        raise ValueError(
+            "X must be 2-dimensional with shape (n_observations, n_features), "
+            f"but got {X.ndim} dimensions."
+        )
+
+    if Y.ndim != 1:
+        raise ValueError(
+            f"Y must be 1-dimensional with shape (n_observations,), but got {Y.ndim} dimensions."
+        )
+
+    x_len = X.shape[0]
+    y_len = Y.shape[0]
+    if isinstance(x_len, int) and isinstance(y_len, int) and x_len != y_len:
+        raise ValueError(
+            f"X and Y must have the same number of observations, but got X: {x_len} and Y: {y_len}."
+        )
 
     return X, Y
 

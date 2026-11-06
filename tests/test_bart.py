@@ -254,3 +254,30 @@ def test_mutable_named_dim():
         mu = pmb.BART("mu", X=x, Y=Y, m=10, dims="obs")
         pm.Normal("y", mu=mu, sigma=1.0, observed=Y, dims="obs")
         idata = pm.sample(tune=20, draws=20, chains=1)
+
+
+@pytest.mark.parametrize(
+    "x_shape, y_shape, match_err",
+    [
+        ((10,), (10,), "X must be 2-dimensional"),
+        ((10, 2, 2), (10,), "X must be 2-dimensional"),
+        ((10, 2), (10, 1), "Y must be 1-dimensional"),
+        ((10, 2), (8,), "same number of observations"),
+    ],
+)
+def test_bart_input_validation(x_shape, y_shape, match_err):
+    X = np.ones(x_shape)
+    Y = np.ones(y_shape)
+
+    with pytest.raises(ValueError, match=match_err):
+        with pm.Model():
+            pmb.BART("mu", X=X, Y=Y)
+
+
+def test_bart_input_validation_valid():
+    X = np.ones((10, 2))
+    Y = np.ones(10)
+
+    with pm.Model():
+        mu = pmb.BART("mu", X=X, Y=Y)
+    assert mu is not None
