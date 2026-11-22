@@ -290,8 +290,31 @@ def plot_ice(
             else:
                 p_di = p_d[:, :, s_i]
             if var in var_discrete:
-                axes[count].plot(new_x, p_di.mean(0), "o", color=color_mean)
-                axes[count].plot(new_x, p_di.T, ".", color=color, alpha=alpha)
+                unique_x, inverse, counts = np.unique(
+                    new_x, return_inverse=True, return_counts=True
+                )
+                p_di_unique = np.zeros((p_di.shape[0], unique_x.size))
+                np.add.at(
+                    p_di_unique,
+                    (np.arange(p_di.shape[0])[:, None], inverse),
+                    p_di,
+                )
+                p_di_unique /= counts
+                axes[count].plot(
+                    unique_x,
+                    p_di_unique.mean(0),
+                    marker="o",
+                    linestyle="--",
+                    color=color_mean,
+                )
+                axes[count].plot(
+                    unique_x,
+                    p_di_unique.T,
+                    marker=".",
+                    linestyle="--",
+                    color=color,
+                    alpha=alpha,
+                )
             elif smooth:
                 x_data, y_data = _smooth_mean(new_x, p_di, "ice", smooth_kwargs)
                 axes[count].plot(x_data, y_data.mean(1), color=color_mean)
