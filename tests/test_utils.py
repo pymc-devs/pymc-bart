@@ -1,7 +1,7 @@
 import numpy as np
 import pymc as pm
 import pytest
-from numpy.testing import assert_almost_equal, assert_array_equal
+from numpy.testing import assert_allclose, assert_almost_equal, assert_array_equal
 
 import pymc_bart as pmb
 
@@ -47,6 +47,43 @@ class TestUtils:
     )
     def test_ice(self, kwargs):
         pmb.plot_ice(self.mu, X=self.X, Y=self.Y, **kwargs)
+
+    @pytest.mark.parametrize("centered", [True, False])
+    def test_ice_discrete(self, monkeypatch, centered):
+        instances = 5
+
+        def fake_sample_posterior(sampler, X, rng, size, excluded=None):
+            values = 10 * X[:, 2] + 0.01 * np.arange(X.shape[0])
+            return np.broadcast_to(values[None, :, None], (size, X.shape[0], 1))
+
+        monkeypatch.setattr(pmb.utils, "_sample_posterior", fake_sample_posterior)
+
+        axes = pmb.plot_ice(
+            self.mu,
+            X=self.X,
+            Y=self.Y,
+            var_idx=[2],
+            var_discrete=[2],
+            centered=centered,
+            instances=instances,
+            samples=2,
+        )
+
+        unique_x = np.unique(self.X[:, 2])
+        fake_values = 10 * self.X[:, 2] + 0.01 * np.arange(self.X.shape[0])
+        if centered:
+            fake_values = fake_values - fake_values[0]
+        expected_curve = np.array([fake_values[self.X[:, 2] == value].mean() for value in unique_x])
+
+        lines = axes[0].lines
+        assert len(lines) == instances + 1
+        assert lines[0].get_marker() == "o"
+        assert lines[0].get_linestyle() == "--"
+        assert_allclose(lines[0].get_ydata(), expected_curve)
+        for line in lines[1:]:
+            assert_array_equal(line.get_xdata(), unique_x)
+            assert line.get_linestyle() == "--"
+            assert_allclose(line.get_ydata(), expected_curve)
 
     @pytest.mark.parametrize(
         "kwargs",
