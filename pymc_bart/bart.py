@@ -137,6 +137,18 @@ class BART(Distribution):
         X, Y = preprocess_xy(X, Y)
 
         split_prior = np.array([]) if split_prior is None else np.asarray(split_prior)
+        n_features = X.type.shape[1] if isinstance(X, TensorVariable) else X.shape[1]
+        if isinstance(n_features, int):
+            if split_prior.size and split_prior.size != n_features:
+                raise ValueError(
+                    f"split_prior must have one value per column of X ({n_features}), "
+                    f"but got {split_prior.size}."
+                )
+            if split_rules is not None and len(split_rules) != n_features:
+                raise ValueError(
+                    f"split_rules must have one rule per column of X ({n_features}), "
+                    f"but got {len(split_rules)}."
+                )
 
         bart_op_type = type(
             f"BART_{name}",

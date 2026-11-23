@@ -274,6 +274,29 @@ def test_bart_input_validation(x_shape, y_shape, match_err):
             pmb.BART("mu", X=X, Y=Y)
 
 
+@pytest.mark.parametrize(
+    "kwargs, match_err",
+    [
+        (
+            {"split_prior": [1, 1]},
+            r"split_prior must have one value per column of X \(3\), but got 2\.",
+        ),
+        (
+            {"split_prior": [1, 1, 1, 1]},
+            r"split_prior must have one value per column of X \(3\), but got 4\.",
+        ),
+        (
+            {"split_rules": ["ContinuousSplit"]},
+            r"split_rules must have one rule per column of X \(3\), but got 1\.",
+        ),
+    ],
+)
+def test_bart_split_parameter_validation(kwargs, match_err):
+    with pytest.raises(ValueError, match=match_err):
+        with pm.Model():
+            pmb.BART("mu", X=np.ones((10, 3)), Y=np.ones(10), **kwargs)
+
+
 def test_bart_input_validation_valid():
     X = np.ones((10, 2))
     Y = np.ones(10)
